@@ -6,8 +6,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:fitmate/widgets/bottom_nav_bar.dart';
 import 'package:fitmate/screens/workout_screens/active_workout_screen.dart';
+import 'package:fitmate/services/api_service.dart'; //API
 
-// Workout Card Widget
 class WorkoutCard extends StatelessWidget {
   final Map<String, String> workout;
   
@@ -36,7 +36,9 @@ class WorkoutCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 20),
                 Image.network(
-                  'http://192.168.0.186:8000/workout-images/${workout["workout"]!.replaceAll(' ', '-')}.webp',
+                  ApiService.getWorkoutImageUrl(
+                    '${workout["workout"]!.replaceAll(' ', '-')}.webp'
+                  ),
                   height: 200,
                   fit: BoxFit.contain,
                   errorBuilder: (context, error, stackTrace) {
@@ -74,7 +76,7 @@ class WorkoutCard extends StatelessWidget {
                   width: 50,
                   height: 50,
                   child: Image.network(
-                    'http://192.168.0.186:8000${workout["image"]}',
+                    ApiService.baseUrl + workout["image"]!,
                     fit: BoxFit.contain,
                     errorBuilder: (context, error, stackTrace) {
                       print("Error loading image: $error");
@@ -136,7 +138,6 @@ class _TodaysWorkoutScreenState extends State<TodaysWorkoutScreen> {
     super.initState();
     fetchWorkoutData();
   }
-
   Future<void> fetchWorkoutData() async {
     try {
       // Get the currently logged-in user
@@ -187,24 +188,19 @@ class _TodaysWorkoutScreenState extends State<TodaysWorkoutScreen> {
         workoutCategory = nextCategory;
       });
 
-      // Send request to your backend API
-      final response = await http.post(
-        Uri.parse("http://192.168.0.186:8000/generate_workout/"),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "age": userData["age"],
-          "gender": userData["gender"],
-          "height": userData["height"],
-          "weight": userData["weight"],
-          "goal": userData["goal"],
-          "workoutDays": workoutDays,
-          "fitnessLevel": userData["fitnessLevel"] ?? "Beginner",
-          "lastWorkoutCategory": lastCategory
-        }),
-      );
+      try {
+        // Use the API service instead of direct HTTP request
+        final responseData = await ApiService.generateWorkout(
+          age: userData["age"],
+          gender: userData["gender"],
+          height: userData["height"].toDouble(),
+          weight: userData["weight"].toDouble(),
+          goal: userData["goal"],
+          workoutDays: workoutDays,
+          fitnessLevel: userData["fitnessLevel"] ?? "Beginner",
+          lastWorkoutCategory: lastCategory,
+        );
 
-      if (response.statusCode == 200) {
-        var responseData = jsonDecode(response.body);
         setState(() {
           workouts = (responseData["workouts"] as List<dynamic>)
               .map<Map<String, String>>((item) => {
@@ -217,8 +213,27 @@ class _TodaysWorkoutScreenState extends State<TodaysWorkoutScreen> {
               .toList();
           isLoading = false;
         });
-      } else {
-        throw Exception("Failed to fetch workouts.");
+      } catch (e) {
+        print("API Error: $e");
+        setState(() {
+          isLoading = false;
+        });
+        // Show error dialog
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: Text('Error Loading Workouts'),
+              content: Text('Failed to load workouts from server: $e'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('OK'),
+                ),
+              ],
+            ),
+          );
+        }
       }
     } catch (e) {
       print("Error fetching workout data: $e");

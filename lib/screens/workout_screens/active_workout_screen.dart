@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fitmate/screens/workout_screens/workout_completion_screen.dart';
+import 'package:fitmate/services/api_service.dart'; // Import the API service
 
 class ActiveWorkoutScreen extends StatefulWidget {
   final List<Map<String, String>> workouts;
@@ -137,7 +138,8 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                 final workout = widget.workouts[index];
                 return ListTile(
                   leading: Image.network(
-                    'http://192.168.0.186:8000${workout["image"]}',
+                    // Use the API service to get the image URL
+                    ApiService.baseUrl + workout["image"]!,
                     width: 40,
                     height: 40,
                     errorBuilder: (context, error, stackTrace) =>
@@ -187,7 +189,10 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                                       ),
                                       const SizedBox(height: 20),
                                       Image.network(
-                                        'http://192.168.0.186:8000/workout-images/${workout["workout"]!.replaceAll(' ', '-')}.webp',
+                                        // Use the API service to get the workout image
+                                        ApiService.getWorkoutImageUrl(
+                                          '${workout["workout"]!.replaceAll(' ', '-')}.webp'
+                                        ),
                                         height: 200,
                                         fit: BoxFit.contain,
                                         errorBuilder: (context, error, stackTrace) {
