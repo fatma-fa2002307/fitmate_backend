@@ -3,7 +3,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 import os
-from app.models.schemas import WorkoutRequest, WorkoutResponse
+from app.models.schemas import WorkoutRequest, WorkoutResponse, WorkoutOptionsResponse
 from app.engine.workout import WorkoutEngine
 
 app = FastAPI()
@@ -36,6 +36,25 @@ def generate_workout(data: WorkoutRequest):
         except Exception as e:
             print(f"Error in workout generation: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Workout generation failed: {str(e)}")
+            
+    except Exception as e:
+        print(f"Error in endpoint: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/generate_workout_options/")
+def generate_workout_options(data: WorkoutRequest):
+    try:
+        print(f"Received request for multiple workout options: {data}")
+        engine = WorkoutEngine()
+        
+        try:
+            # Generate 3 workout variations in a single Llama model call
+            result = engine.generate_workout_options(data, num_options=3)
+            print(f"Generated workout options: {result}")
+            return result
+        except Exception as e:
+            print(f"Error in workout options generation: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Workout options generation failed: {str(e)}")
             
     except Exception as e:
         print(f"Error in endpoint: {str(e)}")
@@ -97,4 +116,3 @@ if not os.path.exists(icons_dir):
     print(f"Warning: Icons directory does not exist at {icons_dir}")
     os.makedirs(icons_dir, exist_ok=True)
     print(f"Created icons directory at {icons_dir}")
-

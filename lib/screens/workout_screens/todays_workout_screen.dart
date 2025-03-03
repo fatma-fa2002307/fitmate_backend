@@ -1,14 +1,14 @@
-// lib/screens/workout_screens/todays_workout_screen.dart
+// lib/screens/workout_screens/todays_workout_screen.dart - Updated to handle Map structure
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'dart:convert';
 import 'package:fitmate/widgets/bottom_nav_bar.dart';
 import 'package:fitmate/screens/workout_screens/active_workout_screen.dart';
 import 'package:fitmate/services/api_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fitmate/widgets/workout_skeleton.dart';
 
 class WorkoutCard extends StatelessWidget {
   final Map<String, String> workout;
@@ -144,73 +144,6 @@ class WorkoutCard extends StatelessWidget {
   }
 }
 
-// Skeleton widget for loading state
-class WorkoutSkeleton extends StatelessWidget {
-  const WorkoutSkeleton({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView.builder(
-      itemCount: 4,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemBuilder: (context, index) {
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        height: 20,
-                        width: 120,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[300],
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        height: 16,
-                        width: 80,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[200],
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
 // Main Screen
 class TodaysWorkoutScreen extends StatefulWidget {
   @override
@@ -218,69 +151,30 @@ class TodaysWorkoutScreen extends StatefulWidget {
 }
 
 class _TodaysWorkoutScreenState extends State<TodaysWorkoutScreen> {
-  List<Map<String, String>> workouts = [];
+  final PageController _pageController = PageController();
+  int _currentPage = 0;
+  Map<String, List<Map<String, String>>> _workoutOptions = {};
   bool isLoading = true;
-  bool isRefreshing = false;
   String workoutCategory = '';
   int _selectedIndex = 1;
-  static const String WORKOUT_CACHE_KEY = 'cached_workout_data';
 
   @override
   void initState() {
     super.initState();
-    _loadWorkoutData();
+    _loadWorkoutOptions();
   }
 
-  Future<void> _loadWorkoutData() async {
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadWorkoutOptions() async {
     setState(() {
       isLoading = true;
     });
     
-    try {
-      // Try to load from cache first
-      final prefs = await SharedPreferences.getInstance();
-      final cachedData = prefs.getString(WORKOUT_CACHE_KEY);
-      
-      if (cachedData != null) {
-        final data = jsonDecode(cachedData);
-        setState(() {
-          workouts = (data["workouts"] as List<dynamic>)
-            .map<Map<String, String>>((item) => {
-                "workout": item["workout"].toString(),
-                "image": item["image"].toString(),
-                "sets": item["sets"].toString(),
-                "reps": item["reps"].toString(),
-                "instruction": item["instruction"].toString(),
-              })
-            .toList();
-          workoutCategory = data["category"] ?? '';
-          isLoading = false;
-        });
-        return; // Exit early if cache was loaded successfully
-      }
-      
-      // If no cache, fetch workout data
-      await fetchWorkoutData();
-    } catch (e) {
-      print("Error loading workout data: $e");
-      setState(() {
-        isLoading = false;
-      });
-    }
-  }
-
-  // Update your existing fetchWorkoutData to handle refreshing
-  Future<void> fetchWorkoutData({bool forceRefresh = false}) async {
-    if (forceRefresh) {
-      setState(() {
-        isRefreshing = true;
-      });
-    } else if (isLoading == false) {
-      setState(() {
-        isLoading = true;
-      });
-    }
-
     try {
       // Get the currently logged-in user
       User? user = FirebaseAuth.instance.currentUser;
@@ -289,7 +183,7 @@ class _TodaysWorkoutScreenState extends State<TodaysWorkoutScreen> {
         return;
       }
 
-      // Fetch user data from Firestore
+      // Fetch workout options from Firestore
       DocumentSnapshot userDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
@@ -302,93 +196,61 @@ class _TodaysWorkoutScreenState extends State<TodaysWorkoutScreen> {
 
       // Extract user details
       Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
-
-      // Get the last workout category to determine next workout
-      String lastCategory = userData['lastWorkoutCategory'] ?? '';
-      int workoutDays = userData['workoutDays'] ?? 3;
-
-      setState(() {
-        workoutCategory = lastCategory;
-      });
-
-      try {
-        // Use the API service
-        final responseData = await ApiService.generateWorkout(
-          age: userData["age"] ?? 30,
-          gender: userData["gender"] ?? "Male",
-          height: (userData["height"] ?? 170).toDouble(),
-          weight: (userData["weight"] ?? 70).toDouble(),
-          goal: userData["goal"] ?? "Improve Fitness",
-          workoutDays: userData["workoutDays"] ?? 3,
-          fitnessLevel: userData["fitnessLevel"] ?? "Beginner",
-          lastWorkoutCategory: lastCategory,
-          useCache: !forceRefresh, 
-        );
-
-        // Clear the old cache if forcing refresh
-        if (forceRefresh) {
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.remove(WORKOUT_CACHE_KEY);
-        }
+      
+      // Get stored workout options
+      Map<String, dynamic>? workoutOptionsMap = userData['workoutOptions'] as Map<String, dynamic>?;
+      String? nextCategory = userData['nextWorkoutCategory'] as String?;
+      
+      if (workoutOptionsMap != null && workoutOptionsMap.isNotEmpty && nextCategory != null) {
+        // Convert Firebase map to our expected format
+        Map<String, List<Map<String, String>>> typedWorkoutOptions = {};
         
-        // Save to cache
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(WORKOUT_CACHE_KEY, jsonEncode(responseData));
-
-        setState(() {
-          workouts = (responseData["workouts"] as List<dynamic>)
-              .map<Map<String, String>>((item) => {
-                    "workout": item["workout"].toString(),
-                    "image": item["image"].toString(),
-                    "sets": item["sets"].toString(),
-                    "reps": item["reps"].toString(),
-                    "instruction": item["instruction"].toString(),
-                  })
-              .toList();
-          isLoading = false;
-          isRefreshing = false;
-          workoutCategory = responseData["category"] ?? '';
+        workoutOptionsMap.forEach((key, workoutList) {
+          List<Map<String, String>> typedWorkoutList = [];
+          
+          for (var workout in workoutList) {
+            typedWorkoutList.add({
+              "workout": workout["workout"] as String,
+              "image": workout["image"] as String,
+              "sets": workout["sets"] as String,
+              "reps": workout["reps"] as String,
+              "instruction": workout["instruction"] as String,
+            });
+          }
+          
+          typedWorkoutOptions[key] = typedWorkoutList;
         });
-      } catch (e) {
-        print("API Error: $e");
+        
+        setState(() {
+          _workoutOptions = typedWorkoutOptions;
+          workoutCategory = nextCategory;
+          isLoading = false;
+        });
+      } else {
+        print("No workout options found. Generating new workouts.");
         setState(() {
           isLoading = false;
-          isRefreshing = false;
+          _workoutOptions = {};
         });
-        // Show error dialog
-        if (mounted) {
-          showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: Text('Error Loading Workouts'),
-              content: Text('Failed to load workouts from server: $e'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text('OK'),
-                ),
-              ],
-            ),
-          );
-        }
       }
     } catch (e) {
-      print("Error fetching workout data: $e");
+      print("Error loading workout options: $e");
       setState(() {
         isLoading = false;
-        isRefreshing = false;
       });
     }
   }
 
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
+    // Convert map to list for pagination
+    List<List<Map<String, String>>> workoutOptionsList = [];
+    if (_workoutOptions.isNotEmpty) {
+      _workoutOptions.forEach((key, value) {
+        workoutOptionsList.add(value);
+      });
+    }
+    
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -400,111 +262,157 @@ class _TodaysWorkoutScreenState extends State<TodaysWorkoutScreen> {
         iconTheme: const IconThemeData(color: Colors.black),
         elevation: 0,
       ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+      body: isLoading 
+        ? WorkoutSkeleton() 
+        : workoutOptionsList.isEmpty 
+          ? Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.fitness_center, size: 64, color: Colors.grey[400]),
+                  const Text("No workouts available."),
+                ],
+              ),
+            )
+          : Column(
               children: [
-                Text(
-                  'Do not like the workout?',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 15,
-                    color: Colors.black54,
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Workout Option ${_currentPage + 1} / ${workoutOptionsList.length}',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 15,
+                          color: Colors.black54,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 10),
-                IconButton(
-                  onPressed: () {
-                    fetchWorkoutData(forceRefresh: true);
-                  },
-                  icon: isRefreshing 
-                    ? SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          color: Color(0xFFD2EB50),
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : const Icon(
-                        Icons.refresh,
-                        color: Color(0xFFD2EB50),
+                // Workout Pagination Indicators
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(workoutOptionsList.length, (index) {
+                    return Container(
+                      width: 10,
+                      height: 10,
+                      margin: const EdgeInsets.symmetric(horizontal: 4.0),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: _currentPage == index
+                            ? const Color(0xFFD2EB50)
+                            : Colors.grey.shade300,
                       ),
-                  tooltip: 'Get new workout',
+                    );
+                  }),
+                ),
+                const SizedBox(height: 16),
+                // Page View for workout options
+                Expanded(
+                  child: PageView.builder(
+                    controller: _pageController,
+                    onPageChanged: (int page) {
+                      setState(() {
+                        _currentPage = page;
+                      });
+                    },
+                    itemCount: workoutOptionsList.length,
+                    itemBuilder: (context, pageIndex) {
+                      final workouts = workoutOptionsList[pageIndex];
+                      return ListView.builder(
+                        itemCount: workouts.length,
+                        itemBuilder: (context, index) {
+                          return WorkoutCard(workout: workouts[index]);
+                        },
+                      );
+                    },
+                  ),
+                ),
+                // Navigation buttons
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Previous button
+                      ElevatedButton(
+                        onPressed: _currentPage > 0
+                            ? () {
+                                _pageController.previousPage(
+                                  duration: const Duration(milliseconds: 300),
+                                  curve: Curves.easeInOut,
+                                );
+                              }
+                            : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.grey[300],
+                          disabledBackgroundColor: Colors.grey[200],
+                        ),
+                        child: const Text('Previous'),
+                      ),
+                      // Next button
+                      ElevatedButton(
+                        onPressed: _currentPage < workoutOptionsList.length - 1
+                            ? () {
+                                _pageController.nextPage(
+                                  duration: const Duration(milliseconds: 300),
+                                  curve: Curves.easeInOut,
+                                );
+                              }
+                            : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.grey[300],
+                          disabledBackgroundColor: Colors.grey[200],
+                        ),
+                        child: const Text('Next'),
+                      ),
+                    ],
+                  ),
+                ),
+                // Start workout button
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: ElevatedButton(
+                    onPressed: workoutOptionsList.isNotEmpty
+                        ? () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ActiveWorkoutScreen(
+                                  workouts: workoutOptionsList[_currentPage],
+                                  category: workoutCategory,
+                                ),
+                              ),
+                            );
+                          }
+                        : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFD2EB50),
+                      minimumSize: const Size(double.infinity, 50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(5.0),
+                      ),
+                    ),
+                    child: Text(
+                      'START',
+                      style: GoogleFonts.bebasNeue(
+                        fontSize: 20,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
-          ),
-          Expanded(
-            child: isLoading
-              ? WorkoutSkeleton()  // Show skeleton while loading
-              : workouts.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.fitness_center, size: 64, color: Colors.grey[400]),
-                        const Text("No workouts available."),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: () => fetchWorkoutData(forceRefresh: true),
-                          child: const Text("Try Again"),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFD2EB50),
-                          ),
-                        )
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    itemCount: workouts.length,
-                    itemBuilder: (context, index) {
-                      return WorkoutCard(workout: workouts[index]);
-                    },
-                  ),
-          ),
-          if (!isLoading && workouts.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 16,
-              ),
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ActiveWorkoutScreen(
-                        workouts: workouts,
-                        category: workoutCategory,
-                      ),
-                    ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFD2EB50),
-                  minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(5.0),
-                  ),
-                ),
-                child: Text(
-                  'START',
-                  style: GoogleFonts.bebasNeue(
-                    fontSize: 20,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
       bottomNavigationBar: BottomNavBar(
         currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
+        onTap: (index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+        },
       ),
     );
   }

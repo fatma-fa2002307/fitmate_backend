@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Dict
 from datetime import datetime
 
 class WorkoutRequest(BaseModel):
@@ -21,4 +21,9 @@ class Exercise(BaseModel):
 
 class WorkoutResponse(BaseModel):
     workouts: List[Exercise]
+    category: str
+
+# New response model for multiple workout options
+class WorkoutOptionsResponse(BaseModel):
+    options: List[List[Dict[str, str]]]  # List of workout option lists
     category: str

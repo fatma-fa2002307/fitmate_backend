@@ -1,8 +1,10 @@
+// lib/screens/register_screens/credentials.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fitmate/screens/home_page.dart';
+import 'package:fitmate/services/workout_service.dart';
 
 class CredentialsPage extends StatefulWidget {
   final int age;
@@ -66,170 +68,149 @@ class _CredentialsPageState extends State<CredentialsPage> {
     _passwordController.dispose();
     super.dispose();
   }
-
-  // void _submitForm() async {
-  //   if (_formKey.currentState?.validate() ?? false) {
-  //     String fullName = _fullNameController.text;
-  //     String email = _emailController.text;
-  //     String password = _passwordController.text;
-
-  //     try {
-  //       // Create user with Firebase Authentication
-  //       UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-  //         email: email,
-  //         password: password,
-  //       );
-
-  //       // Save additional user data to Firestore
-  //       await FirebaseFirestore.instance.collection('users').doc(userCredential.user?.uid).set({
-  //         'fullName': fullName,
-  //         'email': email,
-  //         'age': widget.age,
-  //         'weight': widget.weight,
-  //         'height': widget.height,
-  //         'gender': widget.gender,
-  //         'goal': widget.selectedGoal,
-  //         'workoutDays': widget.workoutDays,
-  //       });
-
-  //       // Navigate to EditProfilePage after successful registration
-  //       if (mounted) {
-  //         Navigator.pushReplacement(
-  //           context,
-  //           MaterialPageRoute(
-  //             builder: (context) => EditProfilePage(), // Changed to EditProfilePage
-  //           ),
-  //         );
-  //       }
-  //     } on FirebaseAuthException catch (e) {
-  //       if (mounted) {
-  //         showDialog(
-  //           context: context,
-  //           builder: (BuildContext context) {
-  //             return AlertDialog(
-  //               backgroundColor: Color(0xFF0D0E11),
-  //               title: Text('Registration Failed', 
-  //                    style: GoogleFonts.bebasNeue(color: Color(0xFFD2EB50))),
-  //               content: Text(e.message ?? 'An error occurred. Please try again.',
-  //                    style: TextStyle(color: Color(0xFFFFFFFF))),
-  //               actions: [
-  //                 TextButton(
-  //                   child: Text('OK', 
-  //                        style: GoogleFonts.bebasNeue(color: Color(0xFFD2EB50))),
-  //                   onPressed: () => Navigator.pop(context),
-  //                 ),
-  //               ],
-  //             );
-  //           },
-  //         );
-  //       }
-  //     }
-  //   }
-  // }
-
-void _submitForm() async {
-  if (_formKey.currentState?.validate() ?? false) {
-    String fullName = _fullNameController.text;
-    String email = _emailController.text;
-    String password = _passwordController.text;
-
-    try {
-      // Create user with Firebase Authentication
-      UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
+  
+  void _submitForm() async {
+    if (_formKey.currentState?.validate() ?? false) {
+      // Show loading indicator only for user creation
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return const Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFD2EB50)),
+            ),
+          );
+        },
       );
+      
+      String fullName = _fullNameController.text;
+      String email = _emailController.text;
+      String password = _passwordController.text;
 
-      // Save additional user data to Firestore with new fields
-      await FirebaseFirestore.instance.collection('users').doc(userCredential.user?.uid).set({
-        'fullName': fullName,
-        'email': email,
-        'age': widget.age,
-        'weight': widget.weight,
-        'height': widget.height,
-        'gender': widget.gender,
-        'goal': widget.selectedGoal,
-        'workoutDays': widget.workoutDays,
-        //-------- fields for workout tracking --------
-        'fitnessLevel': 'Beginner',
-        'WorkoutsUntilNextLevel': 20,
-        'lastWorkout': {
-          'category': '',
-          'date': null,
-          'duration': 0,
-          'completion': 0,
-          'totalExercises': 0
-        },
-        'lastWorkout': {
-          'category': '',
-          'date': null,
-          'duration': 0,
-          'completion': 0,
-          'totalExercises': 0
-        },
-        'workoutHistory': [], // Empty array for workout history
-        'totalWorkouts': 0,
-        'nextWorkoutCategory': 'Legs' // Default starting category
-      });
+      try {
+        // Create user with Firebase Authentication
+        UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
 
-      // Navigate to HomePage after successful registration
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => HomePage(),
-          ),
-        );
-      }
-    } on FirebaseAuthException catch (e) {
-      print('Firebase Auth Error: ${e.code} - ${e.message}');
-      if (mounted) {
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              backgroundColor: Color(0xFF0D0E11),
-              title: Text('Registration Failed', 
-                   style: GoogleFonts.bebasNeue(color: Color(0xFFD2EB50))),
-              content: Text('Error Code: ${e.code}\n${e.message}',
-                   style: TextStyle(color: Color(0xFFFFFFFF))),
-              actions: [
-                TextButton(
-                  child: Text('OK', 
-                       style: GoogleFonts.bebasNeue(color: Color(0xFFD2EB50))),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ],
-            );
+        // Save additional user data to Firestore
+        await FirebaseFirestore.instance.collection('users').doc(userCredential.user?.uid).set({
+          'fullName': fullName,
+          'email': email,
+          'age': widget.age,
+          'weight': widget.weight,
+          'height': widget.height,
+          'gender': widget.gender,
+          'goal': widget.selectedGoal,
+          'workoutDays': widget.workoutDays,
+          'fitnessLevel': 'Beginner',
+          'workoutsUntilNextLevel': 20,
+          'lastWorkout': {
+            'category': '',
+            'date': null,
+            'duration': 0,
+            'completion': 0,
+            'totalExercises': 0
           },
-        );
-      }
-    } catch (e) {
-      print('General Error: $e');
-      if (mounted) {
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              backgroundColor: Color(0xFF0D0E11),
-              title: Text('Error', 
-                   style: GoogleFonts.bebasNeue(color: Color(0xFFD2EB50))),
-              content: Text('An unexpected error occurred: $e',
-                   style: TextStyle(color: Color(0xFFFFFFFF))),
-              actions: [
-                TextButton(
-                  child: Text('OK', 
-                       style: GoogleFonts.bebasNeue(color: Color(0xFFD2EB50))),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ],
-            );
-          },
-        );
+          'workoutHistory': [], // Empty array for workout history
+          'totalWorkouts': 0,
+          'nextWorkoutCategory': '', // Will be filled by WorkoutService
+          'workoutsLastGenerated': null,
+        });
+        
+        // Close the loading dialog
+        if (mounted) {
+          Navigator.pop(context);
+        }
+        
+        // Generate initial workout options silently in the background
+        try {
+          // No dialog display - silent background process
+          WorkoutService.generateAndSaveWorkoutOptions(
+            age: widget.age,
+            gender: widget.gender,
+            height: widget.height,
+            weight: widget.weight,
+            goal: widget.selectedGoal,
+            workoutDays: widget.workoutDays,
+            fitnessLevel: 'Beginner',
+            lastWorkoutCategory: null, // No previous workout
+          );
+        } catch (e) {
+          print("Error generating initial workouts: $e");
+          // Silently handle errors - no UI feedback
+        }
+
+        // Navigate to HomePage after successful registration
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => HomePage(),
+            ),
+          );
+        }
+      } on FirebaseAuthException catch (e) {
+        // Close the loading dialog
+        if (mounted && Navigator.canPop(context)) {
+          Navigator.pop(context);
+        }
+        
+        print('Firebase Auth Error: ${e.code} - ${e.message}');
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                backgroundColor: Color(0xFF0D0E11),
+                title: Text('Registration Failed', 
+                    style: GoogleFonts.bebasNeue(color: Color(0xFFD2EB50))),
+                content: Text('Error Code: ${e.code}\n${e.message}',
+                    style: TextStyle(color: Color(0xFFFFFFFF))),
+                actions: [
+                  TextButton(
+                    child: Text('OK', 
+                        style: GoogleFonts.bebasNeue(color: Color(0xFFD2EB50))),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              );
+            },
+          );
+        }
+      } catch (e) {
+        // Close the loading dialog
+        if (mounted && Navigator.canPop(context)) {
+          Navigator.pop(context);
+        }
+        
+        print('General Error: $e');
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                backgroundColor: Color(0xFF0D0E11),
+                title: Text('Error', 
+                    style: GoogleFonts.bebasNeue(color: Color(0xFFD2EB50))),
+                content: Text('An unexpected error occurred: $e',
+                    style: TextStyle(color: Color(0xFFFFFFFF))),
+                actions: [
+                  TextButton(
+                    child: Text('OK', 
+                        style: GoogleFonts.bebasNeue(color: Color(0xFFD2EB50))),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              );
+            },
+          );
+        }
       }
     }
   }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -351,4 +332,3 @@ void _submitForm() async {
     );
   }
 }
-
