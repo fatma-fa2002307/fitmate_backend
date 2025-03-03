@@ -3,7 +3,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 import os
-from app.models.schemas import WorkoutRequest, WorkoutResponse, WorkoutOptionsResponse
+from app.models.schemas import WorkoutRequest
 from app.engine.workout import WorkoutEngine
 
 app = FastAPI()
@@ -21,25 +21,6 @@ app.add_middleware(
 base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 workout_images_dir = os.path.join(base_dir, "data", "workout-images")
 icons_dir = os.path.join(workout_images_dir, "icons")
-
-@app.post("/generate_workout/")
-def generate_workout(data: WorkoutRequest):
-    try:
-        print(f"Received request data: {data}")
-        engine = WorkoutEngine()
-        print("Workout engine initialized")
-        
-        try:
-            result = engine.generate_workout(data)
-            print(f"Generated workout result: {result}")
-            return result
-        except Exception as e:
-            print(f"Error in workout generation: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Workout generation failed: {str(e)}")
-            
-    except Exception as e:
-        print(f"Error in endpoint: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/generate_workout_options/")
 def generate_workout_options(data: WorkoutRequest):

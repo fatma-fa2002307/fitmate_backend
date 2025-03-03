@@ -1,9 +1,9 @@
-// lib/screens/workout_screens/workout_completion_screen.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fitmate/services/workout_service.dart';
+import 'package:fitmate/screens/home_page.dart';
 
 class WorkoutCompletionScreen extends StatefulWidget {
   final int completedExercises;
@@ -79,6 +79,9 @@ class _WorkoutCompletionScreenState extends State<WorkoutCompletionScreen> {
         'lastWorkoutCategory': widget.category,
         'fitnessLevel': newLevel,
         'workoutsUntilNextLevel': newWorkoutsUntilNext,
+        // Clear workout options to force a refresh when returning to workout screen
+        'workoutOptions': {},
+        'nextWorkoutCategory': '',
       });
       
       // Generate next workout options in the background - silently
@@ -230,7 +233,11 @@ class _WorkoutCompletionScreenState extends State<WorkoutCompletionScreen> {
               const Spacer(),
               ElevatedButton(
                 onPressed: () {
-                  Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+                  // Use pushAndRemoveUntil to ensure complete navigation stack reset
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (context) => HomePage()),
+                    (route) => false,
+                  );
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFD2EB50),

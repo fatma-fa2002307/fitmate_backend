@@ -1,5 +1,3 @@
-// lib/screens/workout_screens/todays_workout_screen.dart - Updated to handle Map structure
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -161,6 +159,9 @@ class _TodaysWorkoutScreenState extends State<TodaysWorkoutScreen> {
   @override
   void initState() {
     super.initState();
+    // Start with a clean slate - always
+    _workoutOptions = {};
+    workoutCategory = '';
     _loadWorkoutOptions();
   }
 
@@ -180,6 +181,11 @@ class _TodaysWorkoutScreenState extends State<TodaysWorkoutScreen> {
       User? user = FirebaseAuth.instance.currentUser;
       if (user == null) {
         print("No user is logged in.");
+        if (mounted) {
+          setState(() {
+            isLoading = false;
+          });
+        }
         return;
       }
 
@@ -191,6 +197,11 @@ class _TodaysWorkoutScreenState extends State<TodaysWorkoutScreen> {
 
       if (!userDoc.exists) {
         print("User document not found.");
+        if (mounted) {
+          setState(() {
+            isLoading = false;
+          });
+        }
         return;
       }
 
@@ -221,23 +232,28 @@ class _TodaysWorkoutScreenState extends State<TodaysWorkoutScreen> {
           typedWorkoutOptions[key] = typedWorkoutList;
         });
         
-        setState(() {
-          _workoutOptions = typedWorkoutOptions;
-          workoutCategory = nextCategory;
-          isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _workoutOptions = typedWorkoutOptions;
+            workoutCategory = nextCategory;
+            isLoading = false;
+          });
+        }
       } else {
         print("No workout options found. Generating new workouts.");
-        setState(() {
-          isLoading = false;
-          _workoutOptions = {};
-        });
+        if (mounted) {
+          setState(() {
+            isLoading = false;
+          });
+        }
       }
     } catch (e) {
       print("Error loading workout options: $e");
-      setState(() {
-        isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
   }
 
@@ -263,7 +279,25 @@ class _TodaysWorkoutScreenState extends State<TodaysWorkoutScreen> {
         elevation: 0,
       ),
       body: isLoading 
-        ? WorkoutSkeleton() 
+        ? Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFD2EB50)),
+                ),
+                SizedBox(height: 20),
+                Text(
+                  "Please stand by...\nLoading your workout options",
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.dmSans(
+                    fontSize: 16,
+                    color: Colors.black54,
+                  ),
+                ),
+              ],
+            ),
+          )
         : workoutOptionsList.isEmpty 
           ? Center(
               child: Column(
@@ -271,6 +305,11 @@ class _TodaysWorkoutScreenState extends State<TodaysWorkoutScreen> {
                 children: [
                   Icon(Icons.fitness_center, size: 64, color: Colors.grey[400]),
                   const Text("No workouts available."),
+                  const SizedBox(height: 20),
+                  const Text(
+                    "Please check back later",
+                    style: TextStyle(color: Colors.grey),
+                  ),
                 ],
               ),
             )
@@ -415,5 +454,13 @@ class _TodaysWorkoutScreenState extends State<TodaysWorkoutScreen> {
         },
       ),
     );
+  }
+}
+
+// Fresh wrapper class
+class FreshTodaysWorkoutScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return TodaysWorkoutScreen();
   }
 }

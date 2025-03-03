@@ -17,52 +17,11 @@ class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
   String _userFullName = "Loading...";
   String _userGoal = "Loading...";
-  bool _isWorkoutFetching = false;
 
   @override
   void initState() {
     super.initState();
     _loadUserData();
-    _prefetchWorkoutData();
-  }
-
-  Future<void> _prefetchWorkoutData() async {
-    setState(() {
-      _isWorkoutFetching = true;
-    });
-    
-    try {
-      User? user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        DocumentSnapshot userData = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get();
-        
-        if (userData.exists) {
-          Map<String, dynamic> data = userData.data() as Map<String, dynamic>;
-          await ApiService.generateWorkout(
-            age: data['age'] ?? 30,
-            gender: data['gender'] ?? 'Male',
-            height: (data['height'] ?? 170).toDouble(),
-            weight: (data['weight'] ?? 70).toDouble(),
-            goal: data['goal'] ?? 'Improve Fitness',
-            workoutDays: data['workoutDays'] ?? 3,
-            fitnessLevel: data['fitnessLevel'] ?? 'Beginner',
-            lastWorkoutCategory: data['lastWorkoutCategory'],
-            useCache: false, // Force refresh the cache
-          );
-        }
-      }
-    } catch (e) {
-      print('Error prefetching workout: $e');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isWorkoutFetching = false;
-        });
-      }
-    }
   }
 
   void _loadUserData() async {

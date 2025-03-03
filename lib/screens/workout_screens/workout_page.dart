@@ -201,7 +201,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => TodaysWorkoutScreen()),
+                    MaterialPageRoute(builder: (context) => FreshTodaysWorkoutScreen()),
                   );
                 },
                 child: Container(

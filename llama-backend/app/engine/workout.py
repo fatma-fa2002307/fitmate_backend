@@ -1,6 +1,7 @@
 import ollama
 import json
 import pandas as pd
+import random
 from typing import Optional, List, Dict
 from app.models.schemas import WorkoutRequest, WorkoutResponse, Exercise
 from app.utils.exercise_db import ExerciseDatabase
@@ -48,197 +49,98 @@ class WorkoutEngine:
         except ValueError:
             return sequence[0]
 
-    def _format_exercises_for_prompt(self, category: str) -> str:
-        """Format exercises for the prompt in a structured way."""
-        exercises = self.exercise_categories.get(category, [])
-        exercise_list = "\n".join([
-            f"- {ex['Title']} ({ex['BodyPart']})"
-            for ex in exercises
-        ])
-        return exercise_list
-
-    def _generate_prompt(self, data: WorkoutRequest, category: str) -> str:
-        """Generate a more concise RAG-enhanced prompt."""
-        # Get only exercise titles for the category
-        available_exercises = self.exercise_categories.get(category, [])
-        exercise_list = ", ".join([ex['Title'] for ex in available_exercises])
-        
-        # Simplified intensity guidelines
-        intensity_map = {
-            'Beginner': '3 sets, 10-12 reps',
-            'Intermediate': '4 sets, 8-12 reps',
-            'Advanced': '5 sets, 6-12 reps'
+    def _get_set_rep_guidelines(self, fitness_level: str) -> dict:
+        """Get set and rep guidelines based on fitness level."""
+        guidelines = {
+            "Beginner": {
+                "sets": "3",
+                "sets_range": "3",
+                "reps": "10-12",
+                "reps_range": "10-12"
+            },
+            "Intermediate": {
+                "sets": "3-4",
+                "sets_range": "3-4",
+                "reps": "8-12",
+                "reps_range": "8-12"
+            },
+            "Advanced": {
+                "sets": "2-4",
+                "sets_range": "2-4",
+                "reps": "6-12",
+                "reps_range": "6-12"
+            }
         }
-        
-        intensity = intensity_map.get(data.fitnessLevel, intensity_map['Beginner'])
-        
-        return f"""Create a {category} workout with EXACTLY 4 exercises for a {data.age}yo {data.gender}, {data.height}cm, {data.weight}kg, goal: {data.goal}, level: {data.fitnessLevel}.
-
-    Guidelines: {intensity}
-
-    Available exercises: {exercise_list}
-
-    Return JSON only, EXACTLY 4 exercises, in this format:
-    {{
-    "workouts": [
-        {{ "workout": "Exercise Name", "sets": "3", "reps": "10" }}
-    ]
-    }}
-
-    Use ONLY exercises from the list. No comments or explanations.
-    """
-
-    def generate_workout(self, data: WorkoutRequest) -> WorkoutResponse:
-        try:
-            # Determine next workout category
-            next_category = self._get_next_category(data.workoutDays, data.lastWorkoutCategory)
-            
-            # Generate optimized prompt
-            prompt = self._generate_prompt(data=data, category=next_category)
-            
-            # Use system message to enforce JSON response
-            response = ollama.chat(
-                model="gemma:2b", 
-                messages=[
-                    {"role": "system", "content": "You are a fitness API that returns only JSON."},
-                    {"role": "user", "content": prompt}
-                ],
-                options={"temperature": 0.1}  # Lower temperature for more deterministic output
-            )
-            
-            content = response['message']['content'].strip()
-            
-            try:
-                parsed_response = json.loads(content)
-            except json.JSONDecodeError as e:
-                print(f"JSON Parse Error: {str(e)}")
-                print(f"Content attempting to parse: {content}")
-                # Provide a fallback workout if parsing fails
-                parsed_response = {
-                    "workouts": [
-                        {
-                            "workout": "Bodyweight Squat",
-                            "sets": "3",
-                            "reps": "12-15",
-                            "instruction": "Stand with feet shoulder-width apart, lower your body as if sitting back into a chair, then push through your heels to return to standing."
-                        },
-                        {
-                            "workout": "Push Ups",
-                            "sets": "3",
-                            "reps": "8-12",
-                            "instruction": "Start in a plank position, lower your body until your chest nearly touches the ground, then push back up."
-                        },
-                        {
-                            "workout": "Plank",
-                            "sets": "3",
-                            "reps": "30 seconds",
-                            "instruction": "Hold a straight-arm plank position, keeping your body in a straight line from head to heels."
-                        }
-                    ]
-                }
-            
-            workouts = parsed_response.get("workouts", [])
-            
-            # Validate and ensure exercises are from our database
-            valid_workouts = []
-            available_exercises = [ex['Title'] for ex in self.exercise_categories[next_category]]
-            
-            for workout in workouts:
-                if workout["workout"] in available_exercises:
-                    # Ensure all required fields are present
-                    cleaned_workout = {
-                        "workout": workout["workout"],
-                        "image": self.exercise_db.get_exercise_icon(workout["workout"]),
-                        "sets": workout.get("sets", "3"),
-                        "reps": workout.get("reps", "12"),
-                        "instruction": workout.get("instruction", "Perform the exercise with proper form.")
-                    }
-                    valid_workouts.append(cleaned_workout)
-            
-            # Ensure minimum number of exercises
-            while len(valid_workouts) < 5:
-                for exercise in available_exercises:
-                    if len(valid_workouts) >= 5:
-                        break
-                    if exercise not in [w["workout"] for w in valid_workouts]:
-                        valid_workouts.append({
-                            "workout": exercise,
-                            "image": self.exercise_db.get_exercise_icon(exercise),
-                            "sets": "3",
-                            "reps": "12",
-                            "instruction": "Perform the exercise with proper form."
-                        })
-                        break
-            
-            return WorkoutResponse(workouts=valid_workouts, category=next_category)
-        except Exception as e:
-            print(f"Error in generate_workout: {str(e)}")
-            raise
+        return guidelines.get(fitness_level, guidelines["Beginner"])
 
     def generate_workout_options(self, data: WorkoutRequest, num_options: int = 3) -> dict:
-        """Generate multiple workout options with variations using a single model call."""
+        """Generate multiple workout options with variations, ensuring at least 2 exercises differ between options."""
         try:
             # Determine next workout category
             next_category = self._get_next_category(data.workoutDays, data.lastWorkoutCategory)
             
-            # Get available exercises for this category to include in the prompt
+            # Get available exercises for this category
             available_exercises = self.exercise_categories.get(next_category, [])
             exercise_list = ", ".join([ex['Title'] for ex in available_exercises])
             
-            # Determine sets and reps based on fitness level
-            sets = "3" if data.fitnessLevel == "Beginner" else "4" if data.fitnessLevel == "Intermediate" else "5"
-            reps = "10-12" if data.fitnessLevel == "Beginner" else "8-12" if data.fitnessLevel == "Intermediate" else "6-12"
+            # Get set and rep guidelines based on fitness level
+            guidelines = self._get_set_rep_guidelines(data.fitnessLevel)
             
-            # Prepare a single comprehensive prompt for the Llama model
-            prompt = f"""Act as a professional fitness trainer creating {num_options} different workout options for a {data.age}yo {data.gender}, {data.height}cm, {data.weight}kg, with goal: {data.goal}, fitness level: {data.fitnessLevel}.
+            # Prepare a prompt for the model that emphasizes our specific requirements
+            prompt = f"""Create EXACTLY 3 workout options for a {data.age}yo {data.gender}, {data.height}cm, {data.weight}kg, fitness level: {data.fitnessLevel}, goal: {data.goal}.
 
-    Today's focus is: {next_category} workout.
+Today's focus is: {next_category} workout.
 
-    VERY IMPORTANT: You MUST ONLY use exercises from this list: {exercise_list}
+VERY IMPORTANT REQUIREMENTS:
+1. Each option should have 4-5 exercises depending on intensity (use 5 for lower intensity exercises)
+2. Use ONLY exercises from this list: {exercise_list}
+3. You can repeat exercises between options, but EACH OPTION MUST DIFFER BY AT LEAST 2 EXERCISES from other options
+4. Each option should target different muscles within the {next_category} category
+5. For each exercise, choose appropriate sets and reps within these guidelines:
+   - For {data.fitnessLevel} level:
+   - Sets: {guidelines["sets_range"]} (choose a specific number for each exercise)
+   - Reps: {guidelines["reps_range"]} (choose a specific number or range for each exercise)
+6. Heavier or more challenging exercises should have fewer reps/sets, while lighter exercises can have more
 
-    For each workout option, create 4 exercises appropriate for a {next_category} workout.
-    - It's acceptable to repeat some exercises between options, but ensure at least 2 exercises are different in each option.
-    - Each option should be a reasonable {next_category} workout but with some variation.
-
-    For this {data.fitnessLevel} level athlete:
-    - Use exactly {sets} sets for all exercises
-    - Use {reps} reps for all exercises
-
-    Return the result in this JSON format (DO NOT include any instructions field):
-    {{
-    "options": [
-        [
-        {{ "workout": "Exercise Name", "sets": "{sets}", "reps": "{reps}" }},
-        {{ "workout": "Exercise Name", "sets": "{sets}", "reps": "{reps}" }},
-        {{ "workout": "Exercise Name", "sets": "{sets}", "reps": "{reps}" }},
-        {{ "workout": "Exercise Name", "sets": "{sets}", "reps": "{reps}" }}
-        ],
-        [
-        {{ "workout": "Exercise Name", "sets": "{sets}", "reps": "{reps}" }},
-        {{ "workout": "Exercise Name", "sets": "{sets}", "reps": "{reps}" }},
-        {{ "workout": "Exercise Name", "sets": "{sets}", "reps": "{reps}" }},
-        {{ "workout": "Exercise Name", "sets": "{sets}", "reps": "{reps}" }}
-        ],
-        [
-        {{ "workout": "Exercise Name", "sets": "{sets}", "reps": "{reps}" }},
-        {{ "workout": "Exercise Name", "sets": "{sets}", "reps": "{reps}" }},
-        {{ "workout": "Exercise Name", "sets": "{sets}", "reps": "{reps}" }},
-        {{ "workout": "Exercise Name", "sets": "{sets}", "reps": "{reps}" }}
-        ]
+Return in this JSON format:
+{{
+"options": [
+    [
+    {{ "workout": "Exercise Name", "sets": "3", "reps": "10-12" }},
+    {{ "workout": "Exercise Name", "sets": "4", "reps": "8" }},
+    {{ "workout": "Exercise Name", "sets": "3", "reps": "10" }},
+    {{ "workout": "Exercise Name", "sets": "3", "reps": "12" }},
+    {{ "workout": "Exercise Name", "sets": "4", "reps": "8-10" }} // optional 5th exercise
+    ],
+    [
+    {{ "workout": "Exercise Name", "sets": "3", "reps": "12" }},
+    {{ "workout": "Exercise Name", "sets": "4", "reps": "8" }},
+    {{ "workout": "Exercise Name", "sets": "3", "reps": "10-12" }},
+    {{ "workout": "Exercise Name", "sets": "3", "reps": "10" }},
+    {{ "workout": "Exercise Name", "sets": "4", "reps": "8" }} // optional 5th exercise
+    ],
+    [
+    {{ "workout": "Exercise Name", "sets": "3", "reps": "10-12" }},
+    {{ "workout": "Exercise Name", "sets": "3", "reps": "12" }},
+    {{ "workout": "Exercise Name", "sets": "4", "reps": "8" }},
+    {{ "workout": "Exercise Name", "sets": "3", "reps": "10" }},
+    {{ "workout": "Exercise Name", "sets": "3", "reps": "8-10" }} // optional 5th exercise
     ]
-    }}
+]
+}}
 
-    REMEMBER: Use ONLY exercises from the provided list. Return ONLY the JSON without any explanations.
-    """
+Remember to choose SPECIFIC set and rep numbers or ranges for EACH exercise based on its difficulty and the fitness level.
+Return ONLY the JSON without any explanations.
+"""
             
             # Use system message to enforce JSON response
             response = ollama.chat(
                 model="gemma:2b", 
                 messages=[
-                    {"role": "system", "content": "You are a fitness API that returns only JSON using only exercises from the provided list."},
+                    {"role": "system", "content": "You are a fitness API that returns only clean JSON. You must ensure each workout option differs from others by at least 2 exercises and uses appropriate sets/reps for each specific exercise."},
                     {"role": "user", "content": prompt}
                 ],
-                options={"temperature": 0.5}  # Moderate temperature for some variety
+                options={"temperature": 0.4}  # Lower temperature for more deterministic output
             )
             
             content = response['message']['content'].strip()
@@ -249,9 +151,21 @@ class WorkoutEngine:
                 # Extract options list
                 workout_options = parsed_response.get("options", [])
                 
+                # Verify that we have exactly 3 options
+                if len(workout_options) != 3:
+                    raise ValueError(f"Expected 3 workout options, got {len(workout_options)}")
+                    
+                # Verify that each option has 4-5 exercises
+                for i, option in enumerate(workout_options):
+                    if len(option) < 4 or len(option) > 5:
+                        raise ValueError(f"Option {i+1} has {len(option)} exercises instead of 4-5")
+                
+                # Verify that each option differs from others by at least 2 exercises
+                self._verify_option_differences(workout_options)
+                
                 # Process each option to add image paths
                 processed_options = []
-                for option_index, option in enumerate(workout_options):
+                for option in workout_options:
                     processed_exercises = []
                     
                     # Dictionary to check if this is a valid exercise
@@ -266,55 +180,163 @@ class WorkoutEngine:
                             processed_exercise = {
                                 "workout": exercise_name,
                                 "image": self.exercise_db.get_exercise_icon(exercise_name),
-                                "sets": exercise.get("sets", sets),
-                                "reps": exercise.get("reps", reps),
+                                "sets": exercise.get("sets", guidelines["sets"]),
+                                "reps": exercise.get("reps", guidelines["reps"]),
                                 "instruction": "" # No instruction as requested
                             }
                             processed_exercises.append(processed_exercise)
                     
-                    # Ensure we have enough exercises in this option
-                    if len(processed_exercises) >= 3: # At least 3 valid exercises
-                        processed_options.append(processed_exercises[:4])  # Limit to 4 exercises
+                    # If we have 4-5 valid exercises in this option
+                    if 4 <= len(processed_exercises) <= 5:
+                        processed_options.append(processed_exercises)
+                    else:
+                        # If not enough valid exercises, fill with random ones from the category
+                        target_count = min(5, max(4, len(option)))  # Keep original count if valid, otherwise ensure at least 4
+                        
+                        while len(processed_exercises) < target_count:
+                            random_exercise = random.choice(available_exercises)
+                            exercise_name = random_exercise['Title']
+                            if exercise_name not in [ex["workout"] for ex in processed_exercises]:
+                                # For fallback exercises, generate random sets and reps within the guidelines
+                                if guidelines["sets_range"].find("-") > 0:
+                                    min_sets, max_sets = map(int, guidelines["sets_range"].split("-"))
+                                    sets = str(random.randint(min_sets, max_sets))
+                                else:
+                                    sets = guidelines["sets"]
+                                
+                                if guidelines["reps_range"].find("-") > 0:
+                                    min_reps, max_reps = map(int, guidelines["reps_range"].split("-"))
+                                    if random.choice([True, False]):  # 50% chance of range vs single number
+                                        range_min = random.randint(min_reps, max_reps - 2)
+                                        range_max = random.randint(range_min + 2, max_reps)
+                                        reps = f"{range_min}-{range_max}"
+                                    else:
+                                        reps = str(random.randint(min_reps, max_reps))
+                                else:
+                                    reps = guidelines["reps"]
+                                
+                                processed_exercise = {
+                                    "workout": exercise_name,
+                                    "image": self.exercise_db.get_exercise_icon(exercise_name),
+                                    "sets": sets,
+                                    "reps": reps,
+                                    "instruction": ""
+                                }
+                                processed_exercises.append(processed_exercise)
+                        
+                        processed_options.append(processed_exercises)
                 
-                # If we have at least one valid option
-                if processed_options:
+                # If we have all 3 valid options
+                if len(processed_options) == 3:
                     return {
                         "options": processed_options,
                         "category": next_category
                     }
                 else:
-                    # If no valid options, try the fallback method
-                    return self._get_simple_workout_options(data, next_category, available_exercises)
+                    # If not enough valid options, create fallback options
+                    return self._create_fallback_options(available_exercises, next_category, data)
                     
-            except json.JSONDecodeError as e:
-                print(f"JSON Parse Error: {str(e)}")
+            except (json.JSONDecodeError, ValueError) as e:
+                print(f"Error: {str(e)}")
                 print(f"Content attempting to parse: {content}")
                 
-                # Try a simpler approach if JSON parsing fails
-                return self._get_simple_workout_options(data, next_category, available_exercises)
-                
+                # Create fallback options if JSON parsing fails
+                return self._create_fallback_options(available_exercises, next_category, data)
+                    
         except Exception as e:
             print(f"Error in generate_workout_options: {str(e)}")
             # Get available exercises for this category
             available_exercises = self.exercise_categories.get(next_category, [])
-            return self._get_simple_workout_options(data, next_category, available_exercises)
+            return self._create_fallback_options(available_exercises, next_category, data)
 
-    def _get_simple_workout_options(self, data: WorkoutRequest, category: str, available_exercises) -> dict:
-        """Generate a simpler workout options response if the main method fails."""
+    def _verify_option_differences(self, workout_options):
+        """Verify that each option differs from others by at least 2 exercises."""
+        for i in range(len(workout_options)):
+            for j in range(i+1, len(workout_options)):
+                option1_exercises = set(ex["workout"] for ex in workout_options[i])
+                option2_exercises = set(ex["workout"] for ex in workout_options[j])
+                
+                common_exercises = option1_exercises.intersection(option2_exercises)
+                
+                if len(common_exercises) > 2:  # More than 2 exercises in common (less than 2 different)
+                    raise ValueError(f"Options {i+1} and {j+1} do not differ by at least 2 exercises")
+
+    def _create_fallback_options(self, available_exercises, category, data):
+        """Create fallback workout options if the main method fails."""
         try:
-            # Get available exercises for this category
-            available_exercises = self.exercise_categories.get(category, [])
-            return self._get_simple_workout_options(data, category, available_exercises)
-        except Exception as e:
-            print(f"Error in retry_simple_workout_options: {str(e)}")
-            # Return a minimal valid response
+            guidelines = self._get_set_rep_guidelines(data.fitnessLevel)
+            
+            if len(available_exercises) < 8:  # Not enough exercises for 3 distinct options
+                print(f"Not enough exercises in category {category} for distinct options")
+                
+            # Create 3 distinct workout options
+            all_exercises = [ex['Title'] for ex in available_exercises]
+            options = []
+            
+            # Ensure we have enough exercises
+            if len(all_exercises) < 4:
+                while len(all_exercises) < 4:
+                    all_exercises.append(f"Generic {category} Exercise {len(all_exercises) + 1}")
+                    
+            # Create first option with 4-5 random exercises
+            num_exercises = 5 if data.fitnessLevel == "Beginner" and len(all_exercises) >= 5 else 4
+            option1 = random.sample(all_exercises, min(num_exercises, len(all_exercises)))
+            options.append(option1)
+            
+            # Create second option with 2 from first option and 2 new ones
+            remaining_exercises = [ex for ex in all_exercises if ex not in option1]
+            if len(remaining_exercises) < 2:
+                remaining_exercises.extend([f"Generic {category} Exercise {len(all_exercises) + i}" for i in range(2)])
+                
+            option2 = random.sample(option1, 2) + random.sample(remaining_exercises, 2)
+            options.append(option2)
+            
+            # Create third option with 2 from second option and 2 new ones
+            remaining_exercises = [ex for ex in all_exercises if ex not in option2]
+            if len(remaining_exercises) < 2:
+                remaining_exercises.extend([f"Generic {category} Exercise {len(all_exercises) + i}" for i in range(2)])
+                
+            option3 = random.sample(option2, 2) + random.sample(remaining_exercises, 2)
+            options.append(option3)
+            
+            # Format options
+            formatted_options = []
+            for option in options:
+                formatted_option = []
+                for exercise in option:
+                    # Generate varying sets and reps for each exercise
+                    if guidelines["sets_range"].find("-") > 0:
+                        min_sets, max_sets = map(int, guidelines["sets_range"].split("-"))
+                        sets = str(random.randint(min_sets, max_sets))
+                    else:
+                        sets = guidelines["sets"]
+                    
+                    if guidelines["reps_range"].find("-") > 0:
+                        min_reps, max_reps = map(int, guidelines["reps_range"].split("-"))
+                        if random.choice([True, False]):  # 50% chance of range vs single number
+                            range_min = random.randint(min_reps, max_reps - 2)
+                            range_max = random.randint(range_min + 2, max_reps)
+                            reps = f"{range_min}-{range_max}"
+                        else:
+                            reps = str(random.randint(min_reps, max_reps))
+                    else:
+                        reps = guidelines["reps"]
+                        
+                    formatted_option.append({
+                        "workout": exercise,
+                        "image": self.exercise_db.get_exercise_icon(exercise),
+                        "sets": sets,
+                        "reps": reps,
+                        "instruction": ""
+                    })
+                formatted_options.append(formatted_option)
+                
             return {
-                "options": [],
+                "options": formatted_options,
                 "category": category
             }
-            
         except Exception as e:
-            print(f"Error in _get_simple_workout_options: {str(e)}")
+            print(f"Error creating fallback options: {str(e)}")
             # Return minimal valid response
             return {
                 "options": [],
