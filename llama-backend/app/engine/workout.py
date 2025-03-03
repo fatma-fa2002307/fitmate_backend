@@ -58,81 +58,55 @@ class WorkoutEngine:
         return exercise_list
 
     def _generate_prompt(self, data: WorkoutRequest, category: str) -> str:
-        """Generate RAG-enhanced prompt using exercise database."""
-        available_exercises = self._format_exercises_for_prompt(category)
+        """Generate a more concise RAG-enhanced prompt."""
+        # Get only exercise titles for the category
+        available_exercises = self.exercise_categories.get(category, [])
+        exercise_list = ", ".join([ex['Title'] for ex in available_exercises])
         
-        # Add intensity guidelines based on fitness level
-        intensity_guidelines = {
-            'Beginner': {
-                'sets': '3 sets, 8-12 reps with lighter weights',
-                'desc': 'Focus on form and basic movements. Include more rest between sets.'
-            },
-            'Intermediate': {
-                'sets': '4 sets, 8-12 reps with moderate weights',
-                'desc': 'Increase complexity of exercises. Include supersets where appropriate.'
-            },
-            'Advanced': {
-                'sets': '4-5 sets, 8-15 reps with challenging weights',
-                'desc': 'Include advanced variations and complex movement patterns. Minimize rest periods.'
-            }
+        # Simplified intensity guidelines
+        intensity_map = {
+            'Beginner': '3 sets, 10-12 reps',
+            'Intermediate': '4 sets, 8-12 reps',
+            'Advanced': '5 sets, 6-12 reps'
         }
         
-        current_intensity = intensity_guidelines.get(data.fitnessLevel, intensity_guidelines['Beginner'])
+        intensity = intensity_map.get(data.fitnessLevel, intensity_map[data.fitnessLevel])
         
-        return f"""
-        You are a professional fitness trainer creating a {category} workout for a {data.age}-year-old {data.gender} 
-        who is {data.height} cm tall, weighs {data.weight} kg, and wants to {data.goal}.
-        Their fitness level is {data.fitnessLevel}.
+        return f"""Create a {category} workout with EXACTLY 4 exercises for a {data.age}yo {data.gender}, {data.height}cm, {data.weight}kg, goal: {data.goal}, level: {data.fitnessLevel}.
 
-        Intensity Guidelines for {data.fitnessLevel} level:
-        {current_intensity['desc']}
-        Recommended sets/reps: {current_intensity['sets']}
+    Guidelines: {intensity}
 
-        Here are the available exercises for {category} training:
-        {available_exercises}
+    Available exercises: {exercise_list}
 
-        Create a workout plan using ONLY exercises from the above list. Your response must be valid JSON in this format:
-        {{
-            "workouts": [
-                {{
-                    "workout": "Exercise Name",
-                    "image": "",
-                    "sets": "3-4",
-                    "reps": "8-12",                }}
-            ]
-        }}
+    Return JSON only, EXACTLY 4 exercises, in this format:
+    {{
+    "workouts": [
+        {{ "workout": "Exercise Name", "sets": "3", "reps": "10" }}
+    ]
+    }}
 
-        REQUIREMENTS:
-        - Select 4-5 exercises from the provided list
-        - Exercise names must EXACTLY match the ones provided
-        - DO NOT invent new exercises
-        - Include appropriate sets and reps based on fitness level
-        - If an exercise is based on time like Plank, make the reps be Seconds/minutes
-        - Focus on {data.goal} as the training goal
-        - Make sure your suggestions match the user's fitness level
-        - Make sure your suggestions vary in muscle groups to ensure successful workout
-        """
+    Use ONLY exercises from the list. No comments or explanations.
+    """
 
     def generate_workout(self, data: WorkoutRequest) -> WorkoutResponse:
         try:
             # Determine next workout category
             next_category = self._get_next_category(data.workoutDays, data.lastWorkoutCategory)
             
-            # Generate RAG-enhanced workout
+            # Generate optimized prompt
             prompt = self._generate_prompt(data=data, category=next_category)
-            response = ollama.chat(model="gemma:2b", messages=[{"role": "user", "content": prompt}])
+            
+            # Use system message to enforce JSON response
+            response = ollama.chat(
+                model="gemma:2b", 
+                messages=[
+                    {"role": "system", "content": "You are a fitness API that returns only JSON."},
+                    {"role": "user", "content": prompt}
+                ],
+                options={"temperature": 0.1}  # Lower temperature for more deterministic output
+            )
             
             content = response['message']['content'].strip()
-            
-            # Clean up potential JSON formatting issues
-            content = content.replace(",]", "]")  # Remove trailing commas in arrays
-            content = content.replace(",}", "}")   # Remove trailing commas in objects
-            
-            # Extract JSON if it's embedded in markdown or other text
-            if "```json" in content:
-                start = content.find("{")
-                end = content.rfind("}") + 1
-                content = content[start:end]
             
             try:
                 parsed_response = json.loads(content)
@@ -184,7 +158,7 @@ class WorkoutEngine:
             # Ensure minimum number of exercises
             while len(valid_workouts) < 5:
                 for exercise in available_exercises:
-                    if len(valid_workouts) >= 6:
+                    if len(valid_workouts) >= 5:
                         break
                     if exercise not in [w["workout"] for w in valid_workouts]:
                         valid_workouts.append({

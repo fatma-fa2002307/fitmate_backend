@@ -2,13 +2,17 @@
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+
 
 class ApiService {
   // Your permanent Cloudflare Tunnel URL
-  static const String baseUrl = 'https://pleasure-elimination-link-recreation.trycloudflare.com';
+  static const String baseUrl = 'https://damages-generating-request-appointment.trycloudflare.com';
+  static final _client = http.Client(); // Reuse HTTP client
 
+  // Cache keys
+  static const String WORKOUT_CACHE_KEY = 'cached_workout_data';
 
-  
   // Generate workout plan
   static Future<Map<String, dynamic>> generateWorkout({
     required int age,
@@ -19,8 +23,17 @@ class ApiService {
     required int workoutDays,
     required String fitnessLevel,
     String? lastWorkoutCategory,
+    bool useCache = true,
   }) async {
     try {
+      // Check cache if requested
+      if (useCache) {
+        final prefs = await SharedPreferences.getInstance();
+        final cachedData = prefs.getString(WORKOUT_CACHE_KEY);
+        if (cachedData != null) {
+          return jsonDecode(cachedData);
+        }
+      }
       final response = await http.post(
         Uri.parse('$baseUrl/generate_workout/'),
         headers: {'Content-Type': 'application/json'},
@@ -37,9 +50,17 @@ class ApiService {
       );
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+        final resultData = jsonDecode(response.body);
+
+        // Save to cache
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(WORKOUT_CACHE_KEY, response.body);
+
+        return resultData;
+
       } else {
-        throw Exception('Failed to generate workout plan: ${response.statusCode}');
+        throw Exception(
+            'Failed to generate workout plan: ${response.statusCode}');
       }
     } catch (e) {
       throw Exception('Error connecting to server: $e');

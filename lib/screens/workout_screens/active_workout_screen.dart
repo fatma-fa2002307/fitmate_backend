@@ -1,8 +1,10 @@
+// lib/screens/workout_screens/active_workout_screen.dart
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fitmate/screens/workout_screens/workout_completion_screen.dart';
-import 'package:fitmate/services/api_service.dart'; // Import the API service
+import 'package:fitmate/services/api_service.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class ActiveWorkoutScreen extends StatefulWidget {
   final List<Map<String, String>> workouts;
@@ -60,6 +62,8 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -137,12 +141,26 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
               itemBuilder: (context, index) {
                 final workout = widget.workouts[index];
                 return ListTile(
-                  leading: Image.network(
-                    // Use the API service to get the image URL
-                    ApiService.baseUrl + workout["image"]!,
+                  leading: CachedNetworkImage(
+                    imageUrl: ApiService.baseUrl + workout["image"]!,
                     width: 40,
                     height: 40,
-                    errorBuilder: (context, error, stackTrace) =>
+                    placeholder: (context, url) => Container(
+                      color: Colors.grey[800],
+                      width: 40,
+                      height: 40,
+                      child: const Center(
+                        child: SizedBox(
+                          width: 15,
+                          height: 15,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Color(0xFFD2EB50),
+                          ),
+                        ),
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => 
                         const Icon(Icons.fitness_center, color: Colors.white),
                   ),
                   title: Text(
@@ -188,17 +206,34 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                                         textAlign: TextAlign.center,
                                       ),
                                       const SizedBox(height: 20),
-                                      Image.network(
-                                        // Use the API service to get the workout image
-                                        ApiService.getWorkoutImageUrl(
+                                      CachedNetworkImage(
+                                        imageUrl: ApiService.getWorkoutImageUrl(
                                           '${workout["workout"]!.replaceAll(' ', '-')}.webp'
                                         ),
                                         height: 200,
                                         fit: BoxFit.contain,
-                                        errorBuilder: (context, error, stackTrace) {
+                                        placeholder: (context, url) => Container(
+                                          color: Colors.grey[800],
+                                          height: 200,
+                                          child: const Center(
+                                            child: CircularProgressIndicator(
+                                              color: Color(0xFFD2EB50),
+                                            ),
+                                          ),
+                                        ),
+                                        errorWidget: (context, url, error) {
                                           print("Error loading image for workout: ${workout["workout"]} - Error: $error");
-                                          return const Icon(Icons.fitness_center, size: 100);
+                                          return const Icon(Icons.fitness_center, size: 100, color: Colors.white);
                                         },
+                                      ),
+                                      const SizedBox(height: 20),
+                                      Text(
+                                        workout["instruction"] ?? "Perform the exercise with proper form.",
+                                        style: GoogleFonts.dmSans(
+                                          color: Colors.white70,
+                                          fontSize: 14,
+                                        ),
+                                        textAlign: TextAlign.center,
                                       ),
                                       const SizedBox(height: 20),
                                       ElevatedButton(
