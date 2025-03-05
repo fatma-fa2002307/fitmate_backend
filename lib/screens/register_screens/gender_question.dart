@@ -259,19 +259,19 @@ class _GenderQuestionPageState extends State<GenderQuestionPage> {
                         ),
                       );
                     },
-                    child: Text(
-                      'Next',
-                      style: GoogleFonts.bebasNeue(
-                        color: Color(0xFFFFFFFF),
-                        fontSize: 22,
-                      ),
-                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Color(0xFFD2EB50),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(5.0),
                       ),
                       padding: EdgeInsets.symmetric(vertical: 15.0),
+                    ),
+                    child: Text(
+                      'Next',
+                      style: GoogleFonts.bebasNeue(
+                        color: Colors.black,
+                        fontSize: 22,
+                      ),
                     ),
                   ),
                 ),
@@ -319,14 +319,14 @@ class GenderOption extends StatelessWidget {
           children: [
             Icon(
               icon,
-              color: isSelected ? Colors.white : Color(0xFFD2EB50),
+              color: isSelected ? Colors.black : Color(0xFFD2EB50),
               size: 40,
             ),
             SizedBox(width: 10),
             Text(
               label,
               style: TextStyle(
-                color: isSelected ? Colors.white : Color(0xFFD2EB50),
+                color: isSelected ? Colors.black : Color(0xFFD2EB50),
                 fontFamily: GoogleFonts.montserrat().fontFamily,
                 fontSize: 20,
               ),

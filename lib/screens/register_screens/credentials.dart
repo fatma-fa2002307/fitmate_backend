@@ -1,10 +1,8 @@
-// lib/screens/register_screens/credentials.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fitmate/screens/home_page.dart';
-import 'package:fitmate/services/workout_service.dart';
 
 class CredentialsPage extends StatefulWidget {
   final int age;
@@ -60,6 +58,7 @@ class _CredentialsPageState extends State<CredentialsPage> {
   final TextEditingController _fullNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  bool _isPasswordVisible = false; // For toggling password visibility
 
   @override
   void dispose() {
@@ -68,10 +67,9 @@ class _CredentialsPageState extends State<CredentialsPage> {
     _passwordController.dispose();
     super.dispose();
   }
-  
+
   void _submitForm() async {
     if (_formKey.currentState?.validate() ?? false) {
-      // Show loading indicator only for user creation
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -83,19 +81,17 @@ class _CredentialsPageState extends State<CredentialsPage> {
           );
         },
       );
-      
+
       String fullName = _fullNameController.text;
       String email = _emailController.text;
       String password = _passwordController.text;
 
       try {
-        // Create user with Firebase Authentication
         UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
           email: email,
           password: password,
         );
 
-        // Save additional user data to Firestore
         await FirebaseFirestore.instance.collection('users').doc(userCredential.user?.uid).set({
           'fullName': fullName,
           'email': email,
@@ -114,42 +110,22 @@ class _CredentialsPageState extends State<CredentialsPage> {
             'completion': 0,
             'totalExercises': 0
           },
-          'workoutHistory': [], // Empty array for workout history
+          'workoutHistory': [],
           'totalWorkouts': 0,
-          'nextWorkoutCategory': '', // Will be filled by WorkoutService
+          'nextWorkoutCategory': '',
           'workoutsLastGenerated': null,
         });
-        
+
         // Close the loading dialog
         if (mounted) {
           Navigator.pop(context);
         }
-        
-        // Generate initial workout options silently in the background
-        try {
-          // No dialog display - silent background process
-          WorkoutService.generateAndSaveWorkoutOptions(
-            age: widget.age,
-            gender: widget.gender,
-            height: widget.height,
-            weight: widget.weight,
-            goal: widget.selectedGoal,
-            workoutDays: widget.workoutDays,
-            fitnessLevel: 'Beginner',
-            lastWorkoutCategory: null, // No previous workout
-          );
-        } catch (e) {
-          print("Error generating initial workouts: $e");
-          // Silently handle errors - no UI feedback
-        }
 
-        // Navigate to HomePage after successful registration
+        // Navigate to HomePage and remove all previous routes
         if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => HomePage(),
-            ),
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => HomePage()),
+                (Route<dynamic> route) => false,
           );
         }
       } on FirebaseAuthException catch (e) {
@@ -157,22 +133,21 @@ class _CredentialsPageState extends State<CredentialsPage> {
         if (mounted && Navigator.canPop(context)) {
           Navigator.pop(context);
         }
-        
+
         print('Firebase Auth Error: ${e.code} - ${e.message}');
         if (mounted) {
           showDialog(
             context: context,
             builder: (BuildContext context) {
               return AlertDialog(
-                backgroundColor: Color(0xFF0D0E11),
-                title: Text('Registration Failed', 
-                    style: GoogleFonts.bebasNeue(color: Color(0xFFD2EB50))),
-                content: Text('Error Code: ${e.code}\n${e.message}',
-                    style: TextStyle(color: Color(0xFFFFFFFF))),
+                backgroundColor: const Color(0xFF0D0E11),
+                title: Text('Registration Failed',
+                    style: GoogleFonts.bebasNeue(color: const Color(0xFFD2EB50))),
+                content: Text('${e.message} Try another email.',
+                    style:const TextStyle(color: Colors.white)),
                 actions: [
                   TextButton(
-                    child: Text('OK', 
-                        style: GoogleFonts.bebasNeue(color: Color(0xFFD2EB50))),
+                    child: Text('OK', style: GoogleFonts.bebasNeue(color: const Color(0xFFD2EB50))),
                     onPressed: () => Navigator.pop(context),
                   ),
                 ],
@@ -185,22 +160,22 @@ class _CredentialsPageState extends State<CredentialsPage> {
         if (mounted && Navigator.canPop(context)) {
           Navigator.pop(context);
         }
-        
+
         print('General Error: $e');
         if (mounted) {
           showDialog(
             context: context,
             builder: (BuildContext context) {
               return AlertDialog(
-                backgroundColor: Color(0xFF0D0E11),
-                title: Text('Error', 
-                    style: GoogleFonts.bebasNeue(color: Color(0xFFD2EB50))),
+                backgroundColor: const Color(0xFF0D0E11),
+                title: Text('Error',
+                    style: GoogleFonts.bebasNeue(color: const Color(0xFFD2EB50))),
                 content: Text('An unexpected error occurred: $e',
-                    style: TextStyle(color: Color(0xFFFFFFFF))),
+                    style: const TextStyle(color: Color(0xFFFFFFFF))),
                 actions: [
                   TextButton(
-                    child: Text('OK', 
-                        style: GoogleFonts.bebasNeue(color: Color(0xFFD2EB50))),
+                    child: Text('OK',
+                        style: GoogleFonts.bebasNeue(color: const Color(0xFFD2EB50))),
                     onPressed: () => Navigator.pop(context),
                   ),
                 ],
@@ -212,10 +187,11 @@ class _CredentialsPageState extends State<CredentialsPage> {
     }
   }
 
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF0e0f16),
+      backgroundColor: const Color(0xFF0e0f16),
       body: SingleChildScrollView(
         child: Center(
           child: Container(
@@ -225,25 +201,25 @@ class _CredentialsPageState extends State<CredentialsPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 IconButton(
-                  icon: Icon(Icons.arrow_back_ios_new, color: Color(0xFFFFFFFF)),
+                  icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFFFFFFFF)),
                   onPressed: () {
                     Navigator.pop(context); // Navigate back to the previous page
                   },
                 ),
-                SizedBox(height: 10),
+                const SizedBox(height: 10),
                 Text(
                   'CREATE YOUR ACCOUNT',
                   style: GoogleFonts.bebasNeue(
-                    color: Color(0xFFFFFFFF),
+                    color: const Color(0xFFFFFFFF),
                     fontSize: 36,
                   ),
                 ),
-                SizedBox(height: 5),
-                Text(
+                const SizedBox(height: 5),
+                const Text(
                   'Please enter your credentials to proceed',
                   style: TextStyle(color: Color(0xFFB0B0B0), fontSize: 16),
                 ),
-                SizedBox(height: 40),
+                const SizedBox(height: 40),
                 Form(
                   key: _formKey,
                   child: Column(
@@ -252,70 +228,81 @@ class _CredentialsPageState extends State<CredentialsPage> {
                         controller: _fullNameController,
                         decoration: InputDecoration(
                           hintText: 'John Doe',
-                          hintStyle: TextStyle(color: Color(0xFFB0B0B0)),
+                          hintStyle: const TextStyle(color: Color(0xFFB0B0B0)),
                           filled: true,
-                          fillColor: Color(0xFF0D0E11),
+                          fillColor: const Color(0xFF0D0E11),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10.0),
-                            borderSide: BorderSide(color: Color(0xFFB0B0B0)),
+                            borderSide: const BorderSide(color: Color(0xFFB0B0B0)),
                           ),
                         ),
-                        style: TextStyle(color: Color(0xFFFFFFFF)),
+                        style: const TextStyle(color: Color(0xFFFFFFFF)),
                         validator: validateFullName,
                       ),
-                      SizedBox(height: 20),
+                      const SizedBox(height: 20),
                       TextFormField(
                         controller: _emailController,
+                        keyboardType: TextInputType.emailAddress, // Set keyboard type to email
                         decoration: InputDecoration(
                           hintText: 'example@email.com',
-                          hintStyle: TextStyle(color: Color(0xFFB0B0B0)),
+                          hintStyle: const TextStyle(color: Color(0xFFB0B0B0)),
                           filled: true,
-                          fillColor: Color(0xFF0D0E11),
+                          fillColor: const Color(0xFF0D0E11),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10.0),
-                            borderSide: BorderSide(color: Color(0xFFB0B0B0)),
+                            borderSide: const BorderSide(color: Color(0xFFB0B0B0)),
                           ),
                         ),
-                        style: TextStyle(color: Color(0xFFFFFFFF)),
+                        style: const TextStyle(color: Color(0xFFFFFFFF)),
                         validator: validateEmail,
                       ),
-                      SizedBox(height: 20),
+                      const SizedBox(height: 20),
                       TextFormField(
                         controller: _passwordController,
-                        obscureText: true,
+                        obscureText: !_isPasswordVisible, // Toggle password visibility
                         decoration: InputDecoration(
                           hintText: 'Password',
-                          hintStyle: TextStyle(color: Color(0xFFB0B0B0)),
+                          hintStyle: const TextStyle(color: Color(0xFFB0B0B0)),
                           filled: true,
-                          fillColor: Color(0xFF0D0E11),
+                          fillColor: const Color(0xFF0D0E11),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10.0),
-                            borderSide: BorderSide(color: Color(0xFFB0B0B0)),
+                            borderSide: const BorderSide(color: Color(0xFFB0B0B0)),
                           ),
-                          suffixIcon: Icon(Icons.visibility, color: Color(0xFFFFFFFF)),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _isPasswordVisible ? Icons.visibility_off : Icons.visibility,
+                              color: const Color(0xFFFFFFFF),
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _isPasswordVisible = !_isPasswordVisible; // Toggle visibility
+                              });
+                            },
+                          ),
                         ),
-                        style: TextStyle(color: Color(0xFFFFFFFF)),
+                        style: const TextStyle(color: Color(0xFFFFFFFF)),
                         validator: validatePassword,
                       ),
-                      SizedBox(height: 20),
+                      const SizedBox(height: 20),
                       Row(
                         children: [
                           Expanded(
                             child: ElevatedButton(
                               onPressed: _submitForm,
-                              child: Text(
-                                'READY!',
-                                style: GoogleFonts.bebasNeue(
-                                  color: Color(0xFFFFFFFF),
-                                  fontSize: 22,
-                                ),
-                              ),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Color(0xFFD2EB50),
+                                backgroundColor: const Color(0xFFD2EB50),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(5.0),
                                 ),
-                                padding: EdgeInsets.symmetric(vertical: 15.0),
+                                padding: const EdgeInsets.symmetric(vertical: 15.0),
+                              ),
+                              child: Text(
+                                'READY!',
+                                style: GoogleFonts.bebasNeue(
+                                  color: Colors.black,
+                                  fontSize: 22,
+                                ),
                               ),
                             ),
                           ),

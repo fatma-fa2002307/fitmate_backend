@@ -137,8 +137,6 @@
 //   }
 // }
 
-
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'workout-days_question.dart'; // Import the WorkoutDaysQuestionScreen
@@ -164,12 +162,15 @@ class GoalSelectionScreen extends StatefulWidget {
 }
 
 class _GoalSelectionPageState extends State<GoalSelectionScreen> {
-  String _selectedGoal = '';
+  String _selectedGoal = 'Weight Loss';
 
   @override
   void initState() {
     super.initState();
-    _selectedGoal = widget.selectedGoal;
+    // This will initialize the _selectedGoal with Weight Loss or the value passed from the previous page
+    if (widget.selectedGoal.isNotEmpty) {
+      _selectedGoal = widget.selectedGoal;
+    }
   }
 
   void selectGoal(String goal) {
@@ -190,8 +191,14 @@ class _GoalSelectionPageState extends State<GoalSelectionScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                IconButton(
+                  icon: Icon(Icons.arrow_back_ios_new, color: Color(0xFFFFFFFF)),
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                ),
                 Text(
-                  'Step 4 of 6',
+                  'Step 5 of 6',
                   style: TextStyle(
                       color: Color(0xFFFFFFFF),
                       fontFamily: GoogleFonts.montserrat().fontFamily,
@@ -228,24 +235,23 @@ class _GoalSelectionPageState extends State<GoalSelectionScreen> {
                             height: widget.height,
                             gender: widget.gender,
                             goal: _selectedGoal,
-                            workoutDays: 1, // Set a default value for workoutDays
                           ),
                         ),
                       );
                     },
-                    child: Text(
-                      'Next',
-                      style: GoogleFonts.bebasNeue(
-                        color: Color(0xFFFFFFFF),
-                        fontSize: 22,
-                      ),
-                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Color(0xFFD2EB50),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(5.0),
                       ),
                       padding: EdgeInsets.symmetric(vertical: 15.0),
+                    ),
+                    child: Text(
+                      'Next',
+                      style: GoogleFonts.bebasNeue(
+                        color: Colors.black,
+                        fontSize: 22,
+                      ),
                     ),
                   ),
                 ),
@@ -257,7 +263,6 @@ class _GoalSelectionPageState extends State<GoalSelectionScreen> {
     );
   }
 
-  // A helper method to create goal selection options
   Widget goalOption(String goal, IconData icon) {
     return InkWell(
       onTap: () => selectGoal(goal),
@@ -277,14 +282,14 @@ class _GoalSelectionPageState extends State<GoalSelectionScreen> {
           children: [
             Icon(
               icon,
-              color: _selectedGoal == goal ? Colors.white : Color(0xFFD2EB50),
+              color: _selectedGoal == goal ? Colors.black : Color(0xFFD2EB50),
               size: 40,
             ),
             SizedBox(width: 10),
             Text(
               goal,
               style: TextStyle(
-                color: _selectedGoal == goal ? Colors.white : Color(0xFFD2EB50),
+                color: _selectedGoal == goal ? Colors.black : Color(0xFFD2EB50),
                 fontFamily: GoogleFonts.montserrat().fontFamily,
                 fontSize: 20,
               ),
@@ -295,4 +300,3 @@ class _GoalSelectionPageState extends State<GoalSelectionScreen> {
     );
   }
 }
-

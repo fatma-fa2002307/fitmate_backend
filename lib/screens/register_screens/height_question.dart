@@ -168,11 +168,10 @@
 //     );
 //   }
 // }
-
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'gender_question.dart'; // Will link to the next page (Gender)
+import 'package:shared_preferences/shared_preferences.dart';
+import 'gender_question.dart';
 
 class HeightQuestionPage extends StatefulWidget {
   final int age;
@@ -186,31 +185,72 @@ class HeightQuestionPage extends StatefulWidget {
 
 class _HeightQuestionPageState extends State<HeightQuestionPage> {
   double _height = 170.0; // Default height in cm
-  bool isFeet = false; // Track if the unit is feet
+  bool isFeet = false;
+  TextEditingController _heightController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    _updateControllerText();
   }
 
-  void toggleUnit(bool isFeetSelected) {
+
+  void toggleUnit(bool isFeetSelected) async {
+    if (isFeetSelected != isFeet) {
+      setState(() {
+        isFeet = isFeetSelected;
+        _updateControllerText();
+      });
+
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      prefs.setBool('isFeet', isFeet);
+    }
+  }
+
+  void updateHeight(String value) {
     setState(() {
-      isFeet = isFeetSelected;
       if (isFeet) {
-        // Convert cm to feet
-        _height = (_height / 30.48).roundToDouble(); // Convert cm to feet (1 foot = 30.48 cm)
+        List<String> parts = value.split("'");
+        if (parts.length == 2) {
+          int? feet = int.tryParse(parts[0]);
+          int? inches = int.tryParse(parts[1]);
+          if (feet != null && inches != null) {
+            _height = (feet * 12 + inches) * 2.54;
+          }
+        }
       } else {
-        // Convert feet to cm
-        _height = (_height * 30.48).roundToDouble(); // Convert feet to cm
+        _height = double.tryParse(value) ?? 170.0;
       }
     });
+  }
+
+  void _updateControllerText() {
+    if (isFeet) {
+      int feet = (_height / 2.54 / 12).floor();
+      int inches = ((_height / 2.54) - (feet * 12)).round();
+      _heightController.text = '$feet\'$inches';
+    } else {
+      _heightController.text = _height.toStringAsFixed(0);
+    }
+  }
+
+  bool _validateInput() {
+    if (isFeet) {
+      List<String> parts = _heightController.text.split("'");
+      if (parts.length != 2) return false;
+      int? feet = int.tryParse(parts[0]);
+      int? inches = int.tryParse(parts[1]);
+      return feet != null && inches != null;
+    } else {
+      return double.tryParse(_heightController.text) != null;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Color(0xFF0e0f16),
-      body: Center(
+      body: SingleChildScrollView(
         child: Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 50.0),
@@ -220,15 +260,16 @@ class _HeightQuestionPageState extends State<HeightQuestionPage> {
               IconButton(
                 icon: Icon(Icons.arrow_back_ios_new, color: Color(0xFFFFFFFF)),
                 onPressed: () {
-                  Navigator.pop(context); // Navigate back to the previous page
+                  Navigator.pop(context);
                 },
               ),
               Text(
                 'Step 3 of 6',
                 style: TextStyle(
-                    color: Color(0xFFFFFFFF),
-                    fontFamily: GoogleFonts.montserrat().fontFamily,
-                    fontSize: 16),
+                  color: Color(0xFFFFFFFF),
+                  fontFamily: GoogleFonts.montserrat().fontFamily,
+                  fontSize: 16,
+                ),
               ),
               SizedBox(height: 10),
               Text(
@@ -240,17 +281,16 @@ class _HeightQuestionPageState extends State<HeightQuestionPage> {
                 ),
               ),
               SizedBox(height: 40),
-              // Unit selection buttons (Feet / CM)
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   InkWell(
-                    onTap: () => toggleUnit(true), // Feet selected
+                    onTap: () => toggleUnit(true),
                     child: Container(
                       padding: EdgeInsets.all(20),
                       decoration: BoxDecoration(
                         color: isFeet ? Color(0xFFD2EB50) : Colors.transparent,
-                        borderRadius: BorderRadius.zero, // Square shape
+                        borderRadius: BorderRadius.zero,
                         border: Border.all(
                           color: Color(0xFFD2EB50),
                           width: 2,
@@ -259,19 +299,19 @@ class _HeightQuestionPageState extends State<HeightQuestionPage> {
                       child: Text(
                         'FEET',
                         style: TextStyle(
-                          color: isFeet ? Colors.white : Color(0xFFD2EB50),
+                          color: isFeet ? Colors.black : Color(0xFFD2EB50),
                           fontSize: 20,
                         ),
                       ),
                     ),
                   ),
                   InkWell(
-                    onTap: () => toggleUnit(false), // CM selected
+                    onTap: () => toggleUnit(false),
                     child: Container(
                       padding: EdgeInsets.all(20),
                       decoration: BoxDecoration(
                         color: !isFeet ? Color(0xFFD2EB50) : Colors.transparent,
-                        borderRadius: BorderRadius.zero, // Square shape
+                        borderRadius: BorderRadius.zero,
                         border: Border.all(
                           color: Color(0xFFD2EB50),
                           width: 2,
@@ -280,7 +320,7 @@ class _HeightQuestionPageState extends State<HeightQuestionPage> {
                       child: Text(
                         'CM',
                         style: TextStyle(
-                          color: !isFeet ? Colors.white : Color(0xFFD2EB50),
+                          color: !isFeet ? Colors.black : Color(0xFFD2EB50),
                           fontSize: 20,
                         ),
                       ),
@@ -289,61 +329,59 @@ class _HeightQuestionPageState extends State<HeightQuestionPage> {
                 ],
               ),
               SizedBox(height: 40),
-              // Height Input
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Expanded(
                     child: TextField(
-                      controller: TextEditingController(
-                        text: _height.toStringAsFixed(0),
-                      ),
-                      onChanged: (value) {
-                        setState(() {
-                          _height = double.tryParse(value) ?? 170.0;
-                        });
-                      },
+                      controller: _heightController,
+                      onChanged: updateHeight,
                       style: TextStyle(
                         color: Color(0xFFFFFFFF),
                         fontSize: 48,
                         fontWeight: FontWeight.bold,
                       ),
                       textAlign: TextAlign.center,
-                      keyboardType: TextInputType.number,
+                      keyboardType: TextInputType.text,
                     ),
                   ),
                 ],
               ),
-              SizedBox(height: 40),
+              const SizedBox(height: 40),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    // Navigate to the next page (Gender question), passing height, age, and weight
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => GenderQuestionPage(
-                          age: widget.age,
-                          weight: widget.weight,
-                          height: _height,
+                    if (_validateInput()) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => GenderQuestionPage(
+                            age: widget.age,
+                            weight: widget.weight,
+                            height: _height,
+                          ),
                         ),
-                      ),
-                    );
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Please enter a valid height.')),
+                      );
+                    }
                   },
-                  child: Text(
-                    'Next',
-                    style: GoogleFonts.bebasNeue(
-                      color: Color(0xFFFFFFFF),
-                      fontSize: 22,
-                    ),
-                  ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xFFD2EB50),
+                    backgroundColor: const Color(0xFFD2EB50),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(5.0),
                     ),
-                    padding: EdgeInsets.symmetric(vertical: 15.0),
+                    padding: const EdgeInsets.symmetric(vertical: 15.0),
+                  ),
+                  child: Text(
+                    'Next',
+                    style: GoogleFonts.bebasNeue(
+                      color: Colors.black,
+                      fontSize: 22,
+                    ),
                   ),
                 ),
               ),
