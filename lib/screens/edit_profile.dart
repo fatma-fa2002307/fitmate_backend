@@ -97,7 +97,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
           .collection('users')
           .doc(user.uid)
           .get();
-      
+
       if (mounted && userData.exists) {
         setState(() {
           _fullNameController.text = userData['fullName'] ?? '';
@@ -128,7 +128,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
           'age': int.tryParse(_ageController.text) ?? 0,
           'gender': _gender,
         });
-        
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text("Profile updated successfully!"))
@@ -155,11 +155,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Edit Profile',
+          'EDIT PROFILE',
           style: GoogleFonts.bebasNeue(color: Colors.black),
         ),
+        centerTitle: true,
         backgroundColor: Colors.white,
+        elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
+        automaticallyImplyLeading: false,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
