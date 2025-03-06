@@ -6,7 +6,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-import '../services/food_recognition_service.dart';
+import '../../services/food_recognition_services.dart';
 
 class FoodRecognitionScreen extends StatefulWidget {
   @override

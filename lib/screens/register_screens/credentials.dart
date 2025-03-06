@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fitmate/screens/home_page.dart';
+import 'package:fitmate/services/workout_service.dart';
+
 
 class CredentialsPage extends StatefulWidget {
   final int age;
@@ -120,6 +122,26 @@ class _CredentialsPageState extends State<CredentialsPage> {
         if (mounted) {
           Navigator.pop(context);
         }
+
+        // Generate initial workout options silently in the background
+        try {
+          // No dialog display - silent background process
+          WorkoutService.generateAndSaveWorkoutOptions(
+            age: widget.age,
+            gender: widget.gender,
+            height: widget.height,
+            weight: widget.weight,
+            goal: widget.selectedGoal,
+            workoutDays: widget.workoutDays,
+            fitnessLevel: 'Beginner',
+            lastWorkoutCategory: null, // No previous workout
+          );
+        } catch (e) {
+          print("Error generating initial workouts: $e");
+          // Silently handle errors - no UI feedback
+        }
+
+
 
         // Navigate to HomePage and remove all previous routes
         if (mounted) {

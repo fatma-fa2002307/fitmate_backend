@@ -7,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
   // Your permanent Cloudflare Tunnel URL
-  static const String baseUrl = 'https://spray-dale-nathan-wagner.trycloudflare.com';
+  static const String baseUrl = 'https://dj-looking-however-promotional.trycloudflare.com';
   static final _client = http.Client(); // Reuse HTTP client
 
   // Cache keys
