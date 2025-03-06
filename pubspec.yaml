@@ -46,6 +46,9 @@ dependencies:
   http: ^1.3.0
   shared_preferences: ^2.5.2
   cached_network_image: ^3.4.0
+  #sharifa
+  tflite_flutter: ^0.9.0  # Runs TFLite models
+  image: ^4.1.7  # Used to resize and normalize images before inference
 
 
 
@@ -74,3 +77,8 @@ flutter:
     - assets/data/images/workouts/image 4.png
     - assets/data/images/workouts/image 5.png
     - assets/data/images/yoga-pose.png
+  #sharifa
+    - assets/models/food_model.tflite
+
+
+  

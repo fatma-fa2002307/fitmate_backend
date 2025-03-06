@@ -7,6 +7,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:fitmate/widgets/bottom_nav_bar.dart';
 import 'package:percent_indicator/percent_indicator.dart';
 import 'package:fitmate/services/api_service.dart';
+//sharifa
+import 'package:fitmate/screens/food_recognition/food_recognition_screen.dart';
+
 
 class HomePage extends StatefulWidget {
   @override
@@ -111,6 +114,24 @@ class _HomePageState extends State<HomePage> {
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
+                      ),
+                        //shrifa
+                         SizedBox(height: 12),  // Add spacing before the button
+                          ElevatedButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => FoodRecognitionScreen()),
+                              );
+                            },
+                            child: Text("Go to Food Recognition"),
+                            style: ElevatedButton.styleFrom(
+                              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                              backgroundColor: Color(0xFFD2EB50),
+                              textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+
+
                       ),
                     ],
                   ),
