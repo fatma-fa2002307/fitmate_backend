@@ -135,7 +135,7 @@ Return ONLY the JSON without any explanations.
             
             # Use system message to enforce JSON response
             response = ollama.chat(
-                model="gemma:2b", 
+                model="llama3.2", 
                 messages=[
                     {"role": "system", "content": "You are a fitness API that returns only clean JSON. You must ensure each workout option differs from others by at least 2 exercises and uses appropriate sets/reps for each specific exercise."},
                     {"role": "user", "content": prompt}
