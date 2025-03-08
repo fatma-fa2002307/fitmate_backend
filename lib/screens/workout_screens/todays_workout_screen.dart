@@ -1,18 +1,18 @@
-// lib/screens/workout_screens/todays_workout_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fitmate/widgets/bottom_nav_bar.dart';
 import 'package:fitmate/screens/workout_screens/active_workout_screen.dart';
+import 'package:fitmate/screens/workout_screens/cardio_active_workout_screen.dart';
 import 'package:fitmate/services/api_service.dart';
 import 'package:fitmate/services/workout_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fitmate/widgets/workout_skeleton.dart';
+import 'package:fitmate/widgets/cardio_workout_card.dart';
 
 class WorkoutCard extends StatelessWidget {
-  final Map<String, String> workout;
+  final Map<String, dynamic> workout;
   
   const WorkoutCard({Key? key, required this.workout}) : super(key: key);
 
@@ -191,7 +191,7 @@ class _TodaysWorkoutScreenState extends State<TodaysWorkoutScreen> with SingleTi
   late Animation<double> _loadingAnimation;
   
   int _currentPage = 0;
-  Map<String, List<Map<String, String>>> _workoutOptions = {};
+  Map<String, List<Map<String, dynamic>>> _workoutOptions = {};
   bool _isLoading = true;
   bool _hasError = false;
   String _statusMessage = '';
@@ -200,6 +200,7 @@ class _TodaysWorkoutScreenState extends State<TodaysWorkoutScreen> with SingleTi
   bool _isRetrying = false;
   int _retryCount = 0;
   final int _maxRetries = 5;
+  bool _isCardioWorkout = false;
 
   final List<String> _loadingMessages = [
     'Getting your workout ready...',
@@ -385,19 +386,42 @@ class _TodaysWorkoutScreenState extends State<TodaysWorkoutScreen> with SingleTi
   
   void _processWorkoutData(Map<String, dynamic> workoutOptionsMap, String nextCategory) {
     // Convert Firebase map to our expected format
-    Map<String, List<Map<String, String>>> typedWorkoutOptions = {};
+    Map<String, List<Map<String, dynamic>>> typedWorkoutOptions = {};
     
     workoutOptionsMap.forEach((key, workoutList) {
-      List<Map<String, String>> typedWorkoutList = [];
+      List<Map<String, dynamic>> typedWorkoutList = [];
       
       for (var workout in workoutList) {
-        typedWorkoutList.add({
-          "workout": workout["workout"] as String,
-          "image": workout["image"] as String,
-          "sets": workout["sets"] as String,
-          "reps": workout["reps"] as String,
-          "instruction": workout["instruction"] as String,
-        });
+        // Check if this is a cardio workout by looking for cardio-specific fields
+        bool isCardio = false;
+        Map<String, dynamic> typedWorkout = {};
+        
+        if (workout.containsKey('duration') || workout.containsKey('intensity') || 
+            workout.containsKey('format') || workout.containsKey('calories') || 
+            workout.containsKey('is_cardio')) {
+          isCardio = true;
+          typedWorkout = {
+            "workout": workout["workout"] as String,
+            "image": workout["image"] as String,
+            "duration": workout["duration"] as String? ?? "30 min",
+            "intensity": workout["intensity"] as String? ?? "Moderate",
+            "format": workout["format"] as String? ?? "Steady-state",
+            "calories": workout["calories"] as String? ?? "300-350",
+            "description": workout["description"] as String? ?? "Perform at a comfortable pace.",
+            "is_cardio": true
+          };
+        } else {
+          // Regular strength workout
+          typedWorkout = {
+            "workout": workout["workout"] as String,
+            "image": workout["image"] as String,
+            "sets": workout["sets"] as String,
+            "reps": workout["reps"] as String,
+            "instruction": workout["instruction"] as String? ?? "",
+          };
+        }
+        
+        typedWorkoutList.add(typedWorkout);
       }
       
       typedWorkoutOptions[key] = typedWorkoutList;
@@ -407,6 +431,7 @@ class _TodaysWorkoutScreenState extends State<TodaysWorkoutScreen> with SingleTi
       setState(() {
         _workoutOptions = typedWorkoutOptions;
         _workoutCategory = nextCategory;
+        _isCardioWorkout = nextCategory.toLowerCase() == 'cardio';
         _isLoading = false;
         _hasError = false;
       });
@@ -649,7 +674,7 @@ class _TodaysWorkoutScreenState extends State<TodaysWorkoutScreen> with SingleTi
     );
   }
 
-  Widget _buildWorkoutView(List<List<Map<String, String>>> workoutOptionsList) {
+  Widget _buildWorkoutView(List<List<Map<String, dynamic>>> workoutOptionsList) {
     return Column(
       children: [
         Container(
@@ -707,13 +732,27 @@ class _TodaysWorkoutScreenState extends State<TodaysWorkoutScreen> with SingleTi
             itemCount: workoutOptionsList.length,
             itemBuilder: (context, pageIndex) {
               final workouts = workoutOptionsList[pageIndex];
-              return ListView.builder(
-                padding: EdgeInsets.only(top: 16, bottom: 16), // Reduced bottom padding
-                itemCount: workouts.length,
-                itemBuilder: (context, index) {
-                  return WorkoutCard(workout: workouts[index]);
-                },
-              );
+              
+              // Check if this is a cardio workout
+              if (_isCardioWorkout && workouts.isNotEmpty && workouts[0].containsKey('is_cardio')) {
+                // Use CardioWorkoutCard for cardio workouts
+                return ListView.builder(
+                  padding: EdgeInsets.only(top: 16, bottom: 16),
+                  itemCount: workouts.length,
+                  itemBuilder: (context, index) {
+                    return CardioWorkoutCard(workout: workouts[index]);
+                  },
+                );
+              } else {
+                // Use regular WorkoutCard for strength training
+                return ListView.builder(
+                  padding: EdgeInsets.only(top: 16, bottom: 16),
+                  itemCount: workouts.length,
+                  itemBuilder: (context, index) {
+                    return WorkoutCard(workout: workouts[index]);
+                  },
+                );
+              }
             },
           ),
         ),
@@ -721,8 +760,11 @@ class _TodaysWorkoutScreenState extends State<TodaysWorkoutScreen> with SingleTi
     );
   }
 
-  Widget _buildBottomStartButton(List<List<Map<String, String>>> workoutOptionsList) {
+  Widget _buildBottomStartButton(List<List<Map<String, dynamic>>> workoutOptionsList) {
     if (workoutOptionsList.isEmpty) return SizedBox.shrink();
+    
+    final currentWorkouts = workoutOptionsList[_currentPage];
+    final isCardio = _isCardioWorkout && currentWorkouts.isNotEmpty && currentWorkouts[0].containsKey('is_cardio');
     
     return Container(
       width: double.infinity,
@@ -739,15 +781,29 @@ class _TodaysWorkoutScreenState extends State<TodaysWorkoutScreen> with SingleTi
       ),
       child: ElevatedButton(
         onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ActiveWorkoutScreen(
-                workouts: workoutOptionsList[_currentPage],
-                category: _workoutCategory ?? 'Workout',
+          if (isCardio) {
+            // Navigate to cardio-specific workout screen
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => CardioActiveWorkoutScreen(
+                  workout: currentWorkouts[0],
+                  category: _workoutCategory ?? 'Cardio',
+                ),
               ),
-            ),
-          );
+            );
+          } else {
+            // Navigate to regular workout screen
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ActiveWorkoutScreen(
+                  workouts: currentWorkouts,
+                  category: _workoutCategory ?? 'Workout',
+                ),
+              ),
+            );
+          }
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFFD2EB50),
@@ -770,7 +826,7 @@ class _TodaysWorkoutScreenState extends State<TodaysWorkoutScreen> with SingleTi
   @override
   Widget build(BuildContext context) {
     // Convert map to list for pagination
-    List<List<Map<String, String>>> workoutOptionsList = [];
+    List<List<Map<String, dynamic>>> workoutOptionsList = [];
     if (_workoutOptions.isNotEmpty) {
       _workoutOptions.forEach((key, value) {
         workoutOptionsList.add(value);

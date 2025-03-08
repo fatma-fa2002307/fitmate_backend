@@ -6,7 +6,7 @@ import 'package:fitmate/services/api_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 class ActiveWorkoutScreen extends StatefulWidget {
-  final List<Map<String, String>> workouts;
+  final List<Map<String, dynamic>> workouts;
   final String category;
 
   const ActiveWorkoutScreen({
