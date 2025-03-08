@@ -130,6 +130,8 @@ class _WorkoutCompletionScreenState extends State<WorkoutCompletionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    double completionRatio = widget.completedExercises / widget.totalExercises;
+    
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
@@ -185,7 +187,7 @@ class _WorkoutCompletionScreenState extends State<WorkoutCompletionScreen> {
                           ),
                           child: FractionallySizedBox(
                             alignment: Alignment.centerLeft,
-                            widthFactor: widget.completedExercises / widget.totalExercises,
+                            widthFactor: completionRatio,
                             child: Container(
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(1.5),

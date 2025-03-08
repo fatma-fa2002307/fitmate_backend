@@ -1,3 +1,5 @@
+// lib/screens/workout_screens/todays_workout_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -5,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fitmate/widgets/bottom_nav_bar.dart';
 import 'package:fitmate/screens/workout_screens/active_workout_screen.dart';
 import 'package:fitmate/services/api_service.dart';
+import 'package:fitmate/services/workout_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fitmate/widgets/workout_skeleton.dart';
 
@@ -22,45 +25,67 @@ class WorkoutCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(15.0),
           ),
           child: Container(
-            padding: const EdgeInsets.all(20),
+            width: MediaQuery.of(context).size.width * 0.85,
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(15.0),
+              color: Colors.white,
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  workout["workout"]!,
-                  style: GoogleFonts.montserrat(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                // Image is the main focus - full width with padding
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 20, 12, 12),
+                  child: CachedNetworkImage(
+                    imageUrl: ApiService.getWorkoutImageUrl(
+                      '${workout["workout"]!.replaceAll(' ', '-')}.webp'
+                    ),
+                    height: 260,
+                    fit: BoxFit.contain,
+                    placeholder: (context, url) => Container(
+                      color: Colors.white,
+                      height: 260,
+                      child: const Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFFD2EB50),
+                        ),
+                      ),
+                    ),
+                    errorWidget: (context, url, error) {
+                      print("Error loading image for workout: ${workout["workout"]} - Error: $error");
+                      return Container(
+                        height: 260,
+                        color: Colors.white,
+                        child: Icon(Icons.fitness_center, size: 80, color: Colors.grey[400]),
+                      );
+                    },
                   ),
-                  textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 20),
-                CachedNetworkImage(
-                  imageUrl: ApiService.getWorkoutImageUrl(
-                    '${workout["workout"]!.replaceAll(' ', '-')}.webp'
-                  ),
-                  height: 200,
-                  fit: BoxFit.contain,
-                  placeholder: (context, url) => Container(
-                    color: Colors.grey[200],
-                    child: const Center(
-                      child: CircularProgressIndicator(
-                        color: Color(0xFFD2EB50),
+                
+                // Simple "Got it" button
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFD2EB50),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                      ),
+                      padding: EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: Text(
+                      'Got it',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
-                  errorWidget: (context, url, error) {
-                    print("Error loading image for workout: ${workout["workout"]} - Error: $error");
-                    return const Icon(Icons.fitness_center, size: 100);
-                  },
-                ),
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFD2EB50),
-                  ),
-                  child: const Text('Got it'),
                 ),
               ],
             ),
@@ -74,18 +99,26 @@ class WorkoutCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 50,
-                  height: 50,
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: InkWell(
+        onTap: () => _showInstructionDialog(context),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  width: 60,
+                  height: 60,
+                  color: Colors.grey[100],
                   child: CachedNetworkImage(
                     imageUrl: ApiService.baseUrl + workout["image"]!,
-                    fit: BoxFit.contain,
+                    fit: BoxFit.contain, // Use contain to preserve aspect ratio
                     placeholder: (context, url) => Container(
                       color: Colors.grey[200],
                       child: const Center(
@@ -101,41 +134,45 @@ class WorkoutCard extends StatelessWidget {
                     ),
                     errorWidget: (context, url, error) {
                       print("Error loading image: $error");
-                      return const Icon(Icons.fitness_center);
+                      return Icon(Icons.fitness_center, size: 30, color: Colors.grey[700]);
                     },
                   ),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        workout["workout"]!,
-                        style: GoogleFonts.montserrat(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      workout["workout"]!,
+                      style: GoogleFonts.montserrat(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
                       ),
-                      Text(
-                        '${workout["sets"]} sets × ${workout["reps"]} reps',
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 14,
-                        ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${workout["sets"]} sets × ${workout["reps"]} reps',
+                      style: GoogleFonts.dmSans(
+                        color: Colors.grey[600],
+                        fontSize: 14,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                IconButton(
-                  icon: const Icon(Icons.info_outline),
-                  onPressed: () => _showInstructionDialog(context),
-                  color: const Color(0xFFD2EB50),
+              ),
+              IconButton(
+                icon: const Icon(
+                  Icons.info_outline,
+                  color: Color(0xFFD2EB50), // Just the icon, no white background
                 ),
-              ],
-            ),
-          ],
+                onPressed: () => _showInstructionDialog(context),
+                tooltip: 'View exercise details',
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -148,42 +185,72 @@ class TodaysWorkoutScreen extends StatefulWidget {
   _TodaysWorkoutScreenState createState() => _TodaysWorkoutScreenState();
 }
 
-class _TodaysWorkoutScreenState extends State<TodaysWorkoutScreen> {
+class _TodaysWorkoutScreenState extends State<TodaysWorkoutScreen> with SingleTickerProviderStateMixin {
   final PageController _pageController = PageController();
+  late AnimationController _animationController;
+  late Animation<double> _loadingAnimation;
+  
   int _currentPage = 0;
   Map<String, List<Map<String, String>>> _workoutOptions = {};
-  bool isLoading = true;
-  String workoutCategory = '';
+  bool _isLoading = true;
+  bool _hasError = false;
+  String _statusMessage = '';
+  String? _workoutCategory;
   int _selectedIndex = 1;
+  bool _isRetrying = false;
+  int _retryCount = 0;
+  final int _maxRetries = 5;
+
+  final List<String> _loadingMessages = [
+    'Getting your workout ready...',
+    'Creating your personalized plan...',
+    'Almost there...',
+    'Putting together your exercises...',
+    'Final touches on your workout...',
+  ];
 
   @override
   void initState() {
     super.initState();
-    // Start with a clean slate - always
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    )..repeat();
+    
+    _loadingAnimation = Tween<double>(begin: 0, end: 1).animate(_animationController);
+    
+    // Start with a clean slate
     _workoutOptions = {};
-    workoutCategory = '';
+    _workoutCategory = null;
     _loadWorkoutOptions();
   }
 
   @override
   void dispose() {
     _pageController.dispose();
+    _animationController.dispose();
     super.dispose();
   }
 
+  // Improved retry mechanism with user-friendly messages
   Future<void> _loadWorkoutOptions() async {
+    _retryCount = 0;
+    
     setState(() {
-      isLoading = true;
+      _isLoading = true;
+      _hasError = false;
+      _statusMessage = 'Getting your workout ready...';
     });
     
     try {
       // Get the currently logged-in user
       User? user = FirebaseAuth.instance.currentUser;
       if (user == null) {
-        print("No user is logged in.");
         if (mounted) {
           setState(() {
-            isLoading = false;
+            _isLoading = false;
+            _hasError = true;
+            _statusMessage = 'Please sign in to view your workouts';
           });
         }
         return;
@@ -196,10 +263,11 @@ class _TodaysWorkoutScreenState extends State<TodaysWorkoutScreen> {
           .get();
 
       if (!userDoc.exists) {
-        print("User document not found.");
         if (mounted) {
           setState(() {
-            isLoading = false;
+            _isLoading = false;
+            _hasError = true;
+            _statusMessage = 'Unable to find your profile. Please try again';
           });
         }
         return;
@@ -208,53 +276,495 @@ class _TodaysWorkoutScreenState extends State<TodaysWorkoutScreen> {
       // Extract user details
       Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
       
-      // Get stored workout options
-      Map<String, dynamic>? workoutOptionsMap = userData['workoutOptions'] as Map<String, dynamic>?;
-      String? nextCategory = userData['nextWorkoutCategory'] as String?;
+      // Check for workout options
+      await _checkAndLoadWorkouts(userData, user.uid);
       
-      if (workoutOptionsMap != null && workoutOptionsMap.isNotEmpty && nextCategory != null) {
-        // Convert Firebase map to our expected format
-        Map<String, List<Map<String, String>>> typedWorkoutOptions = {};
-        
-        workoutOptionsMap.forEach((key, workoutList) {
-          List<Map<String, String>> typedWorkoutList = [];
-          
-          for (var workout in workoutList) {
-            typedWorkoutList.add({
-              "workout": workout["workout"] as String,
-              "image": workout["image"] as String,
-              "sets": workout["sets"] as String,
-              "reps": workout["reps"] as String,
-              "instruction": workout["instruction"] as String,
-            });
-          }
-          
-          typedWorkoutOptions[key] = typedWorkoutList;
-        });
-        
-        if (mounted) {
-          setState(() {
-            _workoutOptions = typedWorkoutOptions;
-            workoutCategory = nextCategory;
-            isLoading = false;
-          });
-        }
-      } else {
-        print("No workout options found. Generating new workouts.");
-        if (mounted) {
-          setState(() {
-            isLoading = false;
-          });
-        }
-      }
     } catch (e) {
       print("Error loading workout options: $e");
       if (mounted) {
         setState(() {
-          isLoading = false;
+          _isLoading = false;
+          _hasError = true;
+          _statusMessage = 'Unable to load your workout. Please try again';
         });
       }
     }
+  }
+
+  Future<void> _checkAndLoadWorkouts(Map<String, dynamic> userData, String userId) async {
+    // Get stored workout options
+    Map<String, dynamic>? workoutOptionsMap = userData['workoutOptions'] as Map<String, dynamic>?;
+    String? nextCategory = userData['nextWorkoutCategory'] as String?;
+    
+    // Check if workout generation is already in progress
+    Timestamp? lastGenerated = userData['workoutsLastGenerated'] as Timestamp?;
+    bool recentlyGenerated = false;
+    
+    if (lastGenerated != null) {
+      DateTime lastGeneratedTime = lastGenerated.toDate();
+      DateTime now = DateTime.now();
+      Duration difference = now.difference(lastGeneratedTime);
+      
+      // If workout was generated less than 20 seconds ago, consider it "in progress"
+      if (difference.inSeconds < 20) {
+        recentlyGenerated = true;
+        await _retryLoadingWorkout(userId);
+        return;
+      }
+    }
+    
+    // If we have valid workout data
+    if (workoutOptionsMap != null && workoutOptionsMap.isNotEmpty && nextCategory != null) {
+      _processWorkoutData(workoutOptionsMap, nextCategory);
+    } else if (recentlyGenerated) {
+      // If we've exhausted all retries and still no workout data
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _hasError = true;
+          _statusMessage = 'Your workout is still being created. Please try again in a moment';
+        });
+      }
+    } else {
+      // No workout options found, generate new ones
+      await _generateWorkouts(userData);
+    }
+  }
+  
+  Future<void> _retryLoadingWorkout(String userId) async {
+    _isRetrying = true;
+    
+    for (_retryCount = 0; _retryCount < _maxRetries; _retryCount++) {
+      if (!mounted) return;
+      
+      // Update loading message
+      setState(() {
+        _statusMessage = _loadingMessages[_retryCount % _loadingMessages.length];
+      });
+      
+      // Wait with increasing delay between attempts
+      await Future.delayed(Duration(seconds: _retryCount + 1));
+      
+      if (!mounted) return;
+      
+      // Fetch the updated data
+      try {
+        DocumentSnapshot userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userId)
+            .get();
+        
+        if (userDoc.exists) {
+          Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
+          Map<String, dynamic>? workoutOptionsMap = userData['workoutOptions'] as Map<String, dynamic>?;
+          String? nextCategory = userData['nextWorkoutCategory'] as String?;
+          
+          // If we have valid workout data now, process it and exit
+          if (workoutOptionsMap != null && workoutOptionsMap.isNotEmpty && nextCategory != null) {
+            _processWorkoutData(workoutOptionsMap, nextCategory);
+            _isRetrying = false;
+            return;
+          }
+        }
+      } catch (e) {
+        print("Error in retry attempt $_retryCount: $e");
+        // Continue to next attempt
+      }
+    }
+    
+    // If we get here, all retries failed
+    _isRetrying = false;
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        _hasError = true;
+        _statusMessage = 'We\'re having trouble creating your workout. Please try again';
+      });
+    }
+  }
+  
+  void _processWorkoutData(Map<String, dynamic> workoutOptionsMap, String nextCategory) {
+    // Convert Firebase map to our expected format
+    Map<String, List<Map<String, String>>> typedWorkoutOptions = {};
+    
+    workoutOptionsMap.forEach((key, workoutList) {
+      List<Map<String, String>> typedWorkoutList = [];
+      
+      for (var workout in workoutList) {
+        typedWorkoutList.add({
+          "workout": workout["workout"] as String,
+          "image": workout["image"] as String,
+          "sets": workout["sets"] as String,
+          "reps": workout["reps"] as String,
+          "instruction": workout["instruction"] as String,
+        });
+      }
+      
+      typedWorkoutOptions[key] = typedWorkoutList;
+    });
+    
+    if (mounted) {
+      setState(() {
+        _workoutOptions = typedWorkoutOptions;
+        _workoutCategory = nextCategory;
+        _isLoading = false;
+        _hasError = false;
+      });
+    }
+  }
+
+  Future<void> _generateWorkouts(Map<String, dynamic> userData) async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _statusMessage = 'Creating a new workout just for you...';
+      });
+      
+      await WorkoutService.generateAndSaveWorkoutOptions(
+        age: userData['age'] ?? 30,
+        gender: userData['gender'] ?? 'Male',
+        height: (userData['height'] ?? 170).toDouble(),
+        weight: (userData['weight'] ?? 70).toDouble(),
+        goal: userData['goal'] ?? 'Improve Fitness',
+        workoutDays: userData['workoutDays'] ?? 3,
+        fitnessLevel: userData['fitnessLevel'] ?? 'Beginner',
+        lastWorkoutCategory: userData['lastWorkoutCategory'],
+      );
+      
+      // After generating workouts, retry loading with the new data
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await _retryLoadingWorkout(user.uid);
+      }
+    } catch (e) {
+      print("Error generating workouts: $e");
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _hasError = true;
+          _statusMessage = 'Unable to create your workout. Please try again';
+        });
+      }
+    }
+  }
+
+  Widget _buildLoadingView() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          AnimatedBuilder(
+            animation: _loadingAnimation, 
+            builder: (context, child) {
+              return Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: Color(0xFFD2EB50).withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: Color(0xFFD2EB50).withOpacity(0.3),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Color(0xFFD2EB50),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.fitness_center,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }
+          ),
+          SizedBox(height: 30),
+          Text(
+            _statusMessage,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.dmSans(
+              fontSize: 18,
+              color: Colors.black87,
+            ),
+          ),
+          if (_isRetrying) ...[
+            SizedBox(height: 20),
+            Container(
+              width: 200,
+              height: 6,
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                borderRadius: BorderRadius.circular(3),
+              ),
+              child: FractionallySizedBox(
+                alignment: Alignment.centerLeft,
+                widthFactor: (_retryCount + 1) / (_maxRetries + 1),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Color(0xFFD2EB50),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorView() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(30.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.refresh_rounded, size: 40, color: Colors.grey),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              _statusMessage,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.dmSans(
+                fontSize: 18,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 30),
+            ElevatedButton(
+              onPressed: _loadWorkoutOptions,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFD2EB50),
+                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Text(
+                'Try Again',
+                style: GoogleFonts.dmSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyView() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(30.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.fitness_center, size: 50, color: Color(0xFFD2EB50)),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              "Ready to start your fitness journey?",
+              style: GoogleFonts.montserrat(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              "Let's create a personalized workout plan for you",
+              textAlign: TextAlign.center,
+              style: GoogleFonts.dmSans(
+                fontSize: 16,
+                color: Colors.grey[700],
+              ),
+            ),
+            const SizedBox(height: 30),
+            ElevatedButton(
+              onPressed: () async {
+                // Try to fetch user data and generate workouts
+                final user = FirebaseAuth.instance.currentUser;
+                if (user != null) {
+                  final userData = await FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(user.uid)
+                      .get();
+                      
+                  if (userData.exists) {
+                    _generateWorkouts(userData.data() as Map<String, dynamic>);
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFD2EB50),
+                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Text(
+                'Create Workout Plan',
+                style: GoogleFonts.dmSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWorkoutView(List<List<Map<String, String>>> workoutOptionsList) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                offset: Offset(0, 2),
+                blurRadius: 6,
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              Text(
+                'Workout Option ${_currentPage + 1} of ${workoutOptionsList.length}',
+                style: GoogleFonts.dmSans(
+                  fontSize: 15,
+                  color: Colors.black54,
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Workout Pagination Indicators
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(workoutOptionsList.length, (index) {
+                  return AnimatedContainer(
+                    duration: Duration(milliseconds: 300),
+                    width: _currentPage == index ? 20 : 10,
+                    height: 10,
+                    margin: const EdgeInsets.symmetric(horizontal: 4.0),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(5),
+                      color: _currentPage == index
+                          ? const Color(0xFFD2EB50)
+                          : Colors.grey.shade300,
+                    ),
+                  );
+                }),
+              ),
+            ],
+          ),
+        ),
+        // Page View for workout options
+        Expanded(
+          child: PageView.builder(
+            controller: _pageController,
+            onPageChanged: (int page) {
+              setState(() {
+                _currentPage = page;
+              });
+            },
+            itemCount: workoutOptionsList.length,
+            itemBuilder: (context, pageIndex) {
+              final workouts = workoutOptionsList[pageIndex];
+              return ListView.builder(
+                padding: EdgeInsets.only(top: 16, bottom: 16), // Reduced bottom padding
+                itemCount: workouts.length,
+                itemBuilder: (context, index) {
+                  return WorkoutCard(workout: workouts[index]);
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBottomStartButton(List<List<Map<String, String>>> workoutOptionsList) {
+    if (workoutOptionsList.isEmpty) return SizedBox.shrink();
+    
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 5,
+            offset: Offset(0, -2),
+          ),
+        ],
+      ),
+      child: ElevatedButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ActiveWorkoutScreen(
+                workouts: workoutOptionsList[_currentPage],
+                category: _workoutCategory ?? 'Workout',
+              ),
+            ),
+          );
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFD2EB50),
+          padding: EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+        child: Text(
+          'START',
+          style: GoogleFonts.bebasNeue(
+            fontSize: 20,
+            color: Colors.white,
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -270,181 +780,37 @@ class _TodaysWorkoutScreenState extends State<TodaysWorkoutScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          workoutCategory.isEmpty ? 'TODAY\'S WORKOUT' : workoutCategory.toUpperCase(),
+          _workoutCategory?.isNotEmpty == true ? _workoutCategory!.toUpperCase() : 'TODAY\'S WORKOUT',
           style: GoogleFonts.bebasNeue(color: Colors.black),
         ),
         centerTitle: true,
         backgroundColor: Colors.white,
-        iconTheme: const IconThemeData(color: Colors.black),
         elevation: 0,
+        actions: [
+          if (_hasError)
+            IconButton(
+              icon: const Icon(Icons.refresh, color: Colors.black54),
+              onPressed: _loadWorkoutOptions,
+              tooltip: 'Refresh',
+            ),
+        ],
       ),
-      body: isLoading 
-        ? Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFD2EB50)),
-                ),
-                SizedBox(height: 20),
-                Text(
-                  "Please stand by...\nLoading your workout options",
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 16,
-                    color: Colors.black54,
-                  ),
-                ),
-              ],
-            ),
-          )
-        : workoutOptionsList.isEmpty 
-          ? Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.fitness_center, size: 64, color: Colors.grey[400]),
-                  const Text("No workouts available."),
-                  const SizedBox(height: 20),
-                  const Text(
-                    "Please check back later",
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                ],
-              ),
-            )
-          : Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Workout Option ${_currentPage + 1} / ${workoutOptionsList.length}',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 15,
-                          color: Colors.black54,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // Workout Pagination Indicators
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(workoutOptionsList.length, (index) {
-                    return Container(
-                      width: 10,
-                      height: 10,
-                      margin: const EdgeInsets.symmetric(horizontal: 4.0),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: _currentPage == index
-                            ? const Color(0xFFD2EB50)
-                            : Colors.grey.shade300,
-                      ),
-                    );
-                  }),
-                ),
-                const SizedBox(height: 16),
-                // Page View for workout options
-                Expanded(
-                  child: PageView.builder(
-                    controller: _pageController,
-                    onPageChanged: (int page) {
-                      setState(() {
-                        _currentPage = page;
-                      });
-                    },
-                    itemCount: workoutOptionsList.length,
-                    itemBuilder: (context, pageIndex) {
-                      final workouts = workoutOptionsList[pageIndex];
-                      return ListView.builder(
-                        itemCount: workouts.length,
-                        itemBuilder: (context, index) {
-                          return WorkoutCard(workout: workouts[index]);
-                        },
-                      );
-                    },
-                  ),
-                ),
-                // Navigation buttons
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // Previous button
-                      ElevatedButton(
-                        onPressed: _currentPage > 0
-                            ? () {
-                                _pageController.previousPage(
-                                  duration: const Duration(milliseconds: 300),
-                                  curve: Curves.easeInOut,
-                                );
-                              }
-                            : null,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey[300],
-                          disabledBackgroundColor: Colors.grey[200],
-                        ),
-                        child: const Text('Previous'),
-                      ),
-                      // Next button
-                      ElevatedButton(
-                        onPressed: _currentPage < workoutOptionsList.length - 1
-                            ? () {
-                                _pageController.nextPage(
-                                  duration: const Duration(milliseconds: 300),
-                                  curve: Curves.easeInOut,
-                                );
-                              }
-                            : null,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey[300],
-                          disabledBackgroundColor: Colors.grey[200],
-                        ),
-                        child: const Text('Next'),
-                      ),
-                    ],
-                  ),
-                ),
-                // Start workout button
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: ElevatedButton(
-                    onPressed: workoutOptionsList.isNotEmpty
-                        ? () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => ActiveWorkoutScreen(
-                                  workouts: workoutOptionsList[_currentPage],
-                                  category: workoutCategory,
-                                ),
-                              ),
-                            );
-                          }
-                        : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFD2EB50),
-                      minimumSize: const Size(double.infinity, 50),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(5.0),
-                      ),
-                    ),
-                    child: Text(
-                      'START',
-                      style: GoogleFonts.bebasNeue(
-                        fontSize: 20,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+      body: Column(
+        children: [
+          Expanded(
+            child: _isLoading 
+              ? _buildLoadingView()
+              : _hasError
+                ? _buildErrorView()
+                : workoutOptionsList.isEmpty 
+                  ? _buildEmptyView()
+                  : _buildWorkoutView(workoutOptionsList),
+          ),
+          // Fixed bottom button
+          if (!_isLoading && !_hasError && workoutOptionsList.isNotEmpty)
+            _buildBottomStartButton(workoutOptionsList),
+        ],
+      ),
       bottomNavigationBar: BottomNavBar(
         currentIndex: _selectedIndex,
         onTap: (index) {

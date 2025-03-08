@@ -95,13 +95,12 @@ VERY IMPORTANT REQUIREMENTS:
 1. Each option should have 4-5 exercises depending on intensity (use 5 for lower intensity exercises)
 2. Use ONLY exercises from this list: {exercise_list}
 3. You can repeat exercises between options, but EACH OPTION MUST DIFFER BY AT LEAST 2 EXERCISES from other options
-4. Each option should target different muscles within the {next_category} category
+4. Each option should target different muscles within the {next_category} category. AVOID OVERWORKING MUSCLES!
 5. For each exercise, choose appropriate sets and reps within these guidelines:
    - For {data.fitnessLevel} level:
    - Sets: {guidelines["sets_range"]} (choose a specific number for each exercise)
    - Reps: {guidelines["reps_range"]} (choose a specific number or range for each exercise)
 6. Heavier or more challenging exercises should have fewer reps/sets, while lighter exercises can have more
-
 Return in this JSON format:
 {{
 "options": [
