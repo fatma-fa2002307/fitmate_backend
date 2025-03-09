@@ -35,11 +35,11 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
-  firebase_core: ^2.17.5
-  firebase_auth: ^4.20.0
+  firebase_core: ^3.12.1
+  firebase_auth: ^5.5.1
   firebase_auth_web: ^5.12.0
-  cloud_firestore: ^4.14.0
-  intl: ^0.19.0
+  cloud_firestore: ^5.6.5
+  intl: ^0.20.2
   camera: ^0.11.0+2
   permission_handler: ^11.3.1
   percent_indicator: ^4.2.4
@@ -47,22 +47,22 @@ dependencies:
   shared_preferences: ^2.5.2
   cached_network_image: ^3.3.0
   #sharifa
-  #tflite_flutter: ^0.9.0  # Runs TFLite models
-  image: ^4.1.7  # Used to resize and normalize images before inference
-  image_picker: ^0.8.4+4
+  tflite_flutter: ^0.11.0  # Upgrade TFLite to latest stable
+  image: ^4.5.3  # Ensure compatibility for image preprocessing
+  image_picker: ^1.1.2 # latest stable version
 
 
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  firebase_auth_mocks: ^0.13.0
+  firebase_auth_mocks: ^0.14.1
   mockito: ^5.4.4
-  fake_cloud_firestore: ^2.4.8
+  fake_cloud_firestore: ^3.1.0
   build_runner: ^2.4.8
   test: ^1.24.9
   google_fonts: ^6.1.0
-  flutter_lints: ^3.0.1
+  flutter_lints: ^5.0.0
   firebase_core_platform_interface: ^5.0.0
   integration_test:
     sdk: flutter
@@ -78,7 +78,7 @@ flutter:
     - assets/data/images/workouts/image 5.png
     - assets/data/images/yoga-pose.png
   #sharifa
-  #  - assets/models/food_model.tflite
+    - assets/models/food_model.tflite
 
 
   
