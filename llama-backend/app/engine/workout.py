@@ -3,10 +3,17 @@ import json
 import pandas as pd
 import random
 import re
+import logging
 from typing import Optional, List, Dict, Any
 from app.models.schemas import WorkoutRequest, WorkoutResponse, Exercise
 from app.utils.exercise_db import ExerciseDatabase
 
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, 
+                   format='%(asctime)s [%(levelname)s] - %(message)s',
+                   datefmt='%Y-%m-%d %H:%M:%S')
+logger = logging.getLogger("workout_engine")
 
 CARDIO_EXERCISES = [
     {"Title": "Treadmill Running", "Image": "treadmill.jpg", "Icon": "cardio.webp"},
@@ -67,8 +74,9 @@ class WorkoutEngine:
         try:
             self.df = pd.read_csv('data/exercises.csv')
             self.exercise_categories = self._prepare_exercise_categories()
+            logger.info("Exercise database loaded successfully")
         except Exception as e:
-            print(f"Error loading exercise database: {e}")
+            logger.error(f"Error loading exercise database: {e}")
             self.df = pd.DataFrame()
             self.exercise_categories = {}
 
@@ -85,10 +93,11 @@ class WorkoutEngine:
             
             # Add cardio as a separate category using the module-level constant
             organized_exercises["Cardio"] = CARDIO_EXERCISES
-                
+            
+            logger.info(f"Prepared {len(organized_exercises)} exercise categories")
             return organized_exercises
         except Exception as e:
-            print(f"Error preparing exercise categories: {e}")
+            logger.error(f"Error preparing exercise categories: {e}")
             return {}
 
     def _get_next_category(self, workout_days: int, goal: str, last_category: Optional[str] = None) -> str:
@@ -104,11 +113,13 @@ class WorkoutEngine:
             try:
                 current_index = sequence.index(last_category)
                 next_index = (current_index + 1) % len(sequence)
+                logger.info(f"Next workout category: {sequence[next_index]} (after {last_category})")
                 return sequence[next_index]
             except ValueError:
+                logger.info(f"Last category {last_category} not found in sequence, defaulting to first: {sequence[0]}")
                 return sequence[0]
         except Exception as e:
-            print(f"Error getting next category: {e}")
+            logger.error(f"Error getting next category: {e}")
             # Use a safe default if anything goes wrong
             return "Full Body"
 
@@ -122,7 +133,7 @@ class WorkoutEngine:
                 data.lastWorkoutCategory
             )
             
-            print(f"Selected workout category: {next_category}")
+            logger.info(f"Selected workout category: {next_category} for user with goal: {data.goal}")
             
             # Check if we need to generate cardio workout
             if next_category == "Cardio":
@@ -131,7 +142,7 @@ class WorkoutEngine:
                 return self._generate_strength_options(data, next_category)
                 
         except Exception as e:
-            print(f"Error in generate_workout_options: {str(e)}")
+            logger.error(f"Error in generate_workout_options: {str(e)}", exc_info=True)
             # Return minimal valid structure
             return {
                 "options": [[] for _ in range(num_options)],
@@ -140,8 +151,14 @@ class WorkoutEngine:
 
     def _fix_json(self, content: str) -> str:
         """Fix common JSON errors from LLama responses."""
+        logger.info("Fixing JSON formatting issues in LLM response")
+        
+        # Print first and last 100 chars of content for debugging
+        logger.info(f"JSON content before fixing (truncated): {content[:100]}...{content[-100:] if len(content) > 100 else content}")
+        
         # Convert from markdown code block if present
         if '```' in content:
+            logger.info("Removing markdown code blocks")
             lines = content.split('\n')
             filtered_lines = []
             in_code_block = False
@@ -155,14 +172,42 @@ class WorkoutEngine:
             
             content = '\n'.join(filtered_lines)
 
+        # Fix the problematic double-quote pattern in reps field that appears in logs
+        # Pattern like: "reps": "" "10-12"" or "reps": "" "10""
+        content = re.sub(r'"reps"\s*:\s*""\s*"([^"]+)""', r'"reps": "\1"', content)
+        
+        # Fix missing closing brace after reps field
+        content = re.sub(r'"reps"\s*:\s*"([^"]+)"\s*\n\s*\]', r'"reps": "\1" }\n    ]', content)
+        
         # Fix sets and reps values that should be strings
         # Find all instances of "sets": digit and "reps": digit-digit
         content = re.sub(r'"sets"\s*:\s*(\d+)', r'"sets": "\1"', content)
         content = re.sub(r'"reps"\s*:\s*(\d+)-(\d+)', r'"reps": "\1-\2"', content)
         content = re.sub(r'"reps"\s*:\s*(\d+)', r'"reps": "\1"', content)
+        content = re.sub(r'"reps"\s*:\s*(\d+)s', r'"reps": "\1s"', content)  # For "30s" format
+        
+        # Also handle other formats like "30 seconds"
+        content = re.sub(r'"reps"\s*:\s*"?(\d+)\s*seconds"?', r'"reps": "\1s"', content)
         
         # Fix nested braces issues
         content = re.sub(r'}\s*{', '},{', content)
+        
+        # Make sure there's a proper closing } before the closing ] in all arrays
+        content = re.sub(r'(\s*"[^"]*"\s*:\s*"[^"]*")\s*\n\s*\]', r'\1 }\n    ]', content)
+        
+        # Check for missing commas between objects in arrays
+        content = re.sub(r'}\s*{', '}, {', content)
+        
+        # Try to balance closing braces throughout the JSON
+        open_braces = content.count('{')
+        close_braces = content.count('}')
+        if open_braces > close_braces:
+            # Add missing closing braces at the end, using Python's string multiplication
+            content = content.rstrip() + ('}' * (open_braces - close_braces))
+            logger.info(f"Added {open_braces - close_braces} closing braces to balance JSON")
+        
+        # Print first and last 100 chars of content after fixing
+        logger.info(f"JSON content after fixing (truncated): {content[:100]}...{content[-100:] if len(content) > 100 else content}")
         
         return content
 
@@ -172,18 +217,19 @@ class WorkoutEngine:
             # First try normal parsing
             return json.loads(json_str)
         except json.JSONDecodeError as e:
-            print(f"JSON decode error: {e}")
-            print(f"Attempting to fix JSON...")
+            logger.error(f"JSON decode error: {e}")
+            logger.info("Attempting to fix JSON formatting issues")
             
             try:
                 # Try with our fixes
                 fixed_json = self._fix_json(json_str)
                 return json.loads(fixed_json)
             except json.JSONDecodeError as e2:
-                print(f"Second JSON decode error: {e2}")
+                logger.error(f"Second JSON decode error after fixing: {e2}")
                 
                 try:
                     # Try with a more aggressive approach: extract the options array
+                    logger.info("Attempting more aggressive JSON extraction")
                     options_match = re.search(r'"options"\s*:\s*\[\s*\[(.*?)\]\s*\]', json_str, re.DOTALL)
                     if options_match:
                         options_content = options_match.group(1)
@@ -193,71 +239,78 @@ class WorkoutEngine:
                         
                         # Build a skeleton with just the options
                         fixed_json = '{"options": [[' + options_content + ']]}'
+                        logger.info(f"Extracted options JSON: {fixed_json[:100]}...")
                         return json.loads(fixed_json)
                     else:
                         # If we can't extract options, create a minimal valid structure
-                        print("Could not extract options from JSON, returning empty structure")
+                        logger.error("Could not extract options from JSON, returning empty structure")
                         return {"options": []}
                 except Exception as e3:
-                    print(f"Third parsing attempt failed: {e3}")
+                    logger.error(f"Third parsing attempt failed: {e3}")
                     return {"options": []}
 
     def _generate_cardio_options(self, data: WorkoutRequest, category: str) -> dict:
         """Generate cardio workout options with appropriate parameters."""
         try:
-            # Prepare a list of available cardio exercises
-            cardio_types = ", ".join([ex["Title"] for ex in CARDIO_EXERCISES])
+            # Create a list of known cardio exercises for reference
+            cardio_examples = ", ".join([ex["Title"] for ex in CARDIO_EXERCISES])
             
             # Create a prompt that explicitly emphasizes string formatting for all values
-            prompt = f"""Create EXACTLY 3 cardio workouts for a {data.age}yo {data.gender}, {data.height}cm, {data.weight}kg, {data.fitnessLevel} level, goal: {data.goal}.
+            prompt = f"""Create EXACTLY 3 different cardio workout options for a {data.age}yo {data.gender}, {data.height}cm, {data.weight}kg, {data.fitnessLevel} level, goal: {data.goal}.
 
-Choose 3 different exercises from: {cardio_types}
+INSTRUCTIONS:
+1. You can create ANY cardio exercise - not limited to this list: {cardio_examples}
+2. Be creative and specific with cardio workout recommendations
+3. Each option should have just one cardio exercise with detailed parameters
+4. Tailor the intensity, duration, and format to match the user's fitness level and goals
+5. Option 1 must use no equipment, Option 2 can use basic equipment, and Option 3 can be anything.
 
-For each exercise, provide:
+For each cardio workout, provide:
+- Exercise name
 - Duration (like "30 min")
-- Intensity (like "Moderate")
-- Format (like "Steady-state" or "Intervals")
-- Calories burned (like "250-300")
-- Description
+- Intensity (like "Moderate" or "High-intensity intervals")
+- Format (like "30 sec work/30 sec rest" or "Steady-state")
+- Calories burned estimate (like "250-300")
+- A brief description of how to perform the workout
 
 Return ONLY in this exact JSON format (EVERYTHING in QUOTES, including numbers):
 {{
   "options": [
     [
       {{
-        "workout": "Exercise Name", 
+        "workout": "Cardio Exercise 1", 
         "duration": "30 min", 
         "intensity": "Moderate", 
         "format": "Steady-state", 
         "calories": "250-300", 
-        "description": "Brief description"
+        "description": "Brief description with specific instructions"
       }}
     ],
     [
       {{
-        "workout": "Different Exercise", 
+        "workout": "Cardio Exercise 2", 
         "duration": "25 min", 
         "intensity": "High", 
         "format": "Intervals (30s/30s)", 
         "calories": "300-350", 
-        "description": "Brief description"
+        "description": "Brief description with specific instructions"
       }}
     ],
     [
       {{
-        "workout": "Another Exercise", 
+        "workout": "Cardio Exercise 3", 
         "duration": "45 min", 
         "intensity": "Low-Moderate", 
         "format": "Steady-state", 
         "calories": "350-400", 
-        "description": "Brief description"
+        "description": "Brief description with specific instructions"
       }}
     ]
   ]
 }}
 IMPORTANT: EVERY value MUST be in QUOTES. No bare numbers."""
             
-            print("Requesting cardio workout from LLM...")
+            logger.info("Requesting cardio workout from LLM...")
             
             # Use ollama with very specific system instruction about JSON format
             response = ollama.chat(
@@ -265,7 +318,7 @@ IMPORTANT: EVERY value MUST be in QUOTES. No bare numbers."""
                 messages=[
                     {
                         "role": "system", 
-                        "content": "You are a professoinal fitness coach that returns only valid JSON. You must put ALL values in double quotes, including numbers. Format exactly as requested. Return ONLY the JSON with no explanation or markdown."
+                        "content": "You are a professional fitness coach that returns only valid JSON. You must put ALL values in double quotes, including numbers. Format exactly as requested. Return ONLY the JSON with no explanation or markdown."
                     },
                     {"role": "user", "content": prompt}
                 ],
@@ -275,47 +328,65 @@ IMPORTANT: EVERY value MUST be in QUOTES. No bare numbers."""
             # Extract the content
             content = response['message']['content'].strip()
             
+            # Log first 200 characters of response for debugging
+            logger.info(f"LLM response (truncated): {content[:200]}...")
+            
             # Try to parse with our safe parsing method
             workout_data = self._parse_safe(content)
             options = workout_data.get("options", [])
             
             if not options:
-                print("No valid workout options received from LLM, generating backup options")
+                logger.error("No valid workout options received from LLM, generating backup options")
                 return self._create_default_cardio_options(category)
             
             # Process the options to add images and ensure proper formatting
             processed_options = []
-            used_cardio_types = set()
+            used_cardio_names = set()
             
-            for option in options:
+            for option_index, option in enumerate(options):
                 if not option:  # Skip empty options
+                    logger.warning(f"Empty option found at index {option_index}")
                     continue
                     
                 # Each cardio option has one exercise
                 cardio_exercise = option[0]
                 if "workout" not in cardio_exercise:
+                    logger.warning(f"No 'workout' field in option {option_index}")
                     continue
                     
                 workout_name = cardio_exercise["workout"]
                 workout_lower = workout_name.lower()
                 
                 # Skip duplicates
-                if any(workout_lower in used or used in workout_lower for used in used_cardio_types):
+                if any(workout_lower in used or used in workout_lower for used in used_cardio_names):
+                    logger.info(f"Skipping duplicate cardio workout: {workout_name}")
                     continue
                 
                 # Record this exercise type
-                used_cardio_types.add(workout_lower)
+                used_cardio_names.add(workout_lower)
                 
-                # Find matching cardio image
-                matching_cardio = next(
-                    (c for c in CARDIO_EXERCISES if c["Title"].lower() in workout_lower), 
-                    {"Title": workout_name, "Image": "cardio.webp"}
-                )
+                # Find matching cardio image by looking for keywords in exercise name
+                matching_cardio = None
+                for cardio in CARDIO_EXERCISES:
+                    # Check if any keyword from the cardio title is in the workout name
+                    cardio_keywords = cardio["Title"].lower().split()
+                    if any(keyword in workout_lower for keyword in cardio_keywords):
+                        matching_cardio = cardio
+                        break
+                
+                # Use the matching image if found, otherwise use the generic cardio image
+                if matching_cardio:
+                    image_path = f"/workout-images/cardio/{matching_cardio['Image']}"
+                    logger.info(f"Using image for '{matching_cardio['Title']}' for workout: {workout_name}")
+                else:
+                    # Use a generic cardio image - make sure this path exists in your system
+                    image_path = "/workout-images/cardio/cardio.webp"  
+                    logger.info(f"No matching image found for: {workout_name}, using generic cardio image")
                 
                 # Create properly formatted exercise
                 formatted_exercise = {
                     "workout": workout_name,
-                    "image": f"/workout-images/cardio/{matching_cardio['Image']}",
+                    "image": image_path,
                     "duration": cardio_exercise.get("duration", "30 min"),
                     "intensity": cardio_exercise.get("intensity", "Moderate"),
                     "format": cardio_exercise.get("format", "Steady-state"),
@@ -325,12 +396,15 @@ IMPORTANT: EVERY value MUST be in QUOTES. No bare numbers."""
                 }
                 
                 processed_options.append([formatted_exercise])
+                logger.info(f"Processed cardio workout: {workout_name}")
             
             # If we don't have enough options, fill in with defaults
             if len(processed_options) < 3:
+                logger.warning(f"Only {len(processed_options)} valid cardio options generated, filling with defaults")
+                
                 # Find unused cardio exercises
                 available_cardio = [c for c in CARDIO_EXERCISES 
-                                   if not any(c["Title"].lower() in used for used in used_cardio_types)]
+                                   if not any(c["Title"].lower() in used for used in used_cardio_names)]
                 
                 # If we've used all exercises, reset the list
                 if not available_cardio:
@@ -344,7 +418,7 @@ IMPORTANT: EVERY value MUST be in QUOTES. No bare numbers."""
                     # Create a default option for this cardio type
                     default_option = [{
                         "workout": cardio["Title"],
-                        "image": f"/workout-images/{cardio['Image']}",
+                        "image": f"/workout-images/cardio/{cardio['Image']}",
                         "duration": "30 min",
                         "intensity": "Moderate",
                         "format": "Steady-state",
@@ -354,24 +428,26 @@ IMPORTANT: EVERY value MUST be in QUOTES. No bare numbers."""
                     }]
                     
                     processed_options.append(default_option)
+                    logger.info(f"Added default cardio workout: {cardio['Title']}")
             
+            logger.info(f"Successfully generated {len(processed_options)} cardio workout options")
             return {
                 "options": processed_options,
                 "category": category
             }
             
         except Exception as e:
-            print(f"Error in generate_cardio_options: {str(e)}")
+            logger.error(f"Error in generate_cardio_options: {str(e)}", exc_info=True)
             return self._create_default_cardio_options(category)
             
     def _create_default_cardio_options(self, category: str) -> dict:
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
         """Create default cardio options when LLM fails."""
+        logger.warning("Creating default cardio options due to LLM failure")
         options = []
         used_indices = set()
         
         # Create 3 different cardio options
-        for _ in range(3):
+        for i in range(3):
             # Find an unused cardio exercise
             available_indices = [i for i in range(len(CARDIO_EXERCISES)) if i not in used_indices]
             if not available_indices:  # If all are used, reset
@@ -385,7 +461,7 @@ IMPORTANT: EVERY value MUST be in QUOTES. No bare numbers."""
             # Create a default option
             option = [{
                 "workout": cardio["Title"],
-                "image": f"/workout-images/{cardio['Image']}",
+                "image": f"/workout-images/cardio/{cardio['Image']}",
                 "duration": "30 min",
                 "intensity": "Moderate",
                 "format": "Steady-state",
@@ -395,6 +471,7 @@ IMPORTANT: EVERY value MUST be in QUOTES. No bare numbers."""
             }]
             
             options.append(option)
+            logger.info(f"Created default cardio option {i+1}: {cardio['Title']}")
             
         return {
             "options": options,
@@ -419,42 +496,37 @@ IMPORTANT: EVERY value MUST be in QUOTES. No bare numbers."""
                 category_exercises = self.exercise_categories.get(category, [])
                 available_exercises = [ex for ex in category_exercises if "Title" in ex]
             
-            # Create two separate lists: one for home-friendly exercises and one for all exercises
-            home_friendly_exercises = []
+            # Create list of all exercises
             all_exercises = []
             
             for ex in available_exercises:
                 if "Title" in ex:
                     all_exercises.append(ex)
                     
-                    # Filter for bodyweight and dumbbell exercises based on title
-                    title = ex["Title"].lower()
-                    if any(term in title for term in ['push up', 'pull up', 'bodyweight', 'dumbbell', 'squat', 'lunge', 'plank']):
-                        home_friendly_exercises.append(ex)
-            
-            # Create exercise lists from both categories (limit to avoid token limits)
-            exercise_list = ", ".join([ex['Title'] for ex in all_exercises[:30]])
-            home_exercise_list = ", ".join([ex['Title'] for ex in home_friendly_exercises[:20]])
-            
-            # If we don't have enough home exercises, add some generic ones
-            if len(home_friendly_exercises) < 8:
-                generic_home_exercises = [
-                    "Push Ups", "Pull Ups", "Bodyweight Squats", "Lunges", 
-                    "Dumbbell Curls", "Dumbbell Shoulder Press", "Planks", "Burpees"
-                ]
-                home_exercise_list += ", " + ", ".join(generic_home_exercises)
+            # Create exercise list from both categories (limit to avoid token limits)
+            exercise_list = ", ".join([ex['Title'] for ex in all_exercises[:40]])
             
             # Create a prompt that explicitly emphasizes string formatting for all values
-            prompt = f"""Create EXACTLY 3 {category} workout options for a {data.age}yo {data.gender}, {data.height}cm, {data.weight}kg, {data.fitnessLevel} level, goal: {data.goal}.
+            prompt = f"""Create EXACTLY 3 different {category} workout options for a {data.age}yo {data.gender}, {data.height}cm, {data.weight}kg, {data.fitnessLevel} level, goal: {data.goal}.
 
 INSTRUCTIONS:
-1. OPTION 1 and OPTION 3: Use any exercises from this list: {exercise_list}
-2. OPTION 2: Must be HOME-FRIENDLY using only: {home_exercise_list}
-3. Each option should have 4 different exercises
-4. Target different muscles within {category}
-5. Include sets and reps appropriate for {data.fitnessLevel} level
+1. OPTION 1: Create a challenging workout with EXACTLY 4 different exercises from this list: {exercise_list}
+   - This should be the most intense option
 
-Return ONLY in this exact JSON format (EVERYTHING in QUOTES, including numbers):
+2. OPTION 2: Create a moderate workout with EXACTLY 5 different exercises from this list: {exercise_list}
+   - This should be slightly less intense than Option 1
+   - Include more exercises but with lower intensity
+
+3. OPTION 3: Create a HOME-FRIENDLY workout with EXACTLY 4 different exercises from this list: {exercise_list}
+   - Select ONLY bodyweight exercises or exercises that can be done with dumbbells
+   - No gym machines or specialized equipment should be included
+
+For each exercise, be creative with sets and reps:
+- You can use any format: single numbers (e.g. "10"), ranges (e.g. "8-12"), or time-based (e.g. "30s")
+- Adjust sets and reps based on exercise difficulty and {data.fitnessLevel} level
+- Target different muscles within {category} for a balanced workout
+
+Return ONLY in this exact JSON format:
 {{
   "options": [
     [
@@ -464,22 +536,23 @@ Return ONLY in this exact JSON format (EVERYTHING in QUOTES, including numbers):
       {{ "workout": "Exercise 4", "sets": "3", "reps": "12" }}
     ],
     [
-      {{ "workout": "Home Exercise 1", "sets": "3", "reps": "12" }},
-      {{ "workout": "Home Exercise 2", "sets": "4", "reps": "8" }},
-      {{ "workout": "Home Exercise 3", "sets": "3", "reps": "30s" }},
-      {{ "workout": "Home Exercise 4", "sets": "3", "reps": "10" }}
+      {{ "workout": "Exercise 1", "sets": "3", "reps": "12" }},
+      {{ "workout": "Exercise 2", "sets": "3", "reps": "10" }},
+      {{ "workout": "Exercise 3", "sets": "3", "reps": "15" }},
+      {{ "workout": "Exercise 4", "sets": "2", "reps": "30s" }},
+      {{ "workout": "Exercise 5", "sets": "3", "reps": "10" }}
     ],
     [
-      {{ "workout": "Exercise 5", "sets": "3", "reps": "10-12" }},
-      {{ "workout": "Exercise 6", "sets": "3", "reps": "12" }},
-      {{ "workout": "Exercise 7", "sets": "4", "reps": "8" }},
-      {{ "workout": "Exercise 8", "sets": "3", "reps": "10" }}
+      {{ "workout": "Home Exercise 1", "sets": "3", "reps": "10-12" }},
+      {{ "workout": "Home Exercise 2", "sets": "4", "reps": "8" }},
+      {{ "workout": "Home Exercise 3", "sets": "3", "reps": "12" }},
+      {{ "workout": "Home Exercise 4", "sets": "3", "reps": "15" }}
     ]
   ]
 }}
-IMPORTANT: PUT ALL VALUES IN QUOTES, INCLUDING NUMBERS. Format exactly as shown."""
+IMPORTANT: Make sure to put ALL values in quotes and format exactly as shown above."""
             
-            print("Requesting strength workout from LLM...")
+            logger.info("Requesting strength workout from LLM...")
             
             # Use ollama with very specific system instruction about JSON format
             response = ollama.chat(
@@ -497,31 +570,44 @@ IMPORTANT: PUT ALL VALUES IN QUOTES, INCLUDING NUMBERS. Format exactly as shown.
             # Extract the content
             content = response['message']['content'].strip()
             
+            # Log first 200 characters of response for debugging
+            logger.info(f"LLM response (truncated): {content[:200]}...")
+            
             # Try to parse with our safe parsing method
             workout_data = self._parse_safe(content)
             options = workout_data.get("options", [])
             
             if not options:
-                print("No valid workout options received from LLM, generating backup options")
-                return self._create_default_strength_options(category, home_friendly_exercises, all_exercises)
+                logger.error("No valid workout options received from LLM, generating backup options")
+                return self._create_default_strength_options(category, all_exercises)
+            
+            # Verify exercise counts in options
+            if len(options) != 3:
+                logger.warning(f"Expected 3 options, but received {len(options)}")
             
             # Process the options to add images and ensure proper formatting
             processed_options = []
             
             for option_index, option in enumerate(options):
                 if not option:  # Skip empty options
+                    logger.warning(f"Empty option found at index {option_index}")
                     continue
                 
                 processed_exercises = []
                 exercise_names = set()  # Track exercise names to avoid duplicates
+                expected_count = 5 if option_index == 1 else 4  # Option 2 should have 5 exercises
+                
+                logger.info(f"Processing option {option_index+1} with {len(option)} exercises (expected {expected_count})")
                 
                 for exercise in option:
                     if "workout" not in exercise:
+                        logger.warning(f"Missing 'workout' field in exercise: {exercise}")
                         continue
                         
                     # Skip duplicates within this option
                     exercise_name = exercise["workout"]
                     if exercise_name.lower() in exercise_names:
+                        logger.info(f"Skipping duplicate exercise: {exercise_name}")
                         continue
                     
                     # Track this exercise name
@@ -543,48 +629,80 @@ IMPORTANT: PUT ALL VALUES IN QUOTES, INCLUDING NUMBERS. Format exactly as shown.
                 
                 processed_options.append(processed_exercises)
             
-            # Ensure we have enough exercises in each option
+            # Ensure we have the right number of exercises in each option
             for i, option in enumerate(processed_options):
-                if len(option) < 4:
-                    print(f"Option {i+1} needs more exercises (has {len(option)})")
+                expected_count = 5 if i == 1 else 4  # Option 2 should have 5 exercises
+                
+                if len(option) != expected_count:
+                    logger.warning(f"Option {i+1} has {len(option)} exercises but should have {expected_count}")
                     
                     # Select appropriate exercise pool
-                    exercise_pool = home_friendly_exercises if i == 1 else all_exercises
+                    # For option 3 (index 2), filter for home-friendly exercises
+                    if i == 2:  # Home-friendly option
+                        # Filter for exercises that can be done at home
+                        available_pool = [ex for ex in all_exercises 
+                                         if any(term in ex["Title"].lower() 
+                                               for term in ['push up', 'pull up', 'bodyweight', 
+                                                           'dumbbell', 'squat', 'lunge', 'plank'])]
+                        if not available_pool:  # Fallback if no home exercises found
+                            available_pool = all_exercises
+                    else:
+                        available_pool = all_exercises
                     
                     # Get current exercise names
                     current_names = [ex["workout"].lower() for ex in option]
                     
                     # Filter out exercises we already have
-                    available_pool = [ex for ex in exercise_pool if ex["Title"].lower() not in current_names]
+                    available_pool = [ex for ex in available_pool 
+                                     if ex["Title"].lower() not in current_names]
                     
-                    # Calculate how many more we need
-                    missing_count = 4 - len(option)
-                    
-                    if available_pool and missing_count > 0:
-                        # Add random exercises from the available pool
-                        random_exercises = random.sample(available_pool, min(missing_count, len(available_pool)))
+                    # Calculate how many more/fewer we need
+                    if len(option) < expected_count:  # Need to add exercises
+                        missing_count = expected_count - len(option)
+                        logger.info(f"Adding {missing_count} exercises to option {i+1}")
                         
-                        for ex in random_exercises:
-                            option.append({
-                                "workout": ex["Title"],
-                                "image": self.exercise_db.get_exercise_icon(ex["Title"]),
-                                "sets": "3",
-                                "reps": "10-12",
-                                "instruction": ""
-                            })
+                        if available_pool and missing_count > 0:
+                            # Add random exercises from the available pool
+                            random_exercises = random.sample(available_pool, 
+                                                           min(missing_count, len(available_pool)))
+                            
+                            for ex in random_exercises:
+                                option.append({
+                                    "workout": ex["Title"],
+                                    "image": self.exercise_db.get_exercise_icon(ex["Title"]),
+                                    "sets": "3",
+                                    "reps": "10-12",
+                                    "instruction": ""
+                                })
+                    elif len(option) > expected_count:  # Need to remove exercises
+                        # Remove excess exercises
+                        excess = len(option) - expected_count
+                        logger.info(f"Removing {excess} exercises from option {i+1}")
+                        option[:] = option[:expected_count]
             
             # Make sure we have 3 options
             while len(processed_options) < 3:
                 option_index = len(processed_options)
-                print(f"Creating new option {option_index+1}")
+                logger.warning(f"Creating new option {option_index+1} to ensure 3 options")
                 
-                # Select appropriate exercise pool
-                exercise_pool = home_friendly_exercises if option_index == 1 else all_exercises
+                # For the home option
+                if option_index == 2:  # Home-friendly option
+                    # Filter for exercises that can be done at home
+                    exercise_pool = [ex for ex in all_exercises 
+                                    if any(term in ex["Title"].lower() 
+                                          for term in ['push up', 'pull up', 'bodyweight', 
+                                                      'dumbbell', 'squat', 'lunge', 'plank'])]
+                    if not exercise_pool:  # Fallback if no home exercises found
+                        exercise_pool = all_exercises
+                else:
+                    exercise_pool = all_exercises
                 
                 new_option = []
-                if exercise_pool and len(exercise_pool) >= 4:
-                    # Get 4 random exercises for this option
-                    random_exercises = random.sample(exercise_pool, min(4, len(exercise_pool)))
+                expected_count = 5 if option_index == 1 else 4
+                
+                if exercise_pool and len(exercise_pool) >= expected_count:
+                    # Get random exercises for this option
+                    random_exercises = random.sample(exercise_pool, min(expected_count, len(exercise_pool)))
                     
                     for ex in random_exercises:
                         new_option.append({
@@ -597,30 +715,45 @@ IMPORTANT: PUT ALL VALUES IN QUOTES, INCLUDING NUMBERS. Format exactly as shown.
                 
                 processed_options.append(new_option)
             
+            logger.info(f"Successfully generated {len(processed_options)} strength workout options")
             return {
                 "options": processed_options,
                 "category": category
             }
             
         except Exception as e:
-            print(f"Error in generate_strength_options: {str(e)}")
-            return self._create_default_strength_options(category, home_friendly_exercises, all_exercises)
+            logger.error(f"Error in generate_strength_options: {str(e)}", exc_info=True)
+            return self._create_default_strength_options(category, all_exercises)
 
-    def _create_default_strength_options(self, category: str, home_exercises: List[Dict], all_exercises: List[Dict]) -> dict:
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    def _create_default_strength_options(self, category: str, available_exercises=None) -> dict:
         """Create default strength options when LLM fails."""
+        logger.warning(f"Creating default strength options for {category} due to LLM failure")
         options = []
+        
+        if not available_exercises:
+            logger.warning("No available exercises provided for defaults, using empty list")
+            available_exercises = []
         
         # Create 3 different strength options
         for i in range(3):
             option = []
+            expected_count = 5 if i == 1 else 4  # Option 2 should have 5 exercises
             
-            # Select the appropriate pool based on option index
-            exercise_pool = home_exercises if i == 1 else all_exercises
+            # For the home option
+            if i == 2:  # Home-friendly option
+                # Filter for exercises that can be done at home
+                exercise_pool = [ex for ex in available_exercises 
+                                if any(term in ex["Title"].lower() 
+                                      for term in ['push up', 'pull up', 'bodyweight', 
+                                                  'dumbbell', 'squat', 'lunge', 'plank'])]
+                if not exercise_pool:  # Fallback if no home exercises found
+                    exercise_pool = available_exercises
+            else:
+                exercise_pool = available_exercises
             
-            if exercise_pool and len(exercise_pool) >= 4:
-                # Get 4 random exercises for this option
-                random_exercises = random.sample(exercise_pool, min(4, len(exercise_pool)))
+            if exercise_pool and len(exercise_pool) >= expected_count:
+                # Get random exercises for this option
+                random_exercises = random.sample(exercise_pool, min(expected_count, len(exercise_pool)))
                 
                 for ex in random_exercises:
                     option.append({
@@ -635,16 +768,28 @@ IMPORTANT: PUT ALL VALUES IN QUOTES, INCLUDING NUMBERS. Format exactly as shown.
                 generic_exercises = []
                 if category == "Upper Body":
                     generic_exercises = ["Push Ups", "Pull Ups", "Dumbbell Shoulder Press", "Dumbbell Curls"]
+                    if i == 1:  # Add one more for option 2
+                        generic_exercises.append("Tricep Dips")
                 elif category == "Lower Body":
                     generic_exercises = ["Bodyweight Squats", "Lunges", "Calf Raises", "Glute Bridges"]
+                    if i == 1:  # Add one more for option 2
+                        generic_exercises.append("Single Leg Deadlift")
                 elif category == "Push":
                     generic_exercises = ["Push Ups", "Bench Press", "Dumbbell Shoulder Press", "Tricep Dips"]
+                    if i == 1:  # Add one more for option 2
+                        generic_exercises.append("Incline Push Ups")
                 elif category == "Pull":
                     generic_exercises = ["Pull Ups", "Dumbbell Rows", "Lat Pulldowns", "Dumbbell Curls"]
+                    if i == 1:  # Add one more for option 2
+                        generic_exercises.append("Face Pulls")
                 elif category == "Legs":
                     generic_exercises = ["Bodyweight Squats", "Lunges", "Leg Press", "Leg Curls"]
+                    if i == 1:  # Add one more for option 2
+                        generic_exercises.append("Calf Raises")
                 else:  # Full Body
                     generic_exercises = ["Push Ups", "Pull Ups", "Bodyweight Squats", "Planks"]
+                    if i == 1:  # Add one more for option 2
+                        generic_exercises.append("Burpees")
                 
                 for ex_name in generic_exercises:
                     option.append({
@@ -656,6 +801,7 @@ IMPORTANT: PUT ALL VALUES IN QUOTES, INCLUDING NUMBERS. Format exactly as shown.
                     })
             
             options.append(option)
+            logger.info(f"Created default {category} option {i+1} with {len(option)} exercises")
             
         return {
             "options": options,
