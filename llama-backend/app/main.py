@@ -21,6 +21,7 @@ app.add_middleware(
 base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 workout_images_dir = os.path.join(base_dir, "data", "workout-images")
 icons_dir = os.path.join(workout_images_dir, "icons")
+cardio_images_dir = os.path.join(workout_images_dir, "cardio")
 
 @app.post("/generate_workout_options/")
 def generate_workout_options(data: WorkoutRequest):
@@ -29,7 +30,7 @@ def generate_workout_options(data: WorkoutRequest):
         engine = WorkoutEngine()
         
         try:
-            # Generate 3 workout variations in a single Llama model call
+            # Generate workout variations based on user goals and preferences
             result = engine.generate_workout_options(data, num_options=3)
             print(f"Generated workout options: {result}")
             return result
@@ -46,14 +47,25 @@ async def get_workout_image(image_name: str):
     try:
         # Convert URL-encoded spaces to hyphens
         formatted_name = image_name.replace("%20", "-")
+        
+        # Check in both the main images directory and cardio directory
         image_path = os.path.join(workout_images_dir, formatted_name)
+        cardio_path = os.path.join(cardio_images_dir, formatted_name)
         
         print(f"Attempting to serve image: {image_path}")
         
         if os.path.exists(image_path):
             return FileResponse(image_path)
+        elif os.path.exists(cardio_path):
+            return FileResponse(cardio_path)
         else:
             print(f"Image not found: {image_path}")
+            # Try to return a default image for cardio
+            if any(ext in formatted_name.lower() for ext in ['.jpg', '.png', '.webp', '.heic', '.avif']):
+                default_cardio = os.path.join(workout_images_dir, "cardio.webp")
+                if os.path.exists(default_cardio):
+                    return FileResponse(default_cardio)
+            
             raise HTTPException(status_code=404, detail="Image not found")
             
     except Exception as e:
@@ -73,6 +85,11 @@ async def get_icon_image(icon_name: str):
             return FileResponse(icon_path)
         else:
             print(f"Icon not found: {icon_path}")
+            # Try to serve a default icon if available
+            default_icon = os.path.join(icons_dir, "default-icon.png")
+            if os.path.exists(default_icon):
+                return FileResponse(default_icon)
+            
             raise HTTPException(status_code=404, detail="Icon not found")
             
     except Exception as e:
@@ -87,13 +104,8 @@ async def log_requests(request: Request, call_next):
     response = await call_next(request)
     return response
 
-# Verify directories exist
-if not os.path.exists(workout_images_dir):
-    print(f"Warning: Workout images directory does not exist at {workout_images_dir}")
-    os.makedirs(workout_images_dir, exist_ok=True)
-    print(f"Created workout images directory at {workout_images_dir}")
-
-if not os.path.exists(icons_dir):
-    print(f"Warning: Icons directory does not exist at {icons_dir}")
-    os.makedirs(icons_dir, exist_ok=True)
-    print(f"Created icons directory at {icons_dir}")
+# Verify directories exist and create them if necessary
+for directory in [workout_images_dir, icons_dir, cardio_images_dir]:
+    if not os.path.exists(directory):
+        print(f"Creating directory: {directory}")
+        os.makedirs(directory, exist_ok=True)
