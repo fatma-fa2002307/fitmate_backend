@@ -1,9 +1,6 @@
-// lib/services/api_service.dart
-
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-
 
 class ApiService {
   // Your permanent Cloudflare Tunnel URL
@@ -108,11 +105,44 @@ class ApiService {
 
   // Helper method to get the full URL for workout images
   static String getWorkoutImageUrl(String imagePath) {
-    return '$baseUrl/workout-images/$imagePath';
+    // Handle both absolute and relative paths
+    if (imagePath.startsWith('http')) {
+      return imagePath;
+    }
+    // Ensure path starts with a slash
+    if (!imagePath.startsWith('/')) {
+      imagePath = '/$imagePath';
+    }
+    return '$baseUrl$imagePath';
+  }
+
+  // Helper method specifically for cardio images
+  static String getCardioImageUrl(String filename) {
+    // Ensure we're using the correct path format for cardio images
+    return '$baseUrl/workout-images/cardio/$filename';
   }
 
   // Helper method to get the full URL for workout icons
   static String getWorkoutIconUrl(String iconPath) {
-    return '$baseUrl/workout-images/icons/$iconPath';
+    // Handle both absolute and relative paths
+    if (iconPath.startsWith('http')) {
+      return iconPath;
+    }
+    // Ensure path starts with a slash
+    if (!iconPath.startsWith('/')) {
+      iconPath = '/$iconPath';
+    }
+    return '$baseUrl$iconPath';
+  }
+  
+  // Check if an image exists on the server
+  static Future<bool> checkImageExists(String url) async {
+    try {
+      final response = await http.head(Uri.parse(url));
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Error checking image: $e');
+      return false;
+    }
   }
 }

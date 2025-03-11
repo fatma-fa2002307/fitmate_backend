@@ -23,6 +23,12 @@ workout_images_dir = os.path.join(base_dir, "data", "workout-images")
 icons_dir = os.path.join(workout_images_dir, "icons")
 cardio_images_dir = os.path.join(workout_images_dir, "cardio")
 
+# Print directories for debugging
+print(f"Base dir: {base_dir}")
+print(f"Workout images dir: {workout_images_dir}")
+print(f"Cardio images dir: {cardio_images_dir}")
+print(f"Icons dir: {icons_dir}")
+
 @app.post("/generate_workout_options/")
 def generate_workout_options(data: WorkoutRequest):
     try:
@@ -42,31 +48,59 @@ def generate_workout_options(data: WorkoutRequest):
         print(f"Error in endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/workout-images/cardio/{image_name}")
+async def get_cardio_image(image_name: str):
+    try:
+        # Convert URL-encoded spaces to hyphens for consistency
+        formatted_name = image_name.replace("%20", "-")
+        
+        # Construct full path to the cardio image
+        image_path = os.path.join(cardio_images_dir, formatted_name)
+        
+        print(f"Attempting to serve cardio image: {image_path}")
+        print(f"Image exists: {os.path.exists(image_path)}")
+        
+        if os.path.exists(image_path):
+            return FileResponse(image_path)
+        else:
+            # Try to return a default image
+            default_cardio = os.path.join(cardio_images_dir, "cardio.webp")
+            if os.path.exists(default_cardio):
+                print(f"Using default cardio image: {default_cardio}")
+                return FileResponse(default_cardio)
+            
+            # List available cardio images for debug
+            files = os.listdir(cardio_images_dir)
+            print(f"Available cardio images: {files}")
+            
+            raise HTTPException(status_code=404, detail=f"Cardio image not found: {formatted_name}")
+            
+    except Exception as e:
+        print(f"Error serving cardio image: {str(e)}")
+        raise HTTPException(status_code=404, detail=str(e))
+
 @app.get("/workout-images/{image_name}")
 async def get_workout_image(image_name: str):
     try:
         # Convert URL-encoded spaces to hyphens
         formatted_name = image_name.replace("%20", "-")
         
-        # Check in both the main images directory and cardio directory
+        # First try in the main images directory
         image_path = os.path.join(workout_images_dir, formatted_name)
-        cardio_path = os.path.join(cardio_images_dir, formatted_name)
         
-        print(f"Attempting to serve image: {image_path}")
+        print(f"Attempting to serve workout image: {image_path}")
         
         if os.path.exists(image_path):
             return FileResponse(image_path)
-        elif os.path.exists(cardio_path):
-            return FileResponse(cardio_path)
         else:
             print(f"Image not found: {image_path}")
-            # Try to return a default image for cardio
-            if any(ext in formatted_name.lower() for ext in ['.jpg', '.png', '.webp', '.heic', '.avif']):
-                default_cardio = os.path.join(workout_images_dir, "cardio.webp")
-                if os.path.exists(default_cardio):
-                    return FileResponse(default_cardio)
             
-            raise HTTPException(status_code=404, detail="Image not found")
+            # Try to return a default image
+            default_image = os.path.join(workout_images_dir, "default-icon.png")
+            if os.path.exists(default_image):
+                return FileResponse(default_image)
+            
+            raise HTTPException(status_code=404, detail=f"Image not found: {formatted_name}")
             
     except Exception as e:
         print(f"Error serving workout image: {str(e)}")
@@ -90,7 +124,7 @@ async def get_icon_image(icon_name: str):
             if os.path.exists(default_icon):
                 return FileResponse(default_icon)
             
-            raise HTTPException(status_code=404, detail="Icon not found")
+            raise HTTPException(status_code=404, detail=f"Icon not found: {formatted_name}")
             
     except Exception as e:
         print(f"Error serving icon: {str(e)}")
@@ -109,3 +143,11 @@ for directory in [workout_images_dir, icons_dir, cardio_images_dir]:
     if not os.path.exists(directory):
         print(f"Creating directory: {directory}")
         os.makedirs(directory, exist_ok=True)
+    else:
+        print(f"Directory exists: {directory}")
+        # List files in directory for debug
+        try:
+            files = os.listdir(directory)
+            print(f"Files in {directory}: {files[:10]}...")
+        except Exception as e:
+            print(f"Error listing directory: {e}")

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fitmate/services/api_service.dart';
 
 class CardioWorkoutCard extends StatelessWidget {
@@ -30,22 +29,38 @@ class CardioWorkoutCard extends StatelessWidget {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 20),
-                CachedNetworkImage(
-                  imageUrl: workout["image"],
+                // Direct Image without caching
+                Image.network(
+                  ApiService.baseUrl + workout["image"],
                   height: 150,
                   width: double.infinity,
                   fit: BoxFit.cover,
-                  placeholder: (context, url) => Container(
-                    color: Colors.grey[300],
-                    child: const Center(
-                      child: CircularProgressIndicator(
-                        color: Color(0xFFD2EB50),
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Container(
+                      height: 150,
+                      color: Colors.grey[300],
+                      child: const Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFFD2EB50),
+                        ),
                       ),
-                    ),
-                  ),
-                  errorWidget: (context, url, error) {
-                    print("Error loading cardio image: $error");
-                    return Icon(Icons.directions_run, size: 80, color: Colors.grey[700]);
+                    );
+                  },
+                  errorBuilder: (context, error, stackTrace) {
+                    print("Error loading cardio image: ${ApiService.baseUrl}${workout["image"]} - $error");
+                    return Container(
+                      height: 150,
+                      color: Colors.grey[200],
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.directions_run, size: 60, color: Colors.grey[700]),
+                          Text('Image not available', style: TextStyle(color: Colors.grey[700])),
+                          Text('Path: ${workout["image"]}', style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+                        ],
+                      ),
+                    );
                   },
                 ),
                 const SizedBox(height: 24),
@@ -128,6 +143,10 @@ class CardioWorkoutCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Debug logging
+    print("DEBUG: Cardio workout image path: ${workout["image"]}");
+    print("DEBUG: Full URL: ${ApiService.baseUrl}${workout["image"]}");
+    
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       elevation: 3,
@@ -144,9 +163,9 @@ class CardioWorkoutCard extends StatelessWidget {
             // Card header with workout name
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFD2EB50),
-                borderRadius: const BorderRadius.only(
+              decoration: const BoxDecoration(
+                color: Color(0xFFD2EB50),
+                borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(16),
                   topRight: Radius.circular(16),
                 ),
@@ -171,28 +190,31 @@ class CardioWorkoutCard extends StatelessWidget {
             // Card body with workout image and details
             Stack(
               children: [
-                // Cardio Image
+                // Cardio Image - Direct without caching
                 ClipRRect(
                   borderRadius: const BorderRadius.only(
                     bottomLeft: Radius.circular(16),
                     bottomRight: Radius.circular(16),
                   ),
-                  child: CachedNetworkImage(
-                    imageUrl: workout["image"],
+                  child: Image.network(
+                    ApiService.baseUrl + workout["image"],
                     height: 180,
                     width: double.infinity,
                     fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(
-                      color: Colors.grey[300],
-                      height: 180,
-                      child: const Center(
-                        child: CircularProgressIndicator(
-                          color: Color(0xFFD2EB50),
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Container(
+                        height: 180,
+                        color: Colors.grey[300],
+                        child: const Center(
+                          child: CircularProgressIndicator(
+                            color: Color(0xFFD2EB50),
+                          ),
                         ),
-                      ),
-                    ),
-                    errorWidget: (context, url, error) {
-                      print("Error loading cardio image: $error");
+                      );
+                    },
+                    errorBuilder: (context, error, stackTrace) {
+                      print("Card Error loading cardio image: ${ApiService.baseUrl}${workout["image"]} - $error");
                       return Container(
                         height: 180,
                         color: Colors.grey[200],

@@ -256,59 +256,60 @@ class WorkoutEngine:
             cardio_examples = ", ".join([ex["Title"] for ex in CARDIO_EXERCISES])
             
             # Create a prompt that explicitly emphasizes string formatting for all values
-            prompt = f"""Create EXACTLY 3 different cardio workout options for a {data.age}yo {data.gender}, {data.height}cm, {data.weight}kg, {data.fitnessLevel} level, goal: {data.goal}.
+            prompt = f"""You are a professional fitness coach. Create EXACTLY 3 different doable cardio workout options for a {data.age}yo {data.gender}, {data.height}cm, {data.weight}kg, {data.fitnessLevel} level, goal: {data.goal}.
 
-INSTRUCTIONS:
-1. You can create ANY cardio exercise - not limited to this list: {cardio_examples}
-2. Be creative and specific with cardio workout recommendations
-3. Each option should have just one cardio exercise with detailed parameters
-4. Tailor the intensity, duration, and format to match the user's fitness level and goals
-5. Option 1 must use no equipment, Option 2 can use basic equipment, and Option 3 can be anything.
+    INSTRUCTIONS:
+    1. You can create ANY cardio exercise - not limited to this list: {cardio_examples}
+    2. Be creative and specific with cardio workout recommendations
+    3. Each option should have just one cardio exercise with detailed parameters
+    4. Tailor the intensity, duration, and format to match the user's fitness level and goals
+    5. Option 1 must use no equipment, Option 2 can use basic equipment, and Option 3 can be anything.
+    6. choose realistic cardio exercises that can be sustained for longer durations like running, bicycle rides, or swimming, jumping rope.
 
-For each cardio workout, provide:
-- Exercise name
-- Duration (like "30 min")
-- Intensity (like "Moderate" or "High-intensity intervals")
-- Format (like "30 sec work/30 sec rest" or "Steady-state")
-- Calories burned estimate (like "250-300")
-- A brief description of how to perform the workout
+    For each cardio workout, provide:
+    - Exercise name
+    - Duration (like "30 min")
+    - Intensity (like "Moderate" or "High-intensity intervals")
+    - Format (like "30 sec work/30 sec rest" or "Steady-state")
+    - Calories burned estimate (like "250-300")
+    - A brief description of how to perform the workout
 
-Return ONLY in this exact JSON format (EVERYTHING in QUOTES, including numbers):
-{{
-  "options": [
-    [
-      {{
-        "workout": "Cardio Exercise 1", 
-        "duration": "30 min", 
-        "intensity": "Moderate", 
-        "format": "Steady-state", 
-        "calories": "250-300", 
-        "description": "Brief description with specific instructions"
-      }}
-    ],
-    [
-      {{
-        "workout": "Cardio Exercise 2", 
-        "duration": "25 min", 
-        "intensity": "High", 
-        "format": "Intervals (30s/30s)", 
-        "calories": "300-350", 
-        "description": "Brief description with specific instructions"
-      }}
-    ],
-    [
-      {{
-        "workout": "Cardio Exercise 3", 
-        "duration": "45 min", 
-        "intensity": "Low-Moderate", 
-        "format": "Steady-state", 
-        "calories": "350-400", 
-        "description": "Brief description with specific instructions"
-      }}
+    Return ONLY in this exact JSON format (EVERYTHING in QUOTES, including numbers):
+    {{
+    "options": [
+        [
+        {{
+            "workout": "Cardio Exercise 1", 
+            "duration": "30 min", 
+            "intensity": "Moderate", 
+            "format": "Steady-state", 
+            "calories": "250-300", 
+            "description": "Brief description with specific instructions"
+        }}
+        ],
+        [
+        {{
+            "workout": "Cardio Exercise 2", 
+            "duration": "25 min", 
+            "intensity": "High", 
+            "format": "Intervals (30s/30s)", 
+            "calories": "300-350", 
+            "description": "Brief description with specific instructions"
+        }}
+        ],
+        [
+        {{
+            "workout": "Cardio Exercise 3", 
+            "duration": "45 min", 
+            "intensity": "Low-Moderate", 
+            "format": "Steady-state", 
+            "calories": "350-400", 
+            "description": "Brief description with specific instructions"
+        }}
+        ]
     ]
-  ]
-}}
-IMPORTANT: EVERY value MUST be in QUOTES. No bare numbers."""
+    }}
+    IMPORTANT: EVERY value MUST be in QUOTES. No bare numbers."""
             
             logger.info("Requesting cardio workout from LLM...")
             
@@ -322,7 +323,7 @@ IMPORTANT: EVERY value MUST be in QUOTES. No bare numbers."""
                     },
                     {"role": "user", "content": prompt}
                 ],
-                options={"temperature": 0.1}  # Very low temperature for consistent formatting
+                options={"temperature": 0.5}  # Very low temperature for consistent formatting
             )
             
             # Extract the content
@@ -376,17 +377,18 @@ IMPORTANT: EVERY value MUST be in QUOTES. No bare numbers."""
                 
                 # Use the matching image if found, otherwise use the generic cardio image
                 if matching_cardio:
+                    # FIXED: Use proper path format that matches the route in main.py
                     image_path = f"/workout-images/cardio/{matching_cardio['Image']}"
                     logger.info(f"Using image for '{matching_cardio['Title']}' for workout: {workout_name}")
                 else:
-                    # Use a generic cardio image - make sure this path exists in your system
+                    # FIXED: Use proper path format for generic cardio image
                     image_path = "/workout-images/cardio/cardio.webp"  
                     logger.info(f"No matching image found for: {workout_name}, using generic cardio image")
                 
-                # Create properly formatted exercise
+                # Create properly formatted exercise with the correct image path
                 formatted_exercise = {
                     "workout": workout_name,
-                    "image": image_path,
+                    "image": image_path,  # This is the properly formatted path
                     "duration": cardio_exercise.get("duration", "30 min"),
                     "intensity": cardio_exercise.get("intensity", "Moderate"),
                     "format": cardio_exercise.get("format", "Steady-state"),
@@ -396,7 +398,7 @@ IMPORTANT: EVERY value MUST be in QUOTES. No bare numbers."""
                 }
                 
                 processed_options.append([formatted_exercise])
-                logger.info(f"Processed cardio workout: {workout_name}")
+                logger.info(f"Processed cardio workout: {workout_name} with image: {image_path}")
             
             # If we don't have enough options, fill in with defaults
             if len(processed_options) < 3:
@@ -404,7 +406,7 @@ IMPORTANT: EVERY value MUST be in QUOTES. No bare numbers."""
                 
                 # Find unused cardio exercises
                 available_cardio = [c for c in CARDIO_EXERCISES 
-                                   if not any(c["Title"].lower() in used for used in used_cardio_names)]
+                                if not any(c["Title"].lower() in used for used in used_cardio_names)]
                 
                 # If we've used all exercises, reset the list
                 if not available_cardio:
@@ -415,10 +417,13 @@ IMPORTANT: EVERY value MUST be in QUOTES. No bare numbers."""
                     cardio = random.choice(available_cardio)
                     available_cardio.remove(cardio)
                     
+                    # FIXED: Use proper path format for images
+                    image_path = f"/workout-images/cardio/{cardio['Image']}"
+                    
                     # Create a default option for this cardio type
                     default_option = [{
                         "workout": cardio["Title"],
-                        "image": f"/workout-images/cardio/{cardio['Image']}",
+                        "image": image_path,
                         "duration": "30 min",
                         "intensity": "Moderate",
                         "format": "Steady-state",
@@ -428,7 +433,7 @@ IMPORTANT: EVERY value MUST be in QUOTES. No bare numbers."""
                     }]
                     
                     processed_options.append(default_option)
-                    logger.info(f"Added default cardio workout: {cardio['Title']}")
+                    logger.info(f"Added default cardio workout: {cardio['Title']} with image: {image_path}")
             
             logger.info(f"Successfully generated {len(processed_options)} cardio workout options")
             return {
@@ -458,10 +463,13 @@ IMPORTANT: EVERY value MUST be in QUOTES. No bare numbers."""
             used_indices.add(index)
             cardio = CARDIO_EXERCISES[index]
             
-            # Create a default option
+            # FIXED: Use proper path format for images
+            image_path = f"/workout-images/cardio/{cardio['Image']}"
+            
+            # Create a default option with correct image path
             option = [{
                 "workout": cardio["Title"],
-                "image": f"/workout-images/cardio/{cardio['Image']}",
+                "image": image_path,  # Correctly formatted path
                 "duration": "30 min",
                 "intensity": "Moderate",
                 "format": "Steady-state",
@@ -471,7 +479,7 @@ IMPORTANT: EVERY value MUST be in QUOTES. No bare numbers."""
             }]
             
             options.append(option)
-            logger.info(f"Created default cardio option {i+1}: {cardio['Title']}")
+            logger.info(f"Created default cardio option {i+1}: {cardio['Title']} with image: {image_path}")
             
         return {
             "options": options,
@@ -564,7 +572,7 @@ IMPORTANT: Make sure to put ALL values in quotes and format exactly as shown abo
                     },
                     {"role": "user", "content": prompt}
                 ],
-                options={"temperature": 0.1}  # Very low temperature for consistent formatting
+                options={"temperature": 0.5}  # Very low temperature for consistent formatting
             )
             
             # Extract the content

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fitmate/screens/workout_screens/workout_completion_screen.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:fitmate/services/api_service.dart';
 
 class CardioActiveWorkoutScreen extends StatefulWidget {
   final Map<String, dynamic> workout;
@@ -32,6 +32,11 @@ class _CardioActiveWorkoutScreenState extends State<CardioActiveWorkoutScreen> {
     super.initState();
     _parseDuration();
     _startTimer();
+    
+    // Debug logging
+    print("Cardio workout details: ${widget.workout}");
+    print("Image path: ${widget.workout['image']}");
+    print("Full image URL: ${ApiService.baseUrl}${widget.workout['image']}");
   }
 
   void _parseDuration() {
@@ -120,7 +125,7 @@ class _CardioActiveWorkoutScreenState extends State<CardioActiveWorkoutScreen> {
               ),
             ),
             
-            // Cardio Exercise Image
+            // Cardio Exercise Image - Direct loading, no caching
             Expanded(
               flex: 3,
               child: Container(
@@ -132,23 +137,41 @@ class _CardioActiveWorkoutScreenState extends State<CardioActiveWorkoutScreen> {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(16),
-                  child: CachedNetworkImage(
-                    imageUrl: widget.workout['image'],
+                  child: Image.network(
+                    ApiService.baseUrl + widget.workout['image'],
                     fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(
-                      color: Colors.grey[800],
-                      child: const Center(
-                        child: CircularProgressIndicator(
-                          color: Color(0xFFD2EB50),
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Container(
+                        color: Colors.grey[800],
+                        child: const Center(
+                          child: CircularProgressIndicator(
+                            color: Color(0xFFD2EB50),
+                          ),
                         ),
-                      ),
-                    ),
-                    errorWidget: (context, url, error) {
+                      );
+                    },
+                    errorBuilder: (context, error, stackTrace) {
+                      print("Error loading cardio image: ${ApiService.baseUrl}${widget.workout['image']} - $error");
                       return Center(
-                        child: Icon(
-                          Icons.directions_run,
-                          size: 80,
-                          color: Colors.grey[600],
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.directions_run,
+                              size: 80,
+                              color: Colors.grey[600],
+                            ),
+                            Text(
+                              'Image not available',
+                              style: TextStyle(color: Colors.grey[500]),
+                            ),
+                            if (widget.workout['image'] != null)
+                              Text(
+                                'Path: ${widget.workout['image']}',
+                                style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+                              ),
+                          ],
                         ),
                       );
                     },
