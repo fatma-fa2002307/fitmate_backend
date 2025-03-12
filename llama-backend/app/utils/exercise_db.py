@@ -52,20 +52,20 @@ class ExerciseDatabase:
             if cardio_name.lower() in exercise_name.lower():
                 # Return the appropriate image filename based on cardio exercise name
                 if "treadmill" in exercise_name.lower():
-                    return "/workout-images/cardio/treadmill.jpg"
+                    return "/workout-images/cardio/treadmill.png"
                 elif "outdoor running" in exercise_name.lower() or "running" in exercise_name.lower():
-                    return "/workout-images/cardio/running.heic"
+                    return "/workout-images/cardio/running.jpg"
                 elif "walking" in exercise_name.lower():
-                    return "/workout-images/cardio/walking.heic"
+                    return "/workout-images/cardio/walking.jpg"
                 elif "cycling" in exercise_name.lower() or "bike" in exercise_name.lower():
                     if "exercise bike" in exercise_name.lower():
-                        return "/workout-images/cardio/exercise-bike.jpg"
+                        return "/workout-images/cardio/exercise-bike.png"
                     else:
                         return "/workout-images/cardio/bicycle.png"
                 elif "jump rope" in exercise_name.lower():
-                    return "/workout-images/cardio/jumping-rope.jpg"
+                    return "/workout-images/cardio/jumping-rope.png"
                 elif "swimming" in exercise_name.lower():
-                    return "/workout-images/cardio/swimming.avif"
+                    return "/workout-images/cardio/swimming.png"
                 elif "hiking" in exercise_name.lower():
                     return "/workout-images/cardio/hiking.jpg"
                 # Default cardio image

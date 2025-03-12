@@ -383,6 +383,7 @@ class _CardioActiveWorkoutScreenState extends State<CardioActiveWorkoutScreen> {
               ),
             ),
             const SizedBox(height: 4),
+            
             Text(
               value,
               style: GoogleFonts.dmSans(

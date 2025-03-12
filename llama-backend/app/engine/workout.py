@@ -16,13 +16,13 @@ logging.basicConfig(level=logging.INFO,
 logger = logging.getLogger("workout_engine")
 
 CARDIO_EXERCISES = [
-    {"Title": "Treadmill Running", "Image": "treadmill.jpg", "Icon": "cardio.webp"},
-    {"Title": "Outdoor Running", "Image": "running.heic", "Icon": "cardio.webp"},
-    {"Title": "Walking", "Image": "walking.heic", "Icon": "cardio.webp"},
+    {"Title": "Treadmill Running", "Image": "treadmill.png", "Icon": "cardio.webp"},
+    {"Title": "Outdoor Running", "Image": "running.jpg", "Icon": "cardio.webp"},
+    {"Title": "Walking", "Image": "walking.jpg", "Icon": "cardio.webp"},
     {"Title": "Cycling", "Image": "bicycle.png", "Icon": "cardio.webp"},
-    {"Title": "Exercise Bike", "Image": "exercise-bike.jpg", "Icon": "cardio.webp"},
-    {"Title": "Jump Rope", "Image": "jumping-rope.jpg", "Icon": "cardio.webp"},
-    {"Title": "Swimming", "Image": "swimming.avif", "Icon": "cardio.webp"},
+    {"Title": "Exercise Bike", "Image": "exercise-bike.png", "Icon": "cardio.webp"},
+    {"Title": "Jump Rope", "Image": "jumping-rope.png", "Icon": "cardio.webp"},
+    {"Title": "Swimming", "Image": "swimming.png", "Icon": "cardio.webp"},
     {"Title": "Hiking", "Image": "hiking.jpg", "Icon": "cardio.webp"},
 ]
 
@@ -269,12 +269,12 @@ class WorkoutEngine:
     For each cardio workout, provide:
     - Exercise name
     - Duration (like "30 min")
-    - Intensity (like "Moderate" or "High-intensity intervals")
+    - Intensity (like "Moderate" or "High-intensity")
     - Format (like "30 sec work/30 sec rest" or "Steady-state")
     - Calories burned estimate (like "250-300")
     - A brief description of how to perform the workout
 
-    Return ONLY in this exact JSON format (EVERYTHING in QUOTES, including numbers):
+    Return ONLY in this exact JSON format (EVERYTHING in QUOTES, including numbers). dont add any more information or markdown:
     {{
     "options": [
         [
