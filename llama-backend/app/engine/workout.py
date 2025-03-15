@@ -16,14 +16,14 @@ logging.basicConfig(level=logging.INFO,
 logger = logging.getLogger("workout_engine")
 
 CARDIO_EXERCISES = [
-    {"Title": "Treadmill Running", "Image": "treadmill.png", "Icon": "cardio.webp"},
-    {"Title": "Outdoor Running", "Image": "running.jpg", "Icon": "cardio.webp"},
-    {"Title": "Walking", "Image": "walking.jpg", "Icon": "cardio.webp"},
-    {"Title": "Cycling", "Image": "bicycle.png", "Icon": "cardio.webp"},
-    {"Title": "Exercise Bike", "Image": "exercise-bike.png", "Icon": "cardio.webp"},
-    {"Title": "Jump Rope", "Image": "jumping-rope.png", "Icon": "cardio.webp"},
-    {"Title": "Swimming", "Image": "swimming.png", "Icon": "cardio.webp"},
-    {"Title": "Hiking", "Image": "hiking.jpg", "Icon": "cardio.webp"},
+    {"Title": "Treadmill Running", "Image": "treadmill.png", "Icon": "cardio.jpg"},
+    {"Title": "Outdoor Running", "Image": "running.jpg", "Icon": "cardio.jpg"},
+    {"Title": "Walking", "Image": "walking.jpg", "Icon": "cardio.jpg"},
+    {"Title": "Cycling", "Image": "bicycle.png", "Icon": "cardio.jpg"},
+    {"Title": "Exercise Bike", "Image": "exercise-bike.png", "Icon": "cardio.jpg"},
+    {"Title": "Jump Rope", "Image": "jumping-rope.png", "Icon": "cardio.jpg"},
+    {"Title": "Swimming", "Image": "swimming.jpg", "Icon": "cardio.jpg"},
+    {"Title": "Hiking", "Image": "hiking.jpg", "Icon": "cardio.jpg"},
 ]
 
 class WorkoutEngine:
@@ -250,31 +250,28 @@ class WorkoutEngine:
                     return {"options": []}
 
     def _generate_cardio_options(self, data: WorkoutRequest, category: str) -> dict:
-        """Generate cardio workout options with appropriate parameters."""
+        """Generate cardio workout options with appropriate parameters, allowing for maximum creativity."""
         try:
-            # Create a list of known cardio exercises for reference
             cardio_examples = ", ".join([ex["Title"] for ex in CARDIO_EXERCISES])
-            
-            # Create a prompt that explicitly emphasizes string formatting for all values
-            prompt = f"""You are a professional fitness coach. Create EXACTLY 3 different doable cardio workout options for a {data.age}yo {data.gender}, {data.height}cm, {data.weight}kg, {data.fitnessLevel} level, goal: {data.goal}.
+            #create prompt 
+            prompt = f"""You are a professional fitness coach. Create EXACTLY 3 different creative cardio workout options for a {data.age}yo {data.gender}, {data.height}cm, {data.weight}kg, {data.fitnessLevel} level, goal: {data.goal}.
 
     INSTRUCTIONS:
     1. You can create ANY cardio exercise - not limited to this list: {cardio_examples}
-    2. Be creative and specific with cardio workout recommendations
-    3. Each option should have just one cardio exercise with detailed parameters
-    4. Tailor the intensity, duration, and format to match the user's fitness level and goals
-    5. Option 1 must use no equipment, Option 2 can use basic equipment, and Option 3 can be anything.
-    6. choose realistic cardio exercises that can be sustained for longer durations like running, bicycle rides, or swimming, jumping rope.
+    2. Option 1 must use no equipment, Option 2 can use basic equipment, and Option 3 can be anything innovative or challenging.
+    3. Each option should have one cardio exercise with detailed parameters.
+    4. Tailor the intensity, duration, and format to match the user's fitness level and goals.
+    5. choose realistic cardio exercises that can be sustained for longer durations like running, bicycle rides, or swimming, jumping rope.
 
     For each cardio workout, provide:
-    - Exercise name
+    - Exercise name (be specific and creative)
     - Duration (like "30 min")
-    - Intensity (like "Moderate" or "High-intensity")
+    - Intensity (like "Moderate" or "High-intensity" two words max.)
     - Format (like "30 sec work/30 sec rest" or "Steady-state")
     - Calories burned estimate (like "250-300")
     - A brief description of how to perform the workout
 
-    Return ONLY in this exact JSON format (EVERYTHING in QUOTES, including numbers). dont add any more information or markdown:
+    Return ONLY in this exact JSON format (EVERYTHING in QUOTES, including numbers). Don't add any more information or markdown:
     {{
     "options": [
         [
@@ -311,7 +308,7 @@ class WorkoutEngine:
     }}
     IMPORTANT: EVERY value MUST be in QUOTES. No bare numbers."""
             
-            logger.info("Requesting cardio workout from LLM...")
+            logger.info("Requesting creative cardio workout from LLM...")
             
             # Use ollama with very specific system instruction about JSON format
             response = ollama.chat(
@@ -319,11 +316,11 @@ class WorkoutEngine:
                 messages=[
                     {
                         "role": "system", 
-                        "content": "You are a professional fitness coach that returns only valid JSON. You must put ALL values in double quotes, including numbers. Format exactly as requested. Return ONLY the JSON with no explanation or markdown."
+                        "content": "You are a professional fitness coach that returns only valid JSON. You must put ALL values in double quotes, including numbers. Format exactly as requested. Return ONLY the JSON with no explanation or markdown. Be creative and suggest ANY cardio workout that would benefit the user, without restricting yourself to common options."
                     },
                     {"role": "user", "content": prompt}
                 ],
-                options={"temperature": 0.5}  # Very low temperature for consistent formatting
+                options={"temperature": 0.5}  #higher temp, more creativity
             )
             
             # Extract the content
@@ -366,24 +363,61 @@ class WorkoutEngine:
                 # Record this exercise type
                 used_cardio_names.add(workout_lower)
                 
-                # Find matching cardio image by looking for keywords in exercise name
-                matching_cardio = None
-                for cardio in CARDIO_EXERCISES:
-                    # Check if any keyword from the cardio title is in the workout name
-                    cardio_keywords = cardio["Title"].lower().split()
-                    if any(keyword in workout_lower for keyword in cardio_keywords):
-                        matching_cardio = cardio
-                        break
-                
-                # Use the matching image if found, otherwise use the generic cardio image
-                if matching_cardio:
-                    # FIXED: Use proper path format that matches the route in main.py
-                    image_path = f"/workout-images/cardio/{matching_cardio['Image']}"
-                    logger.info(f"Using image for '{matching_cardio['Title']}' for workout: {workout_name}")
+                # Find appropriate image based on workout type categories
+                # Water-based exercises
+                if any(term in workout_lower for term in ['swim', 'water', 'pool', 'aqua']):
+                    image_path = "/workout-images/cardio/swimming.jpg"
+                    logger.info(f"Using swimming image for water-based workout: {workout_name}")
+
+                # Running/jogging exercises
+                elif any(term in workout_lower for term in ['run', 'jog', 'sprint', 'dash', 'marathon']):
+                    # Use treadmill image if it mentions treadmill or indoor
+                    if any(term in workout_lower for term in ['treadmill', 'indoor', 'machine']):
+                        image_path = "/workout-images/cardio/treadmill.png"
+                        logger.info(f"Using treadmill image for indoor running workout: {workout_name}")
+                    else:
+                        image_path = "/workout-images/cardio/running.jpg"
+                        logger.info(f"Using outdoor running image for running workout: {workout_name}")
+
+                # Walking exercises
+                elif any(term in workout_lower for term in ['walk', 'hike', 'trek', 'stroll']):
+                    if 'hike' in workout_lower or 'trek' in workout_lower or 'trail' in workout_lower:
+                        image_path = "/workout-images/cardio/hiking.jpg"
+                        logger.info(f"Using hiking image for trail workout: {workout_name}")
+                    else:
+                        image_path = "/workout-images/cardio/walking.jpg"
+                        logger.info(f"Using walking image for walking workout: {workout_name}")
+
+                # Cycling exercises
+                elif any(term in workout_lower for term in ['cycl', 'bike', 'bik', 'bicycle', 'spinning']):
+                    if any(term in workout_lower for term in ['stationary', 'spinning', 'indoor', 'exercise']):
+                        image_path = "/workout-images/cardio/exercise-bike.png"
+                        logger.info(f"Using exercise bike image for indoor cycling: {workout_name}")
+                    else:
+                        image_path = "/workout-images/cardio/bicycle.png"
+                        logger.info(f"Using bicycle image for outdoor cycling: {workout_name}")
+
+                # Jumping exercises
+                elif any(term in workout_lower for term in ['jump', 'leap', 'hop', 'skip', 'rope']):
+                    image_path = "/workout-images/cardio/jumping-rope.png"
+                    logger.info(f"Using jumping rope image for jumping workout: {workout_name}")
+
+                # Default fallback - try exact matches or use generic image
                 else:
-                    # FIXED: Use proper path format for generic cardio image
-                    image_path = "/workout-images/cardio/cardio.webp"  
-                    logger.info(f"No matching image found for: {workout_name}, using generic cardio image")
+                    # Check for any exact matches with known images
+                    matched = False
+                    for cardio in CARDIO_EXERCISES:
+                        cardio_title_lower = cardio["Title"].lower()
+                        if cardio_title_lower in workout_lower or workout_lower in cardio_title_lower:
+                            image_path = f"/workout-images/cardio/{cardio['Image']}"
+                            logger.info(f"Found exact match for '{cardio['Title']}': {workout_name}")
+                            matched = True
+                            break
+                    
+                    # If no match found, use generic cardio image
+                    if not matched:
+                        image_path = "/workout-images/cardio/cardio.jpg"
+                        logger.info(f"No specific image match for '{workout_name}', using generic cardio image")
                 
                 # Create properly formatted exercise with the correct image path
                 formatted_exercise = {
@@ -404,36 +438,54 @@ class WorkoutEngine:
             if len(processed_options) < 3:
                 logger.warning(f"Only {len(processed_options)} valid cardio options generated, filling with defaults")
                 
-                # Find unused cardio exercises
-                available_cardio = [c for c in CARDIO_EXERCISES 
-                                if not any(c["Title"].lower() in used for used in used_cardio_names)]
-                
-                # If we've used all exercises, reset the list
-                if not available_cardio:
-                    available_cardio = CARDIO_EXERCISES
-                
-                # Add more options until we have 3
-                while len(processed_options) < 3 and available_cardio:
-                    cardio = random.choice(available_cardio)
-                    available_cardio.remove(cardio)
-                    
-                    # FIXED: Use proper path format for images
-                    image_path = f"/workout-images/cardio/{cardio['Image']}"
-                    
-                    # Create a default option for this cardio type
-                    default_option = [{
-                        "workout": cardio["Title"],
-                        "image": image_path,
-                        "duration": "30 min",
-                        "intensity": "Moderate",
-                        "format": "Steady-state",
-                        "calories": "250-300",
-                        "description": f"Perform {cardio['Title']} at a comfortable pace.",
+                # Generate defaults that won't overlap with what we already have
+                defaults_to_add = 3 - len(processed_options)
+                default_cardio_types = [
+                    {
+                        "workout": "Outdoor Running", 
+                        "image": "/workout-images/cardio/running.jpg",
+                        "duration": "30 min", 
+                        "intensity": "Moderate", 
+                        "format": "Steady-state", 
+                        "calories": "300-350",
+                        "description": "Run at a comfortable pace outdoors, focusing on maintaining consistent effort.",
                         "is_cardio": True
-                    }]
-                    
-                    processed_options.append(default_option)
-                    logger.info(f"Added default cardio workout: {cardio['Title']} with image: {image_path}")
+                    },
+                    {
+                        "workout": "Jump Rope Intervals", 
+                        "image": "/workout-images/cardio/jumping-rope.png",
+                        "duration": "20 min", 
+                        "intensity": "High", 
+                        "format": "40 sec work/20 sec rest", 
+                        "calories": "250-300",
+                        "description": "Jump rope with high intensity for 40 seconds, followed by 20 seconds of rest. Repeat for 20 minutes.",
+                        "is_cardio": True
+                    },
+                    {
+                        "workout": "Indoor Cycling", 
+                        "image": "/workout-images/cardio/exercise-bike.png",
+                        "duration": "45 min", 
+                        "intensity": "Moderate", 
+                        "format": "Pyramid intervals", 
+                        "calories": "400-450",
+                        "description": "Start with 5 minute warm-up, then alternate between 1, 2, 3, 4, 3, 2, 1 minute intervals of high intensity with equal rest periods.",
+                        "is_cardio": True
+                    }
+                ]
+                
+                # Add default options that don't overlap with existing ones
+                used_defaults = []
+                for default_workout in default_cardio_types:
+                    default_name = default_workout["workout"].lower()
+                    if not any(default_name in used or used in default_name for used in used_cardio_names):
+                        processed_options.append([default_workout])
+                        used_cardio_names.add(default_name)
+                        used_defaults.append(default_workout["workout"])
+                        
+                        if len(processed_options) >= 3:
+                            break
+                
+                logger.info(f"Added default cardio workouts: {', '.join(used_defaults)}")
             
             logger.info(f"Successfully generated {len(processed_options)} cardio workout options")
             return {
@@ -520,6 +572,7 @@ class WorkoutEngine:
 INSTRUCTIONS:
 1. OPTION 1: Create a challenging workout with EXACTLY 4 different exercises from this list: {exercise_list}
    - This should be the most intense option
+   - Use EXACTLY the same name as the exercises from the list. no extra words or letters
 
 2. OPTION 2: Create a moderate workout with EXACTLY 5 different exercises from this list: {exercise_list}
    - This should be slightly less intense than Option 1
@@ -551,10 +604,10 @@ Return ONLY in this exact JSON format:
       {{ "workout": "Exercise 5", "sets": "3", "reps": "10" }}
     ],
     [
-      {{ "workout": "Home Exercise 1", "sets": "3", "reps": "10-12" }},
-      {{ "workout": "Home Exercise 2", "sets": "4", "reps": "8" }},
-      {{ "workout": "Home Exercise 3", "sets": "3", "reps": "12" }},
-      {{ "workout": "Home Exercise 4", "sets": "3", "reps": "15" }}
+      {{ "workout": "Exercise 1", "sets": "3", "reps": "10-12" }}, // Home-friendly
+      {{ "workout": "Exercise 2", "sets": "4", "reps": "8" }},// Home-friendly
+      {{ "workout": "Exercise 3", "sets": "3", "reps": "12" }},// Home-friendly
+      {{ "workout": "Exercise 4", "sets": "3", "reps": "15" }}// Home-friendly
     ]
   ]
 }}

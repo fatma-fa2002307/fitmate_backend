@@ -35,13 +35,39 @@ class WorkoutCard extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Image is the main focus - full width with padding
+                // Title of the exercise
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 20, 12, 12),
-                  child: CachedNetworkImage(
-                    imageUrl: ApiService.getWorkoutImageUrl(
-                      '${workout["workout"]!.replaceAll(' ', '-')}.webp'
+                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+                  child: Text(
+                    workout["workout"]!,
+                    style: GoogleFonts.montserrat(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
                     ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                
+                // Sets and reps information
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                  child: Text(
+                    "${workout["sets"]} sets × ${workout["reps"]} reps",
+                    style: GoogleFonts.dmSans(
+                      fontSize: 18,
+                      color: Colors.black54,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                
+                // Image of the exercise
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
+                  child: CachedNetworkImage(
+                    imageUrl: ApiService.baseUrl + '/workout-images/' + 
+                      '${workout["workout"]!.replaceAll(' ', '-')}.webp',
                     height: 260,
                     fit: BoxFit.contain,
                     placeholder: (context, url) => Container(

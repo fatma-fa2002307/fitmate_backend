@@ -9,14 +9,14 @@ class ExerciseDatabase:
         
         # Add cardio exercises to the dictionary
         self.cardio_exercises = {
-            "Treadmill Running": "cardio.webp",
-            "Outdoor Running": "cardio.webp",
-            "Walking": "cardio.webp",
-            "Cycling": "cardio.webp",
-            "Exercise Bike": "cardio.webp",
-            "Jump Rope": "cardio.webp",
-            "Swimming": "cardio.webp",
-            "Hiking": "cardio.webp",
+            "Treadmill Running": "cardio.jpg",
+            "Outdoor Running": "cardio.jpg",
+            "Walking": "cardio.jpg",
+            "Cycling": "cardio.jpg",
+            "Exercise Bike": "cardio.jpg",
+            "Jump Rope": "cardio.jpg",
+            "Swimming": "cardio.jpg",
+            "Hiking": "cardio.jpg",
         }
         
         # Update the exercise dictionary with cardio exercises
@@ -65,11 +65,11 @@ class ExerciseDatabase:
                 elif "jump rope" in exercise_name.lower():
                     return "/workout-images/cardio/jumping-rope.png"
                 elif "swimming" in exercise_name.lower():
-                    return "/workout-images/cardio/swimming.png"
+                    return "/workout-images/cardio/swimming.jpg"
                 elif "hiking" in exercise_name.lower():
                     return "/workout-images/cardio/hiking.jpg"
                 # Default cardio image
-                return "/workout-images/cardio/cardio.webp"
+                return "/workout-images/cardio/cardio.jpg"
         
         # For strength training exercises, construct the image path from the exercise name
         formatted_name = exercise_name.replace(" ", "-")
