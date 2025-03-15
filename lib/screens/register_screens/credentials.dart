@@ -94,7 +94,10 @@ class _CredentialsPageState extends State<CredentialsPage> {
           password: password,
         );
 
-        await FirebaseFirestore.instance.collection('users').doc(userCredential.user?.uid).set({
+        String userId = userCredential.user!.uid; // Get the user ID
+
+        // Store basic user info in the main user document
+        await FirebaseFirestore.instance.collection('users').doc(userId).set({
           'fullName': fullName,
           'email': email,
           'age': widget.age,
@@ -104,19 +107,22 @@ class _CredentialsPageState extends State<CredentialsPage> {
           'goal': widget.selectedGoal,
           'workoutDays': widget.workoutDays,
           'fitnessLevel': 'Beginner',
-          'workoutsUntilNextLevel': 20,
-          'lastWorkout': {
-            'category': '',
-            'date': null,
-            'duration': 0,
-            'completion': 0,
-            'totalExercises': 0
-          },
-          'workoutHistory': [],
           'totalWorkouts': 0,
+          'workoutsUntilNextLevel': 20,
+        });
+
+        // Initialize the userProgress document
+        await FirebaseFirestore.instance.collection('users').doc(userId).collection('userProgress').doc('progress').set({
+          'lastWorkout': null,
+          'lastWorkoutCategory': '',
           'nextWorkoutCategory': '',
           'workoutsLastGenerated': null,
         });
+
+        // Initialize foodHistory and other subcollections if needed
+        await FirebaseFirestore.instance.collection('users').doc(userId).collection('foodHistory').doc('initial').set({});
+        await FirebaseFirestore.instance.collection('users').doc(userId).collection('workoutLogs').doc('initial').set({});
+        await FirebaseFirestore.instance.collection('users').doc(userId).collection('workoutHistory').doc('initial').set({});
 
         // Close the loading dialog
         if (mounted) {
@@ -125,7 +131,6 @@ class _CredentialsPageState extends State<CredentialsPage> {
 
         // Generate initial workout options silently in the background
         try {
-          // No dialog display - silent background process
           WorkoutService.generateAndSaveWorkoutOptions(
             age: widget.age,
             gender: widget.gender,
@@ -138,12 +143,9 @@ class _CredentialsPageState extends State<CredentialsPage> {
           );
         } catch (e) {
           print("Error generating initial workouts: $e");
-          // Silently handle errors - no UI feedback
         }
 
-
-
-        // Navigate to HomePage and remove all previous routes
+        // Navigate to HomePage
         if (mounted) {
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (context) => HomePage()),
@@ -166,7 +168,7 @@ class _CredentialsPageState extends State<CredentialsPage> {
                 title: Text('Registration Failed',
                     style: GoogleFonts.bebasNeue(color: const Color(0xFFD2EB50))),
                 content: Text('${e.message} Try another email.',
-                    style:const TextStyle(color: Colors.white)),
+                    style: const TextStyle(color: Colors.white)),
                 actions: [
                   TextButton(
                     child: Text('OK', style: GoogleFonts.bebasNeue(color: const Color(0xFFD2EB50))),

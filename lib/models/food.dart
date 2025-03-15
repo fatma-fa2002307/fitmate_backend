@@ -1,12 +1,14 @@
 class Food {
+  final String id;
   final String name;
-  final double calories; // in kcal (calories)
-  final double protein;  // in grams
-  final double carbs;    // in grams
-  final double fat;      // in grams
-  final double servingSize; // in grams
+  final double calories;
+  final double protein;
+  final double carbs;
+  final double fat;
+  final double servingSize;
 
   Food({
+    required this.id,
     required this.name,
     required this.calories,
     required this.protein,
@@ -15,7 +17,20 @@ class Food {
     required this.servingSize,
   });
 
-  // Firestore serialization
+  // Convert from Firestore document
+  factory Food.fromMap(String id, Map<String, dynamic> data) {
+    return Food(
+      id: id,
+      name: data['name'] ?? '',
+      calories: (data['calories'] ?? 0).toDouble(),
+      protein: (data['protein'] ?? 0).toDouble(),
+      carbs: (data['carbs'] ?? 0).toDouble(),
+      fat: (data['fat'] ?? 0).toDouble(),
+      servingSize: (data['servingSize'] ?? 0).toDouble(),
+    );
+  }
+
+  // Convert to Firestore document
   Map<String, dynamic> toMap() {
     return {
       'name': name,
@@ -25,16 +40,5 @@ class Food {
       'fat': fat,
       'servingSize': servingSize,
     };
-  }
-
-  factory Food.fromMap(Map<String, dynamic> map) {
-    return Food(
-      name: map['name'],
-      calories: map['calories'],
-      protein: map['protein'],
-      carbs: map['carbs'],
-      fat: map['fat'],
-      servingSize: map['servingSize'],
-    );
   }
 }

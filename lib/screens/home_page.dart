@@ -6,10 +6,6 @@ import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fitmate/widgets/bottom_nav_bar.dart';
 import 'package:percent_indicator/percent_indicator.dart';
-import 'package:fitmate/services/api_service.dart';
-//sharifa
-//import 'package:fitmate/screens/food_recognition/food_recognition_screen.dart';
-
 
 class HomePage extends StatefulWidget {
   @override
@@ -20,20 +16,49 @@ class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
   String _userFullName = "Loading...";
   String _userGoal = "Loading...";
+  double _totalCalories = 0;
+  double _dailyCaloriesGoal = 2500; // Default goal, can be fetched from user data
 
   @override
   void initState() {
     super.initState();
     _loadUserData();
+    _loadFoodLogs();
   }
 
   void _loadUserData() async {
     User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      DocumentSnapshot userData = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      DocumentSnapshot userData =
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
       setState(() {
         _userFullName = userData['fullName'] ?? 'User';
         _userGoal = userData['goal'] ?? 'No goal set';
+        _dailyCaloriesGoal = userData['dailyCaloriesGoal']?.toDouble() ?? 2500; // Fetch goal
+      });
+    }
+  }
+
+  Future<void> _loadFoodLogs() async {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      DateTime now = DateTime.now();
+      DateTime today = DateTime(now.year, now.month, now.day);
+      DateTime tomorrow = today.add(const Duration(days: 1));
+
+      QuerySnapshot foodLogs = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('foodLogs')
+          .where('date', isGreaterThanOrEqualTo: today)
+          .where('date', isLessThan: tomorrow)
+          .get();
+
+      setState(() {
+        _totalCalories = 0;
+        for (var doc in foodLogs.docs) {
+          _totalCalories += doc['calories'] ?? 0;
+        }
       });
     }
   }
@@ -210,10 +235,10 @@ class _HomePageState extends State<HomePage> {
                           CircularPercentIndicator(
                             radius: 60.0,
                             lineWidth: 10.0,
-                            percent: 1399 / 2500,
-                            center: const Text(
-                              "1399 Kcal",
-                              style: TextStyle(
+                            percent: _totalCalories / _dailyCaloriesGoal,
+                            center: Text(
+                              "${_totalCalories.toStringAsFixed(0)} Kcal",
+                              style: const TextStyle(
                                 color: Color(0xFFD2EB50),
                                 fontWeight: FontWeight.bold,
                               ),
@@ -255,8 +280,8 @@ class _HomePageState extends State<HomePage> {
                           ],
                         ),
                       ),
-                    )
-                  ),
+                    ),
+                  )
                 ],
               ),
             ],
