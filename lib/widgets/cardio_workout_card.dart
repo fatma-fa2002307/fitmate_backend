@@ -1,12 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fitmate/services/api_service.dart';
+import 'package:fitmate/screens/workout_screens/cardio_active_workout_screen.dart';
 
-class CardioWorkoutCard extends StatelessWidget {
+// Import the shared image cache service
+import 'package:fitmate/services/workout_image_cache.dart';
+
+class CardioWorkoutCard extends StatefulWidget {
   final Map<String, dynamic> workout;
   
   const CardioWorkoutCard({Key? key, required this.workout}) : super(key: key);
 
+  @override
+  _CardioWorkoutCardState createState() => _CardioWorkoutCardState();
+}
+
+class _CardioWorkoutCardState extends State<CardioWorkoutCard> {
+  // Get the singleton image cache instance
+  final _imageCache = WorkoutImageCache();
+  late ImageProvider _imageProvider;
+  
+  @override
+  void initState() {
+    super.initState();
+    
+    // Get the shared image provider and preload it
+    _imageProvider = _imageCache.getImageProvider(ApiService.baseUrl, widget.workout);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _imageCache.preloadImage(context, ApiService.baseUrl, widget.workout);
+    });
+  }
+  
   void _showDetailsDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -21,7 +45,7 @@ class CardioWorkoutCard extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  workout["workout"],
+                  widget.workout["workout"],
                   style: GoogleFonts.montserrat(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
@@ -29,48 +53,37 @@ class CardioWorkoutCard extends StatelessWidget {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 20),
-                // Direct Image without caching
-                Image.network(
-                  ApiService.baseUrl + workout["image"],
-                  height: 150,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return Container(
-                      height: 150,
-                      color: Colors.grey[300],
-                      child: const Center(
-                        child: CircularProgressIndicator(
-                          color: Color(0xFFD2EB50),
+                // Using the shared image provider for consistent caching
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image(
+                    image: _imageProvider,
+                    height: 150,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        height: 150,
+                        color: Colors.grey[200],
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.directions_run, size: 60, color: Colors.grey[700]),
+                            Text('Image not available', style: TextStyle(color: Colors.grey[700])),
+                          ],
                         ),
-                      ),
-                    );
-                  },
-                  errorBuilder: (context, error, stackTrace) {
-                    print("Error loading cardio image: ${ApiService.baseUrl}${workout["image"]} - $error");
-                    return Container(
-                      height: 150,
-                      color: Colors.grey[200],
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.directions_run, size: 60, color: Colors.grey[700]),
-                          Text('Image not available', style: TextStyle(color: Colors.grey[700])),
-                          Text('Path: ${workout["image"]}', style: TextStyle(fontSize: 10, color: Colors.grey[500])),
-                        ],
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 ),
                 const SizedBox(height: 24),
-                _buildDetailRow(Icons.timer, "Duration", workout["duration"] ?? "30 min"),
+                _buildDetailRow(Icons.timer, "Duration", widget.workout["duration"] ?? "30 min"),
                 const SizedBox(height: 12),
-                _buildDetailRow(Icons.whatshot, "Intensity", workout["intensity"] ?? "Moderate"),
+                _buildDetailRow(Icons.whatshot, "Intensity", widget.workout["intensity"] ?? "Moderate"),
                 const SizedBox(height: 12),
-                _buildDetailRow(Icons.loop, "Format", workout["format"] ?? "Steady-state"),
+                _buildDetailRow(Icons.loop, "Format", widget.workout["format"] ?? "Steady-state"),
                 const SizedBox(height: 12),
-                _buildDetailRow(Icons.local_fire_department, "Est. Calories", workout["calories"] ?? "300-350"),
+                _buildDetailRow(Icons.local_fire_department, "Est. Calories", widget.workout["calories"] ?? "300-350"),
                 const SizedBox(height: 24),
                 Container(
                   padding: const EdgeInsets.all(16),
@@ -79,7 +92,7 @@ class CardioWorkoutCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    workout["description"] ?? "Perform at a comfortable pace, focusing on maintaining proper form throughout.",
+                    widget.workout["description"] ?? "Perform at a comfortable pace, focusing on maintaining proper form throughout.",
                     style: GoogleFonts.dmSans(
                       fontSize: 14,
                       color: Colors.black87,
@@ -89,12 +102,23 @@ class CardioWorkoutCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () {
+                    Navigator.pop(context); // Close dialog
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => CardioActiveWorkoutScreen(
+                          workout: widget.workout,
+                          category: 'Cardio',
+                        ),
+                      ),
+                    );
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFD2EB50),
                     minimumSize: const Size(double.infinity, 50),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(5.0),
                     ),
                   ),
                   child: Text(
@@ -143,10 +167,6 @@ class CardioWorkoutCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Debug logging
-    print("DEBUG: Cardio workout image path: ${workout["image"]}");
-    print("DEBUG: Full URL: ${ApiService.baseUrl}${workout["image"]}");
-    
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       elevation: 3,
@@ -176,7 +196,7 @@ class CardioWorkoutCard extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      workout["workout"],
+                      widget.workout["workout"],
                       style: GoogleFonts.montserrat(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -190,31 +210,18 @@ class CardioWorkoutCard extends StatelessWidget {
             // Card body with workout image and details
             Stack(
               children: [
-                // Cardio Image - Direct without caching
+                // Using the shared image provider
                 ClipRRect(
                   borderRadius: const BorderRadius.only(
                     bottomLeft: Radius.circular(16),
                     bottomRight: Radius.circular(16),
                   ),
-                  child: Image.network(
-                    ApiService.baseUrl + workout["image"],
+                  child: Image(
+                    image: _imageProvider,
                     height: 180,
                     width: double.infinity,
                     fit: BoxFit.cover,
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return Container(
-                        height: 180,
-                        color: Colors.grey[300],
-                        child: const Center(
-                          child: CircularProgressIndicator(
-                            color: Color(0xFFD2EB50),
-                          ),
-                        ),
-                      );
-                    },
                     errorBuilder: (context, error, stackTrace) {
-                      print("Card Error loading cardio image: ${ApiService.baseUrl}${workout["image"]} - $error");
                       return Container(
                         height: 180,
                         color: Colors.grey[200],
@@ -250,9 +257,9 @@ class CardioWorkoutCard extends StatelessWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
-                            _buildStat(Icons.timer, workout["duration"] ?? "30 min"),
-                            _buildStat(Icons.whatshot, workout["intensity"] ?? "Moderate"),
-                            _buildStat(Icons.local_fire_department, workout["calories"] ?? "300-350 cal"),
+                            _buildStat(Icons.timer, widget.workout["duration"] ?? "30 min"),
+                            _buildStat(Icons.whatshot, widget.workout["intensity"] ?? "Moderate"),
+                            _buildStat(Icons.local_fire_department, widget.workout["calories"] ?? "300-350 cal"),
                           ],
                         ),
                       ],

@@ -4,6 +4,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:fitmate/screens/workout_screens/workout_completion_screen.dart';
 import 'package:fitmate/services/api_service.dart';
 
+// Import the shared image cache service
+import 'package:fitmate/services/workout_image_cache.dart';
+
 class CardioActiveWorkoutScreen extends StatefulWidget {
   final Map<String, dynamic> workout;
   final String category;
@@ -26,6 +29,10 @@ class _CardioActiveWorkoutScreenState extends State<CardioActiveWorkoutScreen> {
   String _targetDuration = "30 min";  // Default
   int _targetSeconds = 1800;  // Default (30 min * 60)
   double _progress = 0.0;
+  
+  // Get the image cache instance
+  final _imageCache = WorkoutImageCache();
+  late ImageProvider _imageProvider;
 
   @override
   void initState() {
@@ -33,10 +40,8 @@ class _CardioActiveWorkoutScreenState extends State<CardioActiveWorkoutScreen> {
     _parseDuration();
     _startTimer();
     
-    // Debug logging
-    print("Cardio workout details: ${widget.workout}");
-    print("Image path: ${widget.workout['image']}");
-    print("Full image URL: ${ApiService.baseUrl}${widget.workout['image']}");
+    // Get the shared image provider that was already loaded in the CardioWorkoutCard
+    _imageProvider = _imageCache.getImageProvider(ApiService.baseUrl, widget.workout);
   }
 
   void _parseDuration() {
@@ -64,7 +69,7 @@ class _CardioActiveWorkoutScreenState extends State<CardioActiveWorkoutScreen> {
 
   void _startTimer() {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!_isPaused) {
+      if (!_isPaused && mounted) {
         setState(() {
           _elapsedSeconds++;
           _progress = _elapsedSeconds / _targetSeconds;
@@ -125,7 +130,7 @@ class _CardioActiveWorkoutScreenState extends State<CardioActiveWorkoutScreen> {
               ),
             ),
             
-            // Cardio Exercise Image - Direct loading, no caching
+            // Cardio Exercise Image - Using the shared image provider
             Expanded(
               flex: 3,
               child: Container(
@@ -137,22 +142,10 @@ class _CardioActiveWorkoutScreenState extends State<CardioActiveWorkoutScreen> {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(16),
-                  child: Image.network(
-                    ApiService.baseUrl + widget.workout['image'],
+                  child: Image(
+                    image: _imageProvider,
                     fit: BoxFit.cover,
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return Container(
-                        color: Colors.grey[800],
-                        child: const Center(
-                          child: CircularProgressIndicator(
-                            color: Color(0xFFD2EB50),
-                          ),
-                        ),
-                      );
-                    },
                     errorBuilder: (context, error, stackTrace) {
-                      print("Error loading cardio image: ${ApiService.baseUrl}${widget.workout['image']} - $error");
                       return Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -166,11 +159,6 @@ class _CardioActiveWorkoutScreenState extends State<CardioActiveWorkoutScreen> {
                               'Image not available',
                               style: TextStyle(color: Colors.grey[500]),
                             ),
-                            if (widget.workout['image'] != null)
-                              Text(
-                                'Path: ${widget.workout['image']}',
-                                style: TextStyle(fontSize: 10, color: Colors.grey[500]),
-                              ),
                           ],
                         ),
                       );
@@ -238,7 +226,7 @@ class _CardioActiveWorkoutScreenState extends State<CardioActiveWorkoutScreen> {
                       style: GoogleFonts.albertSans(
                         fontSize: 36,
                         fontWeight: FontWeight.bold,
-                        color: remainingSeconds > 0 ? Colors.white : Color(0xFFD2EB50),
+                        color: remainingSeconds > 0 ? Colors.white : const Color(0xFFD2EB50),
                       ),
                     ),
                   ],
@@ -350,7 +338,7 @@ class _CardioActiveWorkoutScreenState extends State<CardioActiveWorkoutScreen> {
             Expanded(
               child: ListView(
                 scrollDirection: Axis.horizontal,
-                padding: EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 children: [
                   _buildDetailItem(Icons.whatshot, 'Intensity', widget.workout['intensity'] ?? 'Moderate'),
                   const SizedBox(width: 24),
@@ -369,7 +357,7 @@ class _CardioActiveWorkoutScreenState extends State<CardioActiveWorkoutScreen> {
   Widget _buildDetailItem(IconData icon, String label, String value) {
     return Row(
       children: [
-        Icon(icon, color: Color(0xFFD2EB50), size: 24),
+        Icon(icon, color: const Color(0xFFD2EB50), size: 24),
         const SizedBox(width: 8),
         Column(
           mainAxisAlignment: MainAxisAlignment.center,

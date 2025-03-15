@@ -16,14 +16,14 @@ logging.basicConfig(level=logging.INFO,
 logger = logging.getLogger("workout_engine")
 
 CARDIO_EXERCISES = [
-    {"Title": "Treadmill Running", "Image": "treadmill.png", "Icon": "cardio.jpg"},
-    {"Title": "Outdoor Running", "Image": "running.jpg", "Icon": "cardio.jpg"},
-    {"Title": "Walking", "Image": "walking.jpg", "Icon": "cardio.jpg"},
-    {"Title": "Cycling", "Image": "bicycle.png", "Icon": "cardio.jpg"},
-    {"Title": "Exercise Bike", "Image": "exercise-bike.png", "Icon": "cardio.jpg"},
-    {"Title": "Jump Rope", "Image": "jumping-rope.png", "Icon": "cardio.jpg"},
-    {"Title": "Swimming", "Image": "swimming.jpg", "Icon": "cardio.jpg"},
-    {"Title": "Hiking", "Image": "hiking.jpg", "Icon": "cardio.jpg"},
+    {"Title": "Treadmill Running", "Image": "treadmill.webp", "Icon": "cardio.webp"},
+    {"Title": "Outdoor Running", "Image": "running.webp", "Icon": "cardio.webp"},
+    {"Title": "Walking", "Image": "walking.webp", "Icon": "cardio.webp"},
+    {"Title": "Cycling", "Image": "bicycle.webp", "Icon": "cardio.webp"},
+    {"Title": "Exercise Bike", "Image": "exercise-bike.webp", "Icon": "cardio.webp"},
+    {"Title": "Jump Rope", "Image": "jumping-rope.webp", "Icon": "cardio.webp"},
+    {"Title": "Swimming", "Image": "swimming.webp", "Icon": "cardio.webp"},
+    {"Title": "Hiking", "Image": "hiking.webp", "Icon": "cardio.webp"},
 ]
 
 class WorkoutEngine:
@@ -366,40 +366,40 @@ class WorkoutEngine:
                 # Find appropriate image based on workout type categories
                 # Water-based exercises
                 if any(term in workout_lower for term in ['swim', 'water', 'pool', 'aqua']):
-                    image_path = "/workout-images/cardio/swimming.jpg"
+                    image_path = "/workout-images/cardio/swimming.webp"
                     logger.info(f"Using swimming image for water-based workout: {workout_name}")
 
                 # Running/jogging exercises
                 elif any(term in workout_lower for term in ['run', 'jog', 'sprint', 'dash', 'marathon']):
                     # Use treadmill image if it mentions treadmill or indoor
                     if any(term in workout_lower for term in ['treadmill', 'indoor', 'machine']):
-                        image_path = "/workout-images/cardio/treadmill.png"
+                        image_path = "/workout-images/cardio/treadmill.webp"
                         logger.info(f"Using treadmill image for indoor running workout: {workout_name}")
                     else:
-                        image_path = "/workout-images/cardio/running.jpg"
+                        image_path = "/workout-images/cardio/running.webp"
                         logger.info(f"Using outdoor running image for running workout: {workout_name}")
 
                 # Walking exercises
                 elif any(term in workout_lower for term in ['walk', 'hike', 'trek', 'stroll']):
                     if 'hike' in workout_lower or 'trek' in workout_lower or 'trail' in workout_lower:
-                        image_path = "/workout-images/cardio/hiking.jpg"
+                        image_path = "/workout-images/cardio/hiking.webp"
                         logger.info(f"Using hiking image for trail workout: {workout_name}")
                     else:
-                        image_path = "/workout-images/cardio/walking.jpg"
+                        image_path = "/workout-images/cardio/walking.webp"
                         logger.info(f"Using walking image for walking workout: {workout_name}")
 
                 # Cycling exercises
                 elif any(term in workout_lower for term in ['cycl', 'bike', 'bik', 'bicycle', 'spinning']):
                     if any(term in workout_lower for term in ['stationary', 'spinning', 'indoor', 'exercise']):
-                        image_path = "/workout-images/cardio/exercise-bike.png"
+                        image_path = "/workout-images/cardio/exercise-bike.webp"
                         logger.info(f"Using exercise bike image for indoor cycling: {workout_name}")
                     else:
-                        image_path = "/workout-images/cardio/bicycle.png"
+                        image_path = "/workout-images/cardio/bicycle.webp"
                         logger.info(f"Using bicycle image for outdoor cycling: {workout_name}")
 
                 # Jumping exercises
                 elif any(term in workout_lower for term in ['jump', 'leap', 'hop', 'skip', 'rope']):
-                    image_path = "/workout-images/cardio/jumping-rope.png"
+                    image_path = "/workout-images/cardio/jumping-rope.webp"
                     logger.info(f"Using jumping rope image for jumping workout: {workout_name}")
 
                 # Default fallback - try exact matches or use generic image
@@ -416,7 +416,7 @@ class WorkoutEngine:
                     
                     # If no match found, use generic cardio image
                     if not matched:
-                        image_path = "/workout-images/cardio/cardio.jpg"
+                        image_path = "/workout-images/cardio/cardio.webp"
                         logger.info(f"No specific image match for '{workout_name}', using generic cardio image")
                 
                 # Create properly formatted exercise with the correct image path
@@ -443,7 +443,7 @@ class WorkoutEngine:
                 default_cardio_types = [
                     {
                         "workout": "Outdoor Running", 
-                        "image": "/workout-images/cardio/running.jpg",
+                        "image": "/workout-images/cardio/running.webp",
                         "duration": "30 min", 
                         "intensity": "Moderate", 
                         "format": "Steady-state", 
@@ -453,7 +453,7 @@ class WorkoutEngine:
                     },
                     {
                         "workout": "Jump Rope Intervals", 
-                        "image": "/workout-images/cardio/jumping-rope.png",
+                        "image": "/workout-images/cardio/jumping-rope.webp",
                         "duration": "20 min", 
                         "intensity": "High", 
                         "format": "40 sec work/20 sec rest", 
@@ -463,7 +463,7 @@ class WorkoutEngine:
                     },
                     {
                         "workout": "Indoor Cycling", 
-                        "image": "/workout-images/cardio/exercise-bike.png",
+                        "image": "/workout-images/cardio/exercise-bike.webp",
                         "duration": "45 min", 
                         "intensity": "Moderate", 
                         "format": "Pyramid intervals", 

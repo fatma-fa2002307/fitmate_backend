@@ -9,14 +9,14 @@ class ExerciseDatabase:
         
         # Add cardio exercises to the dictionary
         self.cardio_exercises = {
-            "Treadmill Running": "cardio.jpg",
-            "Outdoor Running": "cardio.jpg",
-            "Walking": "cardio.jpg",
-            "Cycling": "cardio.jpg",
-            "Exercise Bike": "cardio.jpg",
-            "Jump Rope": "cardio.jpg",
-            "Swimming": "cardio.jpg",
-            "Hiking": "cardio.jpg",
+            "Treadmill Running": "cardio.webp",
+            "Outdoor Running": "cardio.webp",
+            "Walking": "cardio.webp",
+            "Cycling": "cardio.webp",
+            "Exercise Bike": "cardio.webp",
+            "Jump Rope": "cardio.webp",
+            "Swimming": "cardio.webp",
+            "Hiking": "cardio.webp",
         }
         
         # Update the exercise dictionary with cardio exercises
@@ -52,24 +52,24 @@ class ExerciseDatabase:
             if cardio_name.lower() in exercise_name.lower():
                 # Return the appropriate image filename based on cardio exercise name
                 if "treadmill" in exercise_name.lower():
-                    return "/workout-images/cardio/treadmill.png"
+                    return "/workout-images/cardio/treadmill.webp"
                 elif "outdoor running" in exercise_name.lower() or "running" in exercise_name.lower():
-                    return "/workout-images/cardio/running.jpg"
+                    return "/workout-images/cardio/running.webp"
                 elif "walking" in exercise_name.lower():
-                    return "/workout-images/cardio/walking.jpg"
+                    return "/workout-images/cardio/walking.webp"
                 elif "cycling" in exercise_name.lower() or "bike" in exercise_name.lower():
                     if "exercise bike" in exercise_name.lower():
-                        return "/workout-images/cardio/exercise-bike.png"
+                        return "/workout-images/cardio/exercise-bike.webp"
                     else:
-                        return "/workout-images/cardio/bicycle.png"
+                        return "/workout-images/cardio/bicycle.webp"
                 elif "jump rope" in exercise_name.lower():
-                    return "/workout-images/cardio/jumping-rope.png"
+                    return "/workout-images/cardio/jumping-rope.webp"
                 elif "swimming" in exercise_name.lower():
-                    return "/workout-images/cardio/swimming.jpg"
+                    return "/workout-images/cardio/swimming.webp"
                 elif "hiking" in exercise_name.lower():
-                    return "/workout-images/cardio/hiking.jpg"
+                    return "/workout-images/cardio/hiking.webp"
                 # Default cardio image
-                return "/workout-images/cardio/cardio.jpg"
+                return "/workout-images/cardio/cardio.webp"
         
         # For strength training exercises, construct the image path from the exercise name
         formatted_name = exercise_name.replace(" ", "-")
