@@ -62,8 +62,8 @@ class _NutritionPageState extends State<NutritionPage> {
       if (userData.exists) {
         setState(() {
           _gender = userData['gender'];
-          _weight = userData['weight'];
-          _height = userData['height'];
+          _weight = double.tryParse(userData['weight'] ?? '0') ?? 0; 
+          _height = double.tryParse(userData['height'] ?? '0') ?? 0;
           _age = userData['age'];
           _goal = userData['goal'];
           _workoutDays = userData['workoutDays'];

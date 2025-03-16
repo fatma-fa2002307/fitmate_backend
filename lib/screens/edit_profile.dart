@@ -71,8 +71,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
   final TextEditingController _ageController = TextEditingController();
 
   String _gender = "Female";
-  bool isKg = true;
-  bool isCm = true;
+  String _goal = "Lose Weight";
+  bool isKg = true; // Default to KG
+  bool isCm = true; // Default to CM
   int _selectedIndex = 3;
 
   @override
@@ -105,6 +106,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
           _heightController.text = userData['height']?.toString() ?? '';
           _ageController.text = userData['age']?.toString() ?? '';
           _gender = userData['gender'] ?? 'Female';
+          _goal = userData['goal'] ?? 'Lose Weight';
         });
       }
     }
@@ -118,26 +120,35 @@ class _EditProfilePageState extends State<EditProfilePage> {
     User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       try {
+        double weight = double.parse(_weightController.text);
+        double height = double.parse(_heightController.text);
+        if (!isKg) {
+          weight = weight * 0.453592;
+        }
+        if (!isCm) {
+          height = height * 30.48;
+        }
         await FirebaseFirestore.instance
             .collection('users')
             .doc(user.uid)
             .update({
           'fullName': _fullNameController.text,
-          'weight': double.tryParse(_weightController.text) ?? 0,
-          'height': double.tryParse(_heightController.text) ?? 0,
+          'weight': weight.toStringAsFixed(2),
+          'height': height.toStringAsFixed(2),
           'age': int.tryParse(_ageController.text) ?? 0,
           'gender': _gender,
+          'goal': _goal,
         });
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Profile updated successfully!"))
+              const SnackBar(content: Text("Profile updated successfully!"))
           );
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Error updating profile: $e"))
+              SnackBar(content: Text("Error updating profile: $e"))
           );
         }
       }
@@ -185,20 +196,42 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  const Text('Full Name', style: TextStyle(color: Colors.black)),
+                  Text(
+                    'Full Name',
+                    style: GoogleFonts.montserrat(color: Colors.black),
+                  ),
                   TextFormField(
                     controller: _fullNameController,
+                    style: GoogleFonts.montserrat(),
                     validator: validateFullName,
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: Color(0X15696940),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(5),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 20),
-                  const Text('Weight', style: TextStyle(color: Colors.black)),
+                  Text('Weight', style: GoogleFonts.montserrat(color: Colors.black),),
                   Row(
                     children: [
                       Expanded(
                         child: TextFormField(
                           controller: _weightController,
+                          style: GoogleFonts.montserrat(),
                           validator: validateWeight,
-                          keyboardType: TextInputType.number,
+                          keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true),
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: Color(0X15696940),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(5),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -209,19 +242,42 @@ class _EditProfilePageState extends State<EditProfilePage> {
                             isKg = index == 1;
                           });
                         },
-                        children: const [Text('LBS'), Text('KG')],
+                        borderRadius: BorderRadius.circular(5),
+                        color: Colors.black12,
+                        selectedColor: Colors.black,
+                        fillColor: Colors.grey[300],
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Text('LBS', style: GoogleFonts.montserrat(color: Colors.black),),
+                          ),
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16),
+                            child: Text('KG', style: GoogleFonts.montserrat(color: Colors.black),),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                   const SizedBox(height: 20),
-                  const Text('Height', style: TextStyle(color: Colors.black)),
+                  Text('Height', style: GoogleFonts.montserrat(color: Colors.black),),
                   Row(
                     children: [
                       Expanded(
                         child: TextFormField(
                           controller: _heightController,
+                          style: GoogleFonts.montserrat(),
                           validator: validateHeight,
-                          keyboardType: TextInputType.number,
+                          keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true),
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: Color(0X15696940),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(5),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -232,13 +288,26 @@ class _EditProfilePageState extends State<EditProfilePage> {
                             isCm = index == 1;
                           });
                         },
-                        children: const [Text('FEET'), Text('CM')],
+                        borderRadius: BorderRadius.circular(5),
+                        color: Colors.black12,
+                        selectedColor: Colors.black,
+                        fillColor: Colors.grey[300],
+                        children:  [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Text('FEET', style: GoogleFonts.montserrat(color: Colors.black),),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Text('CM', style: GoogleFonts.montserrat(color: Colors.black),),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                   const SizedBox(height: 20),
-                  const Text('Gender', style: TextStyle(color: Colors.black)),
-                  DropdownButton<String>(
+                  Text('Gender', style: GoogleFonts.montserrat(color: Colors.black),),
+                  DropdownButtonFormField<String>(
                     value: _gender,
                     isExpanded: true,
                     onChanged: (String? newValue) {
@@ -248,20 +317,103 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         });
                       }
                     },
-                    items: <String>['Female', 'Male']
-                        .map<DropdownMenuItem<String>>((String value) {
+                    items: <String>[
+                      'Female',
+                      'Male',
+                    ].map<DropdownMenuItem<String>>((String value) {
                       return DropdownMenuItem<String>(
                         value: value,
-                        child: Text(value),
+                        child: Row(
+                          children: [
+                            Icon(
+                              value == 'Female' ? Icons.female : Icons.male,
+                              color: Color(0xFF303841),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              value,
+                              style: GoogleFonts.montserrat(color: Colors.black),
+                            ),
+                          ],
+                        ),
                       );
                     }).toList(),
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: Color(0x15696940),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(5),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 20),
-                  const Text('Age', style: TextStyle(color: Colors.black)),
+                  Text('Goal', style: GoogleFonts.montserrat(color: Colors.black),),
+                  DropdownButtonFormField<String>(
+                    value: _goal,
+                    isExpanded: true,
+                    onChanged: (String? newValue) {
+                      if (newValue != null) {
+                        setState(() {
+                          _goal = newValue;
+                        });
+                      }
+                    },
+                    items: <String>[
+                      'Lose Weight',
+                      'Gain Muscle',
+                      'Improve Fitness'
+                    ].map<DropdownMenuItem<String>>((String value) {
+                      IconData icon;
+                      if (value == 'Lose Weight') {
+                        icon = Icons.monitor_weight_outlined;
+                      } else if (value == 'Gain Muscle') {
+                        icon = Icons.fitness_center_outlined;
+                      } else {
+                        icon = Icons.health_and_safety_outlined;
+                      }
+
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Row(
+                          children: [
+                            Icon(
+                              icon,
+                              color: Color(0xFF303841),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              value,
+                              style: GoogleFonts.montserrat(color: Colors.black),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: Color(0X15696940),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(5),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text('Age', style: GoogleFonts.montserrat(color: Colors.black),),
                   TextFormField(
                     controller: _ageController,
+                    style: GoogleFonts.montserrat(),
                     validator: validateAge,
                     keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: Color(0X15696940),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(5),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 20),
                   Center(
@@ -279,7 +431,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           ),
                           child: Text(
                             'SAVE',
-                            style: GoogleFonts.bebasNeue(fontSize: 20, color: Colors.white),
+                            style: GoogleFonts.bebasNeue(
+                                fontSize: 20, color: Colors.white),
                           ),
                         ),
                         const SizedBox(width: 20),
@@ -288,7 +441,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
                             FirebaseAuth.instance.signOut().then((_) {
                               Navigator.pushReplacementNamed(context, '/login');
                             });
-
                           },
                           style: OutlinedButton.styleFrom(
                             side: BorderSide(color: const Color(0xFFD2EB50)),
@@ -299,7 +451,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           ),
                           child: Text(
                             'LOGOUT',
-                            style: GoogleFonts.bebasNeue(fontSize: 20, color: const Color(0xFFD2EB50)),
+                            style: GoogleFonts.bebasNeue(
+                                fontSize: 20, color: const Color(0xFFD2EB50)),
                           ),
                         ),
                       ],
