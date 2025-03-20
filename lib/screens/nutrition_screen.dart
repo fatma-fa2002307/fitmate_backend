@@ -61,13 +61,29 @@ class _NutritionPageState extends State<NutritionPage> {
 
       if (userData.exists) {
         setState(() {
-          _gender = userData['gender'];
-          _weight = double.tryParse(userData['weight'] ?? '0') ?? 0; 
-          _height = double.tryParse(userData['height'] ?? '0') ?? 0;
-          _age = userData['age'];
-          _goal = userData['goal'];
-          _workoutDays = userData['workoutDays'];
-          _dailyMacros = _calculateMacronutrients(_goal, _calculateBMR(), _workoutDays);
+          _gender = userData['gender'] as String;
+
+          // Handle weight field - could be double or String
+          if (userData['weight'] is double) {
+            _weight = userData['weight'];
+          } else {
+            _weight =
+                double.tryParse(userData['weight']?.toString() ?? '0') ?? 0;
+          }
+
+          // Handle height field - could be double or String
+          if (userData['height'] is double) {
+            _height = userData['height'];
+          } else {
+            _height =
+                double.tryParse(userData['height']?.toString() ?? '0') ?? 0;
+          }
+
+          _age = userData['age'] as int;
+          _goal = userData['goal'] as String;
+          _workoutDays = userData['workoutDays'] as int;
+          _dailyMacros =
+              _calculateMacronutrients(_goal, _calculateBMR(), _workoutDays);
         });
       }
     }
@@ -101,7 +117,8 @@ class _NutritionPageState extends State<NutritionPage> {
     return cal;
   }
 
-  Map<String, double> _calculateMacronutrients(String goal, double bmr, int workoutDays) {
+  Map<String, double> _calculateMacronutrients(String goal, double bmr,
+      int workoutDays) {
     double tdee = _calculateTDEE(bmr, workoutDays, goal);
     Map<String, double> macros = {};
 
@@ -181,181 +198,268 @@ class _NutritionPageState extends State<NutritionPage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-          child: SafeArea(
+        child: SafeArea(
           child: Padding(
-          padding: const EdgeInsets.all(16.0),
-      child: Column(
-          children: [
-          GridView.count(
-          physics: NeverScrollableScrollPhysics(),
-      shrinkWrap: true,
-      crossAxisCount: 2,
-      crossAxisSpacing: 16,
-      mainAxisSpacing: 16,
-      children: [
-      _buildMacroCircle(
-      'Carbs',
-      _totalCarbs.toStringAsFixed(0),
-      'g',
-      Colors.orange,
-      _dailyMacros.containsKey('carbs')
-          ? (_totalCarbs / _dailyMacros['carbs']!).clamp(0, 1)
-          : 0,
-      _dailyMacros['carbs']?.toStringAsFixed(0) ?? '0',
-    ),
-    _buildMacroCircle(
-    'Protein',
-    _totalProtein.toStringAsFixed(0),
-    'g',
-    Colors.teal,
-    _dailyMacros.containsKey('protein')
-    ? (_totalProtein / _dailyMacros['protein']!).clamp(0, 1)
-        : 0,
-    _dailyMacros['protein']?.toStringAsFixed(0) ?? '0',
-    ),
-    _buildMacroCircle(
-    'Fat',
-    _totalFat.toStringAsFixed(0),
-    'g',
-    Colors.pink,
-    _dailyMacros.containsKey('fat')
-    ? (_totalFat / _dailyMacros['fat']!).clamp(0, 1)
-        : 0,
-    _dailyMacros['fat']?.toStringAsFixed(0) ?? '0',
-    ),
-    _buildMacroCircle(
-    'Calories',
-    _totalCalories.toStringAsFixed(0),
-    'Kcal',
-    Colors.lime,
-    _dailyMacros.containsKey('calories')
-    ? (_totalCalories / _dailyMacros['calories']!).clamp(0, 1)
-        : 0,
-    _dailyMacros['calories']?.toStringAsFixed(0) ?? '0',
-    ),
-      ],
-          ),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 24.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => CameraPage(),
-                        ),
-                      ).then((_) {
-                        _loadData();
-                      });
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFD2EB50),
-                      minimumSize: const Size(150, 50),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(5.0),
-                      ),
-                    ),
-                    child: Text(
-                      'LOG FOOD',
-                      style: GoogleFonts.bebasNeue(fontSize: 20, color: Colors.white),
-                    ),
-                  ),
-                  const SizedBox(width: 20),
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => LogFoodManuallyScreen(),
-                        ),
-                      ).then((_) {
-                        _loadData();
-                      });
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFD2EB50),
-                      minimumSize: const Size(150, 50),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(5.0),
-                      ),
-                    ),
-                    child: Text(
-                      'ADD FOOD',
-                      style: GoogleFonts.bebasNeue(fontSize: 20, color: Colors.white),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                GridView.count(
+                  physics: NeverScrollableScrollPhysics(),
+                  shrinkWrap: true,
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Food Suggestion',
-                            style: GoogleFonts.montserrat(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            'Strawberries are low in calories and will fit nicely in your current plan!',
-                            style: GoogleFonts.dmSans(
-                              color: Colors.black54,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ),
+                    _buildMacroCircle(
+                      'Carbs',
+                      _totalCarbs.toStringAsFixed(0),
+                      'g',
+                      Colors.orange,
+                      _dailyMacros.containsKey('carbs')
+                          ? (_totalCarbs / _dailyMacros['carbs']!).clamp(0, 2)
+                          : 0,
+                      _dailyMacros['carbs']?.toStringAsFixed(0) ?? '0',
                     ),
-                    SizedBox(width: 16),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.asset(
-                        'assets/data/images/strawberry.png',
-                        width: 60,
-                        height: 60,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            width: 60,
-                            height: 60,
-                            color: Colors.grey[300],
-                            child: Icon(Icons.restaurant, color: Colors.grey),
-                          );
-                        },
-                      ),
+                    _buildMacroCircle(
+                      'Protein',
+                      _totalProtein.toStringAsFixed(0),
+                      'g',
+                      Colors.teal,
+                      _dailyMacros.containsKey('protein')
+                          ? (_totalProtein / _dailyMacros['protein']!).clamp(
+                          0, 2)
+                          : 0,
+                      _dailyMacros['protein']?.toStringAsFixed(0) ?? '0',
+                    ),
+                    _buildMacroCircle(
+                      'Fat',
+                      _totalFat.toStringAsFixed(0),
+                      'g',
+                      Colors.pink,
+                      _dailyMacros.containsKey('fat')
+                          ? (_totalFat / _dailyMacros['fat']!).clamp(0, 2)
+                          : 0,
+                      _dailyMacros['fat']?.toStringAsFixed(0) ?? '0',
+                    ),
+                    _buildMacroCircle(
+                      'Calories',
+                      _totalCalories.toStringAsFixed(0),
+                      'Kcal',
+                      Colors.lime,
+                      _dailyMacros.containsKey('calories')
+                          ? (_totalCalories / _dailyMacros['calories']!).clamp(
+                          0, 2)
+                          : 0,
+                      _dailyMacros['calories']?.toStringAsFixed(0) ?? '0',
                     ),
                   ],
                 ),
-              ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => CameraPage(),
+                            ),
+                          ).then((_) {
+                            _loadData();
+                          });
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFD2EB50),
+                          minimumSize: const Size(150, 50),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(5.0),
+                          ),
+                        ),
+                        child: Text(
+                          'LOG FOOD',
+                          style: GoogleFonts.bebasNeue(
+                              fontSize: 20, color: Colors.white),
+                        ),
+                      ),
+                      const SizedBox(width: 20),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => LogFoodManuallyScreen(),
+                            ),
+                          ).then((_) {
+                            _loadData();
+                          });
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFD2EB50),
+                          minimumSize: const Size(150, 50),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(5.0),
+                          ),
+                        ),
+                        child: Text(
+                          'ADD FOOD',
+                          style: GoogleFonts.bebasNeue(
+                              fontSize: 20, color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Card(
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Food Suggestion',
+                                style: GoogleFonts.montserrat(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                'Strawberries are low in calories and will fit nicely in your current plan!',
+                                style: GoogleFonts.dmSans(
+                                  color: Colors.black54,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(width: 16),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.asset(
+                            'assets/data/images/strawberry.png',
+                            width: 60,
+                            height: 60,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                width: 60,
+                                height: 60,
+                                color: Colors.grey[300],
+                                child: Icon(
+                                    Icons.restaurant, color: Colors.grey),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-      ),
           ),
-          ),
+        ),
       ),
-    bottomNavigationBar: BottomNavBar(
-    currentIndex: _selectedIndex,
-    onTap: _onItemTapped,
-    ),
+      bottomNavigationBar: BottomNavBar(
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+      ),
     );
   }
 
-  Widget _buildMacroCircle(String label, String value, String unit, Color color, double progress, String max) {
+  // Widget _buildMacroCircle(
+  //     String label, String value, String unit, Color color, double progress, String max) {
+  //   // Ensure progress is within 0 and 1
+  //   progress = progress.clamp(0.0, 1.0);
+  //
+  //   return LayoutBuilder(
+  //     builder: (context, constraints) {
+  //       return Container(
+  //         padding: const EdgeInsets.all(16),
+  //         decoration: BoxDecoration(
+  //           color: Colors.grey[100],
+  //           borderRadius: BorderRadius.circular(12),
+  //         ),
+  //         child: Column(
+  //           mainAxisAlignment: MainAxisAlignment.center,
+  //           children: [
+  //             Stack(
+  //               alignment: Alignment.center,
+  //               children: [
+  //                 SizedBox(
+  //                   width: constraints.maxWidth * 0.5, // Responsive size
+  //                   height: constraints.maxWidth * 0.5,
+  //                   child: TweenAnimationBuilder<double>(
+  //                     tween: Tween<double>(begin: 0, end: progress),
+  //                     duration: const Duration(milliseconds: 1500), // Animation duration
+  //                     builder: (context, value, child) {
+  //                       return CircularProgressIndicator(
+  //                         value: value,
+  //                         backgroundColor: Colors.grey[300],
+  //                         valueColor: AlwaysStoppedAnimation<Color>(color),
+  //                         strokeWidth: 8,
+  //                       );
+  //                     },
+  //                   ),
+  //                 ),
+  //                 Column(
+  //                   mainAxisAlignment: MainAxisAlignment.center,
+  //                   children: [
+  //                     Text(
+  //                       value,
+  //                       style: GoogleFonts.montserrat(
+  //                         fontSize: constraints.maxWidth * 0.06, // Responsive font size
+  //                         fontWeight: FontWeight.bold,
+  //                       ),
+  //                     ),
+  //                     Text(
+  //                       unit,
+  //                       style: GoogleFonts.dmSans(
+  //                         fontSize: constraints.maxWidth * 0.03,
+  //                         color: Colors.grey,
+  //                       ),
+  //                     ),
+  //                   ],
+  //                 ),
+  //               ],
+  //             ),
+  //             const SizedBox(height: 8),
+  //             Text(
+  //               label,
+  //               style: GoogleFonts.montserrat(
+  //                 fontSize: constraints.maxWidth * 0.04,
+  //                 fontWeight: FontWeight.w500,
+  //               ),
+  //             ),
+  //             Text(
+  //               '(max: $max)',
+  //               style: GoogleFonts.dmSans(
+  //                 fontSize: constraints.maxWidth * 0.025,
+  //                 color: Colors.grey,
+  //               ),
+  //             ),
+  //           ],
+  //         ),
+  //       );
+  //     },
+  //   );
+  // }
+
+  Widget _buildMacroCircle(
+      String label, String value, String unit, Color color, double progress, String max) {
+    progress = progress.clamp(0.0, 2.0); // Allow progress up to 2.0 for overfill
+    final overfillColor = Colors.grey[400]; // Choose your overfill color
+
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -371,11 +475,19 @@ class _NutritionPageState extends State<NutritionPage> {
               SizedBox(
                 width: 80,
                 height: 80,
-                child: CircularProgressIndicator(
-                  value: progress,
-                  backgroundColor: Colors.grey[300],
-                  valueColor: AlwaysStoppedAnimation<Color>(color),
-                  strokeWidth: 8,
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween<double>(begin: 0, end: progress),
+                  duration: const Duration(milliseconds: 1500),
+                  builder: (context, value, child) {
+                    return CircularProgressIndicator(
+                      value: value <= 1.0 ? value : 1.0, // Limit to 1.0 for base
+                      backgroundColor: Colors.grey[300],
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        value <= 1.0 ? color : (overfillColor ?? Colors.grey), // null check
+                      ),
+                      strokeWidth: 8,
+                    );
+                  },
                 ),
               ),
               Column(

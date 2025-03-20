@@ -65,8 +65,8 @@ class _LogFoodManuallyScreenState extends State<LogFoodManuallyScreen> {
         _carbsController.text.isEmpty ||
         _proteinController.text.isEmpty ||
         _dishNameController.text.isEmpty
-        //|| _image == null
-        ) {
+    //|| _image == null
+    ) {
       //print("Error: All fields and image are required.");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -148,52 +148,55 @@ class _LogFoodManuallyScreenState extends State<LogFoodManuallyScreen> {
             padding: const EdgeInsets.all(16.0),
             child: Column(
               children: [
-                GestureDetector(
-                  onTap: () {
-                    showModalBottomSheet(
-                      context: context,
-                      builder: (BuildContext context) {
-                        return SafeArea(
-                          child: Wrap(
-                            children: <Widget>[
-                              ListTile(
-                                leading: const Icon(Icons.photo_library),
-                                title: const Text('Photo Library'),
-                                onTap: ()
-                                {
-                                  _pickImage(ImageSource.gallery);
-                                  Navigator.of(context).pop();
-                                },
-                              ),
-                              ListTile(
-                                leading: const Icon(Icons.camera_alt),
-                                title: const Text('Camera'),
-                                onTap: () {
-                                   _pickImage(ImageSource.camera);
-                                   Navigator.of(context).pop();
-                                },
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    );
-                  },
-                  child: Container(
-                    height: 150,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: _image == null
-                         ? const Icon(Icons.camera_alt, size: 50, color: Colors.grey)
-                         : ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: Image.file(_image!, fit: BoxFit.cover),
-                    ),
-                  ),
-                ),
+                // GestureDetector(
+                //   onTap: () {
+                //     showModalBottomSheet(
+                //       context: context,
+                //       builder: (BuildContext context) {
+                //         return SafeArea(
+                //           child: Wrap(
+                //             //children:
+                //             // <Widget>[
+                //             //   ListTile(
+                //             //     leading: const Icon(Icons.photo_library),
+                //             //     title: const Text('Photo Library'),
+                //             //     onTap: ()
+                //             //     {
+                //             //       _pickImage(ImageSource.gallery);
+                //             //       Navigator.of(context).pop();
+                //             //     },
+                //             //   ),
+                //             //   ListTile(
+                //             //     leading: const Icon(Icons.camera_alt),
+                //             //     title: const Text('Camera'),
+                //             //     onTap: () {
+                //             //        _pickImage(ImageSource.camera);
+                //             //        Navigator.of(context).pop();
+                //             //     },
+                //             //   ),
+                //             // ]
+                //             //,
+                //           ),
+                //         );
+                //       },
+                //     );
+                //   },
+                //   child:
+                //   Container(
+                //     height: 150,
+                //     width: double.infinity,
+                //     decoration: BoxDecoration(
+                //       color: Colors.grey[200],
+                //       borderRadius: BorderRadius.circular(10),
+                //     ),
+                // //     child: _image == null
+                // //          ? const Icon(Icons.camera_alt, size: 50, color: Colors.grey)
+                // //          : ClipRRect(
+                // //       borderRadius: BorderRadius.circular(10),
+                // //       child: Image.file(_image!, fit: BoxFit.cover),
+                // //     ),
+                //    ),
+                //  ),
                 const SizedBox(height: 20),
                 TextField(
                   controller: _dishNameController,

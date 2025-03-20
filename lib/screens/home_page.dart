@@ -140,7 +140,7 @@ class _HomePageState extends State<HomePage> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                        //shrifa
+                      //shrifa
                       //    SizedBox(height: 12),  // Add spacing before the button
                       //     ElevatedButton(
                       //       onPressed: () {
@@ -222,37 +222,37 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(height: 16),
               Row(
                 children: [
-                  Expanded(
-                    child: Container(
-                      height: 180,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        children: [
-                          CircularPercentIndicator(
-                            radius: 60.0,
-                            lineWidth: 10.0,
-                            percent: _totalCalories / _dailyCaloriesGoal,
-                            center: Text(
-                              "${_totalCalories.toStringAsFixed(0)} Kcal",
-                              style: const TextStyle(
-                                color: Color(0xFFD2EB50),
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            progressColor: Color(0xFFD2EB50),
-                          ),
-                          const Text(
-                            "Kcal",
-                            style: TextStyle(color: Colors.grey, fontSize: 14),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                  // Expanded(
+                  //   child: Container(
+                  //     height: 180,
+                  //     padding: const EdgeInsets.all(16),
+                  //     decoration: BoxDecoration(
+                  //       color: Colors.white,
+                  //       borderRadius: BorderRadius.circular(12),
+                  //     ),
+                  //     child: Column(
+                  //       children: [
+                  //         CircularPercentIndicator(
+                  //           radius: 60.0,
+                  //           lineWidth: 10.0,
+                  //           percent: _totalCalories / _dailyCaloriesGoal,
+                  //           center: Text(
+                  //             "${_totalCalories.toStringAsFixed(0)} Kcal",
+                  //             style: const TextStyle(
+                  //               color: Color(0xFFD2EB50),
+                  //               fontWeight: FontWeight.bold,
+                  //             ),
+                  //           ),
+                  //           progressColor: Color(0xFFD2EB50),
+                  //         ),
+                  //         const Text(
+                  //           "Kcal",
+                  //           style: TextStyle(color: Colors.grey, fontSize: 14),
+                  //         ),
+                  //       ],
+                  //     ),
+                  //   ),
+                  // ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Container(

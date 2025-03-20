@@ -71,10 +71,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
   final TextEditingController _ageController = TextEditingController();
 
   String _gender = "Female";
-  String _goal = "Lose Weight";
+  String _goal = "Weight Loss";
+  String _workoutDays = '3';
   bool isKg = true; // Default to KG
   bool isCm = true; // Default to CM
   int _selectedIndex = 3;
+  bool _isLoading = true;
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -92,24 +95,114 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   void _loadUserData() async {
-    User? user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      DocumentSnapshot userData = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
+    setState(() {
+      _isLoading = true;
+    });
 
-      if (mounted && userData.exists) {
+    try {
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        DocumentSnapshot userData = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+
+        if (mounted && userData.exists) {
+          final data = userData.data() as Map<String, dynamic>?;
+
+          if (data != null) {
+            // Get weight and height as doubles directly
+            final storedWeight = (data['weight'] is double)
+                ? data['weight']
+                : double.tryParse(data['weight']?.toString() ?? '') ?? 0.0;
+
+            final storedHeight = (data['height'] is double)
+                ? data['height']
+                : double.tryParse(data['height']?.toString() ?? '') ?? 0.0;
+
+            final storedUnit = data['unitPreference'] ?? 'metric';
+
+            // Set unit preference
+            setState(() {
+              isKg = storedUnit == 'metric';
+              isCm = storedUnit == 'metric';
+
+              _fullNameController.text = data['fullName'] ?? '';
+              _ageController.text = data['age']?.toString() ?? '';
+              _gender = data['gender'] ?? 'Female';
+              _goal = data['goal'] ?? 'Weight Loss';
+              _workoutDays = data['workoutDays']?.toString() ?? '3';
+
+              // Convert weight if necessary
+              if (isKg) {
+                _weightController.text = storedWeight.toStringAsFixed(2);
+              } else {
+                // Convert kg to lbs
+                _weightController.text = (storedWeight * 2.20462).toStringAsFixed(2);
+              }
+
+              // Convert height if necessary
+              if (isCm) {
+                _heightController.text = storedHeight.toStringAsFixed(2);
+              } else {
+                // Convert cm to feet (as decimal)
+                _heightController.text = (storedHeight / 30.48).toStringAsFixed(2);
+              }
+            });
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Error loading profile: $e"))
+        );
+      }
+    } finally {
+      if (mounted) {
         setState(() {
-          _fullNameController.text = userData['fullName'] ?? '';
-          _weightController.text = userData['weight']?.toString() ?? '';
-          _heightController.text = userData['height']?.toString() ?? '';
-          _ageController.text = userData['age']?.toString() ?? '';
-          _gender = userData['gender'] ?? 'Female';
-          _goal = userData['goal'] ?? 'Lose Weight';
+          _isLoading = false;
         });
       }
     }
+  }
+
+  void _convertWeight() {
+    if (_weightController.text.isNotEmpty) {
+      final currentWeight = double.tryParse(_weightController.text) ?? 0.0;
+      setState(() {
+        if (isKg) {
+          // Convert from lbs to kg
+          _weightController.text = (currentWeight * 0.453592).toStringAsFixed(2);
+        } else {
+          // Convert from kg to lbs
+          _weightController.text = (currentWeight * 2.20462).toStringAsFixed(2);
+        }
+      });
+    }
+  }
+
+  void _convertHeight() {
+    if (_heightController.text.isNotEmpty) {
+      final currentHeight = double.tryParse(_heightController.text) ?? 0.0;
+      setState(() {
+        if (isCm) {
+          // Convert from feet to cm
+          _heightController.text = (currentHeight * 30.48).toStringAsFixed(2);
+        } else {
+          // Convert from cm to feet
+          _heightController.text = (currentHeight / 30.48).toStringAsFixed(2);
+        }
+      });
+    }
+  }
+
+  Future<void> _selectProfileImage() async {
+    // This would be implemented with image picker
+    // For now, just show a message
+    ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Profile image upload coming soon!"))
+    );
   }
 
   Future<void> _saveUserData() async {
@@ -117,48 +210,93 @@ class _EditProfilePageState extends State<EditProfilePage> {
       return;
     }
 
+    setState(() {
+      _isSaving = true;
+    });
+
     User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       try {
+        // Parse inputs as doubles
         double weight = double.parse(_weightController.text);
         double height = double.parse(_heightController.text);
+
+        // Convert to metric for storage
         if (!isKg) {
           weight = weight * 0.453592;
         }
+
         if (!isCm) {
           height = height * 30.48;
         }
+
+        // Round to 2 decimal places
+        weight = double.parse(weight.toStringAsFixed(2));
+        height = double.parse(height.toStringAsFixed(2));
+
         await FirebaseFirestore.instance
             .collection('users')
             .doc(user.uid)
             .update({
           'fullName': _fullNameController.text,
-          'weight': weight.toStringAsFixed(2),
-          'height': height.toStringAsFixed(2),
+          'weight': weight, // Store as double, not string
+          'height': height, // Store as double, not string
           'age': int.tryParse(_ageController.text) ?? 0,
           'gender': _gender,
           'goal': _goal,
+          'workoutDays': int.parse(_workoutDays),
+          'unitPreference': isKg ? 'metric' : 'imperial',
         });
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Profile updated successfully!"))
+              const SnackBar(
+                content: Text("Profile updated successfully!"),
+                backgroundColor: Colors.green,
+              )
           );
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text("Error updating profile: $e"))
+              SnackBar(
+                content: Text("Error updating profile: $e"),
+                backgroundColor: Colors.red,
+              )
           );
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isSaving = false;
+          });
         }
       }
     }
   }
 
   void _onItemTapped(int index) {
+    if (index == _selectedIndex) return;
+
     setState(() {
       _selectedIndex = index;
     });
+
+    // Navigate to the appropriate screen based on index
+    switch(index) {
+      case 0:
+        Navigator.pushReplacementNamed(context, '/home');
+        break;
+      case 1:
+        Navigator.pushReplacementNamed(context, '/workouts');
+        break;
+      case 2:
+        Navigator.pushReplacementNamed(context, '/nutrition');
+        break;
+      case 3:
+      // Already on profile page
+        break;
+    }
   }
 
   @override
@@ -167,15 +305,28 @@ class _EditProfilePageState extends State<EditProfilePage> {
       appBar: AppBar(
         title: Text(
           'EDIT PROFILE',
-          style: GoogleFonts.bebasNeue(color: Colors.black),
+          style: GoogleFonts.bebasNeue(
+            color: Colors.black,
+            fontSize: 22,
+            letterSpacing: 1.5,
+          ),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
         ),
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
-        automaticallyImplyLeading: false,
       ),
-      body: SafeArea(
+      body: _isLoading
+          ? const Center(
+        child: CircularProgressIndicator(
+          color: Color(0xFFD2EB50),
+        ),
+      )
+          : SafeArea(
         child: SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.all(20.0),
@@ -185,36 +336,79 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Center(
-                    child: CircleAvatar(
-                      radius: 50,
-                      backgroundColor: const Color(0xFFD2EB50),
-                      child: const Icon(
-                        Icons.camera_alt,
-                        color: Colors.black,
-                        size: 40,
+                    child: GestureDetector(
+                      onTap: _selectProfileImage,
+                      child: Stack(
+                        children: [
+                          CircleAvatar(
+                            radius: 50,
+                            backgroundColor: const Color(0xFFD2EB50),
+                            child: const Icon(
+                              Icons.person,
+                              color: Colors.black,
+                              size: 40,
+                            ),
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              height: 34,
+                              width: 34,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(17),
+                                border: Border.all(
+                                  color: const Color(0xFFD2EB50),
+                                  width: 2,
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.camera_alt,
+                                color: Colors.black,
+                                size: 18,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
                   Text(
                     'Full Name',
-                    style: GoogleFonts.montserrat(color: Colors.black),
+                    style: GoogleFonts.montserrat(
+                      color: Colors.black,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
+                  const SizedBox(height: 8),
                   TextFormField(
                     controller: _fullNameController,
                     style: GoogleFonts.montserrat(),
                     validator: validateFullName,
                     decoration: InputDecoration(
                       filled: true,
-                      fillColor: Color(0X15696940),
+                      fillColor: const Color(0X15696940),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(5),
+                        borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
                       ),
                     ),
                   ),
                   const SizedBox(height: 20),
-                  Text('Weight', style: GoogleFonts.montserrat(color: Colors.black),),
+                  Text(
+                    'Weight',
+                    style: GoogleFonts.montserrat(
+                      color: Colors.black,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   Row(
                     children: [
                       Expanded(
@@ -223,44 +417,68 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           style: GoogleFonts.montserrat(),
                           validator: validateWeight,
                           keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true),
+                            decimal: true,
+                          ),
                           decoration: InputDecoration(
                             filled: true,
-                            fillColor: Color(0X15696940),
+                            fillColor: const Color(0X15696940),
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(5),
+                              borderRadius: BorderRadius.circular(8),
                               borderSide: BorderSide.none,
                             ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                            suffixText: isKg ? 'kg' : 'lbs',
                           ),
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 12),
                       ToggleButtons(
                         isSelected: [!isKg, isKg],
                         onPressed: (int index) {
                           setState(() {
                             isKg = index == 1;
+                            _convertWeight();
                           });
                         },
-                        borderRadius: BorderRadius.circular(5),
-                        color: Colors.black12,
-                        selectedColor: Colors.black,
-                        fillColor: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(8),
+                        color: Colors.black54,
+                        selectedColor: Colors.white,
+                        fillColor: const Color(0xFFD2EB50),
                         children: [
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Text('LBS', style: GoogleFonts.montserrat(color: Colors.black),),
+                            child: Text(
+                              'LBS',
+                              style: GoogleFonts.montserrat(
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
                           ),
                           Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 16),
-                            child: Text('KG', style: GoogleFonts.montserrat(color: Colors.black),),
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Text(
+                              'KG',
+                              style: GoogleFonts.montserrat(
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
                           ),
                         ],
                       ),
                     ],
                   ),
                   const SizedBox(height: 20),
-                  Text('Height', style: GoogleFonts.montserrat(color: Colors.black),),
+                  Text(
+                    'Height',
+                    style: GoogleFonts.montserrat(
+                      color: Colors.black,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   Row(
                     children: [
                       Expanded(
@@ -269,44 +487,98 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           style: GoogleFonts.montserrat(),
                           validator: validateHeight,
                           keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true),
+                            decimal: true,
+                          ),
                           decoration: InputDecoration(
                             filled: true,
-                            fillColor: Color(0X15696940),
+                            fillColor: const Color(0X15696940),
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(5),
+                              borderRadius: BorderRadius.circular(8),
                               borderSide: BorderSide.none,
                             ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                            suffixText: isCm ? 'cm' : 'ft',
+                            helperText: isCm ? null : 'Enter decimal feet, e.g. 5.75',
+                            helperStyle: GoogleFonts.montserrat(fontSize: 12),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 12),
                       ToggleButtons(
                         isSelected: [!isCm, isCm],
                         onPressed: (int index) {
                           setState(() {
                             isCm = index == 1;
+                            _convertHeight();
                           });
                         },
-                        borderRadius: BorderRadius.circular(5),
-                        color: Colors.black12,
-                        selectedColor: Colors.black,
-                        fillColor: Colors.grey[300],
-                        children:  [
+                        borderRadius: BorderRadius.circular(8),
+                        color: Colors.black54,
+                        selectedColor: Colors.white,
+                        fillColor: const Color(0xFFD2EB50),
+                        children: [
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Text('FEET', style: GoogleFonts.montserrat(color: Colors.black),),
+                            child: Text(
+                              'FEET',
+                              style: GoogleFonts.montserrat(
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
                           ),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Text('CM', style: GoogleFonts.montserrat(color: Colors.black),),
+                            child: Text(
+                              'CM',
+                              style: GoogleFonts.montserrat(
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
                           ),
                         ],
                       ),
                     ],
                   ),
                   const SizedBox(height: 20),
-                  Text('Gender', style: GoogleFonts.montserrat(color: Colors.black),),
+                  Text(
+                    'Age',
+                    style: GoogleFonts.montserrat(
+                      color: Colors.black,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: _ageController,
+                    style: GoogleFonts.montserrat(),
+                    validator: validateAge,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: const Color(0X15696940),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      suffixText: 'years',
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Gender',
+                    style: GoogleFonts.montserrat(
+                      color: Colors.black,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
                     value: _gender,
                     isExpanded: true,
@@ -321,18 +593,27 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       'Female',
                       'Male',
                     ].map<DropdownMenuItem<String>>((String value) {
+                      IconData icon;
+                      if (value == 'Female') {
+                        icon = Icons.female;
+                      } else {
+                        icon = Icons.male;
+                      }
+
                       return DropdownMenuItem<String>(
                         value: value,
                         child: Row(
                           children: [
                             Icon(
-                              value == 'Female' ? Icons.female : Icons.male,
-                              color: Color(0xFF303841),
+                              icon,
+                              color: const Color(0xFF303841),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 12),
                             Text(
                               value,
-                              style: GoogleFonts.montserrat(color: Colors.black),
+                              style: GoogleFonts.montserrat(
+                                color: Colors.black,
+                              ),
                             ),
                           ],
                         ),
@@ -340,15 +621,26 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     }).toList(),
                     decoration: InputDecoration(
                       filled: true,
-                      fillColor: Color(0x15696940),
+                      fillColor: const Color(0x15696940),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(5),
+                        borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
                       ),
                     ),
                   ),
                   const SizedBox(height: 20),
-                  Text('Goal', style: GoogleFonts.montserrat(color: Colors.black),),
+                  Text(
+                    'Goal',
+                    style: GoogleFonts.montserrat(
+                      color: Colors.black,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
                     value: _goal,
                     isExpanded: true,
@@ -360,12 +652,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       }
                     },
                     items: <String>[
-                      'Lose Weight',
+                      'Weight Loss',
                       'Gain Muscle',
-                      'Improve Fitness'
+                      'Improve Fitness',
                     ].map<DropdownMenuItem<String>>((String value) {
                       IconData icon;
-                      if (value == 'Lose Weight') {
+                      if (value == 'Weight Loss') {
                         icon = Icons.monitor_weight_outlined;
                       } else if (value == 'Gain Muscle') {
                         icon = Icons.fitness_center_outlined;
@@ -379,12 +671,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           children: [
                             Icon(
                               icon,
-                              color: Color(0xFF303841),
+                              color: const Color(0xFF303841),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 12),
                             Text(
                               value,
-                              style: GoogleFonts.montserrat(color: Colors.black),
+                              style: GoogleFonts.montserrat(
+                                color: Colors.black,
+                              ),
                             ),
                           ],
                         ),
@@ -392,73 +686,171 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     }).toList(),
                     decoration: InputDecoration(
                       filled: true,
-                      fillColor: Color(0X15696940),
+                      fillColor: const Color(0X15696940),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(5),
+                        borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
                       ),
                     ),
                   ),
                   const SizedBox(height: 20),
-                  Text('Age', style: GoogleFonts.montserrat(color: Colors.black),),
-                  TextFormField(
-                    controller: _ageController,
-                    style: GoogleFonts.montserrat(),
-                    validator: validateAge,
-                    keyboardType: TextInputType.number,
+                  Text(
+                    'Workout Days Per Week',
+                    style: GoogleFonts.montserrat(
+                      color: Colors.black,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    value: _workoutDays,
+                    isExpanded: true,
+                    onChanged: (String? newValue) {
+                      if (newValue != null) {
+                        setState(() {
+                          _workoutDays = newValue;
+                        });
+                      }
+                    },
+                    items: <String>[
+                      '1', '2', '3', '4', '5', '6', '7',
+                    ].map<DropdownMenuItem<String>>((String value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.calendar_today,
+                              color: Color(0xFF303841),
+                              size: 18,
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              '$value day${value != '1' ? 's' : ''} per week',
+                              style: GoogleFonts.montserrat(
+                                color: Colors.black,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
                     decoration: InputDecoration(
                       filled: true,
-                      fillColor: Color(0X15696940),
+                      fillColor: const Color(0x15696940),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(5),
+                        borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 32),
                   Center(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    child: Column(
                       children: [
                         ElevatedButton(
-                          onPressed: _saveUserData,
+                          onPressed: _isSaving ? null : _saveUserData,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFFD2EB50),
-                            minimumSize: const Size(150, 50),
+                            minimumSize: const Size(double.infinity, 54),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(5.0),
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: _isSaving
+                              ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                              : Text(
+                            'SAVE CHANGES',
+                            style: GoogleFonts.bebasNeue(
+                              fontSize: 20,
+                              color: Colors.black,
+                              letterSpacing: 1.5,
                             ),
                           ),
-                          child: Text(
-                            'SAVE',
-                            style: GoogleFonts.bebasNeue(
-                                fontSize: 20, color: Colors.white),
-                          ),
                         ),
-                        const SizedBox(width: 20),
+                        const SizedBox(height: 16),
                         OutlinedButton(
                           onPressed: () {
-                            FirebaseAuth.instance.signOut().then((_) {
-                              Navigator.pushReplacementNamed(context, '/login');
-                            });
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: Text(
+                                  'Logout',
+                                  style: GoogleFonts.montserrat(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                content: Text(
+                                  'Are you sure you want to logout?',
+                                  style: GoogleFonts.montserrat(),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: Text(
+                                      'Cancel',
+                                      style: GoogleFonts.montserrat(
+                                        color: Colors.grey[700],
+                                      ),
+                                    ),
+                                  ),
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      Navigator.pop(context); // Close dialog
+                                      FirebaseAuth.instance.signOut().then((_) {
+                                        Navigator.pushReplacementNamed(context, '/login');
+                                      });
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFFD2EB50),
+                                    ),
+                                    child: Text(
+                                      'Logout',
+                                      style: GoogleFonts.montserrat(
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
                           },
                           style: OutlinedButton.styleFrom(
-                            side: BorderSide(color: const Color(0xFFD2EB50)),
-                            minimumSize: const Size(150, 50),
+                            side: const BorderSide(color: Color(0xFFD2EB50)),
+                            minimumSize: const Size(double.infinity, 54),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(5.0),
+                              borderRadius: BorderRadius.circular(8.0),
                             ),
                           ),
                           child: Text(
                             'LOGOUT',
                             style: GoogleFonts.bebasNeue(
-                                fontSize: 20, color: const Color(0xFFD2EB50)),
+                              fontSize: 20,
+                              color: const Color(0xFFD2EB50),
+                              letterSpacing: 1.5,
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
                 ],
               ),
             ),
@@ -467,9 +859,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       ),
       bottomNavigationBar: BottomNavBar(
         currentIndex: _selectedIndex,
-        onTap: (index) {
-          _onItemTapped(index);
-        },
+        onTap: _onItemTapped,
       ),
     );
   }
