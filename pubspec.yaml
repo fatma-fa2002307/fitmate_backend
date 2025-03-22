@@ -48,6 +48,7 @@ dependencies:
   cached_network_image: ^3.3.0
   firebase_storage: ^11.7.7
   flutter_riverpod: ^2.6.1
+  lottie: ^3.3.1
 
   #sharifa
   #tflite_flutter: ^0.9.0  # Runs TFLite models
@@ -86,6 +87,10 @@ flutter:
     - assets/data/images/avatar/4.jpg
     - assets/data/images/avatar/5.jpg
     - assets/data/images/avatar/6.jpg
+    - assets/data/lottie/1.json
+    - assets/data/lottie/2.json
+    - assets/data/lottie/3.json
+    - assets/data/lottie/4.json
   #sharifa
   #  - assets/models/food_model.tflite
 
