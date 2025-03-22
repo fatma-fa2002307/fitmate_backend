@@ -80,6 +80,12 @@ flutter:
     - assets/data/images/workouts/image 4.png
     - assets/data/images/workouts/image 5.png
     - assets/data/images/yoga-pose.png
+    - assets/data/images/avatar/1.jpg
+    - assets/data/images/avatar/2.jpg
+    - assets/data/images/avatar/3.jpg
+    - assets/data/images/avatar/4.jpg
+    - assets/data/images/avatar/5.jpg
+    - assets/data/images/avatar/6.jpg
   #sharifa
   #  - assets/models/food_model.tflite
 

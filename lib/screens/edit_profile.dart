@@ -76,8 +76,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
   String _gender = "Female";
   String _goal = "Weight Loss";
   String _workoutDays = '3';
-  bool isKg = true; // Default to KG
-  bool isCm = true; // Default to CM
+  bool isKg = true;
+  bool isCm = true;
   int _selectedIndex = 3;
   bool _isLoading = true;
   bool _isSaving = false;
@@ -114,7 +114,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
           final data = userData.data() as Map<String, dynamic>?;
 
           if (data != null) {
-            // Get weight and height as doubles directly
             final storedWeight = (data['weight'] is double)
                 ? data['weight']
                 : double.tryParse(data['weight']?.toString() ?? '') ?? 0.0;
@@ -125,7 +124,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
             final storedUnit = data['unitPreference'] ?? 'metric';
 
-            // Set unit preference
             setState(() {
               isKg = storedUnit == 'metric';
               isCm = storedUnit == 'metric';
@@ -136,19 +134,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
               _goal = data['goal'] ?? 'Weight Loss';
               _workoutDays = data['workoutDays']?.toString() ?? '3';
 
-              // Convert weight if necessary
               if (isKg) {
                 _weightController.text = storedWeight.toStringAsFixed(2);
               } else {
-                // Convert kg to lbs
                 _weightController.text = (storedWeight * 2.20462).toStringAsFixed(2);
               }
 
-              // Convert height if necessary
               if (isCm) {
                 _heightController.text = storedHeight.toStringAsFixed(2);
               } else {
-                // Convert cm to feet (as decimal)
                 _heightController.text = (storedHeight / 30.48).toStringAsFixed(2);
               }
             });
@@ -175,10 +169,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
       final currentWeight = double.tryParse(_weightController.text) ?? 0.0;
       setState(() {
         if (isKg) {
-          // Convert from lbs to kg
           _weightController.text = (currentWeight * 0.453592).toStringAsFixed(2);
         } else {
-          // Convert from kg to lbs
           _weightController.text = (currentWeight * 2.20462).toStringAsFixed(2);
         }
       });
@@ -190,10 +182,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
       final currentHeight = double.tryParse(_heightController.text) ?? 0.0;
       setState(() {
         if (isCm) {
-          // Convert from feet to cm
           _heightController.text = (currentHeight * 30.48).toStringAsFixed(2);
         } else {
-          // Convert from cm to feet
           _heightController.text = (currentHeight / 30.48).toStringAsFixed(2);
         }
       });
@@ -201,11 +191,149 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   Future<void> _selectProfileImage() async {
-    // This would be implemented with image picker
-    // For now, just show a message
-    ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Profile image upload coming soon!"))
-    );
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    String? selectedImagePath;
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => Container(
+          padding: const EdgeInsets.all(24),
+          height: MediaQuery.of(context).size.height * 0.6,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Choose Profile Picture',
+                    style: GoogleFonts.montserrat(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: GridView.builder(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                  ),
+                  itemCount: 6,
+                  itemBuilder: (context, index) {
+                    final imagePath = 'assets/data/images/avatar/${index + 1}.jpg';
+                    final isSelected = imagePath == selectedImagePath;
+
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          selectedImagePath = imagePath;
+                        });
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: isSelected ? const Color(0xFFD2EB50) : Colors.transparent,
+                            width: 3,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.asset(
+                            imagePath,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: selectedImagePath == null
+                    ? null
+                    : () async {
+                  Navigator.pop(context, selectedImagePath);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFD2EB50),
+                  minimumSize: const Size(double.infinity, 54),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                  elevation: 0,
+                  disabledBackgroundColor: Colors.grey[300],
+                ),
+                child: Text(
+                  'CONFIRM',
+                  style: GoogleFonts.bebasNeue(
+                    fontSize: 20,
+                    color: Colors.white,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ).then((selectedImage) async {
+      if (selectedImage != null) {
+        try {
+          // Show loading indicator
+          ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                  content: Text("Updating profile picture..."),
+                  duration: Duration(milliseconds: 600),
+              )
+
+          );
+
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .update({
+            'profileImage': selectedImage,
+          });
+
+          // Update the UI
+          setState(() {
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Profile picture updated successfully!"),
+                // backgroundColor: const Color(0xFFD2EB50),
+                duration: Duration(milliseconds: 1000)
+              )
+          );
+        } catch (e) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text("Error updating profile picture: $e"),
+                backgroundColor: Colors.red,
+              )
+          );
+        }
+      }
+    });
   }
 
   Future<void> _saveUserData() async {
@@ -244,8 +372,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
             .doc(user.uid)
             .update({
           'fullName': _fullNameController.text,
-          'weight': weight, // Store as double, not string
-          'height': height, // Store as double, not string
+          'weight': weight,
+          'height': height,
           'age': age,
           'gender': _gender,
           'goal': _goal,
@@ -266,8 +394,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text("Profile and nutrition goals updated successfully!"),
-                backgroundColor: Colors.green,
+                content: Text("Profile updated successfully!"),
+                  duration: Duration(milliseconds: 1000)
               )
           );
         }
@@ -296,22 +424,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
     setState(() {
       _selectedIndex = index;
     });
-
-    // Navigate to the appropriate screen based on index
-    switch(index) {
-      case 0:
-        Navigator.pushReplacementNamed(context, '/home');
-        break;
-      case 1:
-        Navigator.pushReplacementNamed(context, '/workouts');
-        break;
-      case 2:
-        Navigator.pushReplacementNamed(context, '/nutrition');
-        break;
-      case 3:
-      // Already on profile page
-        break;
-    }
   }
 
   @override
@@ -355,14 +467,62 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       onTap: _selectProfileImage,
                       child: Stack(
                         children: [
-                          CircleAvatar(
-                            radius: 50,
-                            backgroundColor: const Color(0xFFD2EB50),
-                            child: const Icon(
-                              Icons.person,
-                              color: Colors.black,
-                              size: 40,
-                            ),
+                          FutureBuilder<DocumentSnapshot>(
+                            future: FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(FirebaseAuth.instance.currentUser?.uid)
+                                .get(),
+                            builder: (context, snapshot) {
+                              String? profileImage;
+
+                              if (snapshot.hasData && snapshot.data != null) {
+                                final userData = snapshot.data!.data() as Map<String, dynamic>?;
+                                profileImage = userData?['profileImage'];
+                              }
+
+                              return GestureDetector(
+                                onTap: _selectProfileImage,
+                                child: Stack(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 50,
+                                      backgroundColor: const Color(0xFFD2EB50),
+                                      backgroundImage: profileImage != null
+                                          ? AssetImage(profileImage)
+                                          : null,
+                                      child: profileImage == null
+                                          ? const Icon(
+                                        Icons.person,
+                                        color: Colors.black,
+                                        size: 40,
+                                      )
+                                          : null,
+                                    ),
+                                    Positioned(
+                                      bottom: 0,
+                                      right: 0,
+                                      child: Container(
+                                        height: 34,
+                                        width: 34,
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(17),
+                                          border: Border.all(
+                                            color: const Color(0xFFD2EB50),
+                                            width: 2,
+                                          ),
+                                        ),
+                                        child: const Icon(
+                                          Icons.camera_alt,
+                                          color: Colors.black,
+                                          size: 18,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
                           ),
                           Positioned(
                             bottom: 0,
@@ -825,7 +985,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                                   ),
                                   ElevatedButton(
                                     onPressed: () {
-                                      Navigator.pop(context); // Close dialog
+                                      Navigator.pop(context);
                                       FirebaseAuth.instance.signOut().then((_) {
                                         Navigator.pushReplacementNamed(context, '/login');
                                       });
