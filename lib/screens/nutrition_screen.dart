@@ -5,6 +5,7 @@ import '../widgets/bottom_nav_bar.dart';
 import 'camera_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../repositories/food_repository.dart';
 
 class NutritionPage extends StatefulWidget {
   const NutritionPage({Key? key}) : super(key: key);
@@ -27,6 +28,9 @@ class _NutritionPageState extends State<NutritionPage> {
   String _goal = '';
   int _workoutDays = 0;
   bool _isLoading = true;
+
+  // Initialize the repository
+  final FoodRepository _macrosRepository = FoodRepository();
 
   void _onItemTapped(int index) {
     setState(() {
@@ -54,6 +58,7 @@ class _NutritionPageState extends State<NutritionPage> {
   Future<void> _loadUserData() async {
     User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
+      // Load user profile data
       DocumentSnapshot userData = await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
@@ -82,73 +87,27 @@ class _NutritionPageState extends State<NutritionPage> {
           _age = userData['age'] as int;
           _goal = userData['goal'] as String;
           _workoutDays = userData['workoutDays'] as int;
-          _dailyMacros =
-              _calculateMacronutrients(_goal, _calculateBMR(), _workoutDays);
         });
+
+        // Check if macros exist in Firebase, if not, calculate and save them
+        bool macrosExist = await _macrosRepository.userMacrosExist();
+
+        if (macrosExist) {
+          // Load macros from Firebase
+          _dailyMacros = await _macrosRepository.getUserMacros();
+        } else {
+          // Calculate macros and save them to Firebase
+          _dailyMacros = await _macrosRepository.calculateAndSaveUserMacros(
+              _gender,
+              _weight,
+              _height,
+              _age,
+              _goal,
+              _workoutDays
+          );
+        }
       }
     }
-  }
-
-  double _calculateBMR() {
-    if (_gender.toLowerCase() == 'male') {
-      return (10 * _weight) + (6.25 * _height) - (5 * _age) + 5;
-    } else {
-      return (10 * _weight) + (6.25 * _height) - (5 * _age) - 161;
-    }
-  }
-
-  double _calculateTDEE(double bmr, int workoutDays, String goal) {
-    double multiplier;
-    double cal = 0;
-    if (workoutDays == 1) {
-      multiplier = 1.2;
-    } else if (workoutDays >= 2 && workoutDays <= 3) {
-      multiplier = 1.3;
-    } else if (workoutDays >= 4 && workoutDays <= 5) {
-      multiplier = 1.5;
-    } else {
-      multiplier = 1.9;
-    }
-    if (goal == 'Weight Loss') {
-      cal = (bmr * multiplier) - 300;
-    } else {
-      cal = bmr * multiplier;
-    }
-    return cal;
-  }
-
-  Map<String, double> _calculateMacronutrients(String goal, double bmr,
-      int workoutDays) {
-    double tdee = _calculateTDEE(bmr, workoutDays, goal);
-    Map<String, double> macros = {};
-
-    switch (goal) {
-      case 'Weight Loss':
-        macros = {
-          'calories': tdee,
-          'carbs': (tdee * 0.45) / 4,
-          'protein': (tdee * 0.30) / 4,
-          'fat': (tdee * 0.25) / 9,
-        };
-        break;
-      case 'Gain Muscle':
-        macros = {
-          'calories': tdee,
-          'carbs': (tdee * 0.45) / 4,
-          'protein': (tdee * 0.35) / 4,
-          'fat': (tdee * 0.20) / 9,
-        };
-        break;
-      case 'Improve Fitness':
-        macros = {
-          'calories': tdee,
-          'carbs': (tdee * 0.60) / 4,
-          'protein': (tdee * 0.15) / 4,
-          'fat': (tdee * 0.25) / 9,
-        };
-        break;
-    }
-    return macros;
   }
 
   Future<void> _loadFoodLogs() async {
@@ -376,84 +335,6 @@ class _NutritionPageState extends State<NutritionPage> {
       ),
     );
   }
-
-  // Widget _buildMacroCircle(
-  //     String label, String value, String unit, Color color, double progress, String max) {
-  //   // Ensure progress is within 0 and 1
-  //   progress = progress.clamp(0.0, 1.0);
-  //
-  //   return LayoutBuilder(
-  //     builder: (context, constraints) {
-  //       return Container(
-  //         padding: const EdgeInsets.all(16),
-  //         decoration: BoxDecoration(
-  //           color: Colors.grey[100],
-  //           borderRadius: BorderRadius.circular(12),
-  //         ),
-  //         child: Column(
-  //           mainAxisAlignment: MainAxisAlignment.center,
-  //           children: [
-  //             Stack(
-  //               alignment: Alignment.center,
-  //               children: [
-  //                 SizedBox(
-  //                   width: constraints.maxWidth * 0.5, // Responsive size
-  //                   height: constraints.maxWidth * 0.5,
-  //                   child: TweenAnimationBuilder<double>(
-  //                     tween: Tween<double>(begin: 0, end: progress),
-  //                     duration: const Duration(milliseconds: 1500), // Animation duration
-  //                     builder: (context, value, child) {
-  //                       return CircularProgressIndicator(
-  //                         value: value,
-  //                         backgroundColor: Colors.grey[300],
-  //                         valueColor: AlwaysStoppedAnimation<Color>(color),
-  //                         strokeWidth: 8,
-  //                       );
-  //                     },
-  //                   ),
-  //                 ),
-  //                 Column(
-  //                   mainAxisAlignment: MainAxisAlignment.center,
-  //                   children: [
-  //                     Text(
-  //                       value,
-  //                       style: GoogleFonts.montserrat(
-  //                         fontSize: constraints.maxWidth * 0.06, // Responsive font size
-  //                         fontWeight: FontWeight.bold,
-  //                       ),
-  //                     ),
-  //                     Text(
-  //                       unit,
-  //                       style: GoogleFonts.dmSans(
-  //                         fontSize: constraints.maxWidth * 0.03,
-  //                         color: Colors.grey,
-  //                       ),
-  //                     ),
-  //                   ],
-  //                 ),
-  //               ],
-  //             ),
-  //             const SizedBox(height: 8),
-  //             Text(
-  //               label,
-  //               style: GoogleFonts.montserrat(
-  //                 fontSize: constraints.maxWidth * 0.04,
-  //                 fontWeight: FontWeight.w500,
-  //               ),
-  //             ),
-  //             Text(
-  //               '(max: $max)',
-  //               style: GoogleFonts.dmSans(
-  //                 fontSize: constraints.maxWidth * 0.025,
-  //                 color: Colors.grey,
-  //               ),
-  //             ),
-  //           ],
-  //         ),
-  //       );
-  //     },
-  //   );
-  // }
 
   Widget _buildMacroCircle(
       String label, String value, String unit, Color color, double progress, String max) {

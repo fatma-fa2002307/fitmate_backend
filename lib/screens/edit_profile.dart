@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:fitmate/repositories/food_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fitmate/widgets/bottom_nav_bar.dart';
@@ -54,8 +55,8 @@ String? validateAge(String? value) {
   if (number == null) {
     return 'Please enter a valid number';
   }
-  if (number <= 0) {
-    return 'Age must be greater than 0';
+  if (number <= 15) {
+    return 'Age must be greater than 15';
   }
   if (number > 120) {
     return 'Please enter a reasonable age';
@@ -64,6 +65,8 @@ String? validateAge(String? value) {
 }
 
 class _EditProfilePageState extends State<EditProfilePage> {
+
+  final FoodRepository _foodRepository = FoodRepository();
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _fullNameController = TextEditingController();
   final TextEditingController _weightController = TextEditingController();
@@ -220,6 +223,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
         // Parse inputs as doubles
         double weight = double.parse(_weightController.text);
         double height = double.parse(_heightController.text);
+        int age = int.tryParse(_ageController.text) ?? 0;
+        int workoutDays = int.parse(_workoutDays);
 
         // Convert to metric for storage
         if (!isKg) {
@@ -241,17 +246,27 @@ class _EditProfilePageState extends State<EditProfilePage> {
           'fullName': _fullNameController.text,
           'weight': weight, // Store as double, not string
           'height': height, // Store as double, not string
-          'age': int.tryParse(_ageController.text) ?? 0,
+          'age': age,
           'gender': _gender,
           'goal': _goal,
-          'workoutDays': int.parse(_workoutDays),
+          'workoutDays': workoutDays,
           'unitPreference': isKg ? 'metric' : 'imperial',
         });
+
+        // Recalculate and save user macros after profile update
+        await _foodRepository.calculateAndSaveUserMacros(
+            _gender,
+            weight,
+            height,
+            age,
+            _goal,
+            workoutDays
+        );
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text("Profile updated successfully!"),
+                content: Text("Profile and nutrition goals updated successfully!"),
                 backgroundColor: Colors.green,
               )
           );
@@ -775,13 +790,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
                               strokeWidth: 2,
                             ),
                           )
-                              : Text(
-                            'SAVE CHANGES',
+                              :  Text(
+                            'SAVE',
                             style: GoogleFonts.bebasNeue(
-                              fontSize: 20,
-                              color: Colors.black,
-                              letterSpacing: 1.5,
-                            ),
+                                fontSize: 20, color: Colors.white),
+
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -819,6 +832,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
                                     },
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: const Color(0xFFD2EB50),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(5.0),
+                                      ),
                                     ),
                                     child: Text(
                                       'Logout',

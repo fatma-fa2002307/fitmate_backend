@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:fitmate/repositories/food_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fitmate/screens/home_page.dart';
@@ -119,8 +120,19 @@ class _CredentialsPageState extends State<CredentialsPage> {
           'workoutsLastGenerated': null,
         });
 
-        // Initialize foodHistory and other subcollections if needed
-        await FirebaseFirestore.instance.collection('users').doc(userId).collection('foodHistory').doc('initial').set({});
+        // Calculate and save user macros using FoodRepository
+        final FoodRepository foodRepository = FoodRepository();
+        await foodRepository.calculateAndSaveUserMacros(
+          widget.gender,
+          widget.weight,
+          widget.height,
+          widget.age,
+          widget.selectedGoal,
+          widget.workoutDays,
+        );
+
+        // Initialize remaining subcollections if needed
+        await FirebaseFirestore.instance.collection('users').doc(userId).collection('foodLogs').doc('initial').set({});
         await FirebaseFirestore.instance.collection('users').doc(userId).collection('workoutLogs').doc('initial').set({});
         await FirebaseFirestore.instance.collection('users').doc(userId).collection('workoutHistory').doc('initial').set({});
 
