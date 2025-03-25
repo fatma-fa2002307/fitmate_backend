@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
-import 'screens/login_screens/login_screen.dart';
-import 'screens/login_screens/forgot_password_screen.dart';
-import 'screens/welcome_screen.dart';
-import 'screens/register_screens/age_question.dart';
-import 'screens/home_page.dart';
-import 'services/workout_service.dart'; // Added for workout generation
+import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'package:fitmate/config/provider_setup.dart';
+import 'package:fitmate/screens/login_screens/login_screen.dart';
+import 'package:fitmate/screens/login_screens/forgot_password_screen.dart';
+import 'package:fitmate/screens/welcome_screen.dart';
+import 'package:fitmate/screens/register_screens/age_question.dart';
+import 'package:fitmate/screens/home_page.dart';
 
 void main() async {
   // Ensure widgets are initialized before Firebase
@@ -17,23 +18,26 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // Run the app
+  // Run the app with MultiProvider
   runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'FitMate',
-      home: WelcomePage(),
-      routes: {
-        '/login': (context) => LoginPage(),
-        '/forgot-password': (context) => ForgotPasswordPage(),
-        '/register': (context) => AgeQuestionPage(age: 0),
-        '/home': (context) => HomePage(),
-      },
+    return MultiProvider(
+      providers: providers,
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'FitMate',
+        home: WelcomePage(),
+        routes: {
+          '/login': (context) => LoginPage(),
+          '/forgot-password': (context) => ForgotPasswordPage(),
+          '/register': (context) => AgeQuestionPage(age: 0),
+          '/home': (context) => HomePage(),
+        },
+      ),
     );
   }
 }
