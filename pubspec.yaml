@@ -7,30 +7,6 @@ version: 1.0.0+1
 environment:
   sdk: ^3.5.3
 
-# dependencies:
-#   flutter:
-#     sdk: flutter
-
-
-#   cupertino_icons: ^1.0.8
-
-#   # Firebase dependencies
-#   firebase_core: ^3.8.0
-#   firebase_auth: ^5.3.3
-#   firebase_auth_web: ^5.13.4
-#   cloud_firestore: ^5.5.0
-  
-# dev_dependencies:
-#   flutter_test:
-#     sdk: flutter
-#   firebase_auth_mocks: ^0.14.1
-#   mockito: ^5.4.0
-#   fake_cloud_firestore: ^3.1.0
-#   build_runner: ^2.4.0
-#   test: any
-#   google_fonts: ^6.2.1
-#   flutter_lints: ^5.0.0
-#   firebase_core_platform_interface: ^5.0.0
 dependencies:
   flutter:
     sdk: flutter
@@ -49,13 +25,9 @@ dependencies:
   firebase_storage: ^11.7.7
   flutter_riverpod: ^2.6.1
   lottie: ^3.3.1
-
-  #sharifa
-  #tflite_flutter: ^0.9.0  # Runs TFLite models
-  image: ^4.1.7  # Used to resize and normalize images before inference
+  image: ^4.1.7
   image_picker: ^0.8.4+4
-
-
+  google_fonts: ^6.1.0
 
 dev_dependencies:
   flutter_test:
@@ -65,7 +37,6 @@ dev_dependencies:
   fake_cloud_firestore: ^2.4.8
   build_runner: ^2.4.8
   test: ^1.24.9
-  google_fonts: ^6.1.0
   flutter_lints: ^3.0.1
   firebase_core_platform_interface: ^5.0.0
   integration_test:
@@ -91,8 +62,5 @@ flutter:
     - assets/data/lottie/2.json
     - assets/data/lottie/3.json
     - assets/data/lottie/4.json
-  #sharifa
-  #  - assets/models/food_model.tflite
-
-
-  
+    - assets/data/images/food/
+    
