@@ -4,17 +4,19 @@ import 'package:fitmate/models/food_suggestion.dart';
 import 'package:fitmate/services/food_suggestion_service.dart';
 
 class FoodSuggestionCard extends StatefulWidget {
-  final FoodSuggestion suggestion;
+  final List<FoodSuggestion> suggestions;
   final Function? onLike;
   final Function? onDislike;
-  final String? customReason; // Custom reason why this food is suggested
+  final Function(int)? onPageChanged;
+  final int initialIndex;
 
   const FoodSuggestionCard({
     Key? key,
-    required this.suggestion,
+    required this.suggestions,
     this.onLike,
     this.onDislike,
-    this.customReason,
+    this.onPageChanged,
+    this.initialIndex = 0,
   }) : super(key: key);
 
   @override
@@ -22,6 +24,9 @@ class FoodSuggestionCard extends StatefulWidget {
 }
 
 class _FoodSuggestionCardState extends State<FoodSuggestionCard> {
+  late PageController _pageController;
+  int _currentIndex = 0;
+  
   // Service to handle food suggestion interactions
   final FoodSuggestionService _foodSuggestionService = FoodSuggestionService();
   
@@ -29,26 +34,19 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> {
   bool _isLiked = false;
   bool _isDisliked = false;
   
-  /// Generate a custom reason if one isn't provided
-  String _getSuggestionReason() {
-    if (widget.customReason != null && widget.customReason!.isNotEmpty) {
-      return widget.customReason!;
-    }
-    
-    // Generate a reason based on macros
-    if (widget.suggestion.protein > 20) {
-      return "Excellent source of protein to help with your fitness goals";
-    } else if (widget.suggestion.carbs > 40) {
-      return "Good source of energy to fuel your workouts";
-    } else if (widget.suggestion.fat < 10) {
-      return "Low in fat and fits well in your calorie budget";
-    } else if (widget.suggestion.calories < 300) {
-      return "Low calorie option that leaves room in your daily budget";
-    } else {
-      return "Balanced option that fits your nutritional needs";
-    }
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: _currentIndex);
   }
   
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
   /// Handle liking a food suggestion
   void _handleLike() async {
     if (_isLiked) return;
@@ -59,7 +57,12 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> {
     });
     
     // Call service to update preference
-    await _foodSuggestionService.rateSuggestion(widget.suggestion.id, true);
+    if (widget.suggestions.isNotEmpty) {
+      await _foodSuggestionService.rateSuggestion(
+        widget.suggestions[_currentIndex].id, 
+        true
+      );
+    }
     
     // Call callback if provided
     if (widget.onLike != null) {
@@ -77,7 +80,12 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> {
     });
     
     // Call service to update preference
-    await _foodSuggestionService.rateSuggestion(widget.suggestion.id, false);
+    if (widget.suggestions.isNotEmpty) {
+      await _foodSuggestionService.rateSuggestion(
+        widget.suggestions[_currentIndex].id, 
+        false
+      );
+    }
     
     // Call callback if provided
     if (widget.onDislike != null) {
@@ -87,126 +95,186 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.suggestions.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    
+    return Column(
+      children: [
+        // Food suggestion card with swipe functionality
+        SizedBox(
+          height: 120, // Standard card height
+          child: PageView.builder(
+            controller: _pageController,
+            itemCount: widget.suggestions.length,
+            onPageChanged: (index) {
+              setState(() {
+                _currentIndex = index;
+                _isLiked = false;
+                _isDisliked = false;
+              });
+              if (widget.onPageChanged != null) {
+                widget.onPageChanged!(index);
+              }
+            },
+            itemBuilder: (context, index) {
+              final suggestion = widget.suggestions[index];
+              return _buildSuggestionCard(suggestion);
+            },
+          ),
+        ),
+        
+        // Indicator dots
+        if (widget.suggestions.length > 1)
+          Padding(
+            padding: const EdgeInsets.only(top: 8.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                widget.suggestions.length,
+                (index) => Container(
+                  width: 8,
+                  height: 8,
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: index == _currentIndex
+                        ? const Color(0xFFD2EB50)
+                        : Colors.grey[300],
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+  
+  Widget _buildSuggestionCard(FoodSuggestion suggestion) {
     // Base URL for food images
     final baseUrl = 'https://tunnel.fitnessmates.net';
-    final imageUrl = '$baseUrl/food-images/${widget.suggestion.image}';
+    final imageUrl = '$baseUrl/food-images/${suggestion.image}';
     
     return Card(
-      elevation: 2,
+      elevation: 1,
+      margin: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(12.0),
+        padding: const EdgeInsets.all(8.0), // Reduced padding
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Small image on the side
+            // Food image
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: Image.network(
                 imageUrl,
-                width: 80,
-                height: 80,
+                width: 60, // Smaller image
+                height: 60, // Smaller image
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) {
                   return Container(
-                    width: 80,
-                    height: 80,
+                    width: 60,
+                    height: 60,
                     color: Colors.grey[200],
-                    child: Center(
-                      child: Icon(
-                        Icons.restaurant,
-                        size: 30,
-                        color: Colors.grey[400],
-                      ),
+                    child: Icon(
+                      Icons.restaurant,
+                      size: 24,
+                      color: Colors.grey[400],
                     ),
                   );
                 },
               ),
             ),
             
-            const SizedBox(width: 12),
+            const SizedBox(width: 8), // Reduced spacing
             
             // Content
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   // Title
                   Text(
-                    widget.suggestion.title,
-                    style: GoogleFonts.montserrat(
-                      fontSize: 16,
+                    suggestion.title,
+                    style: const TextStyle(
+                      fontSize: 14, // Smaller font
                       fontWeight: FontWeight.bold,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2), // Reduced spacing
                   
-                  // Reason text
+                  // Reason text - More strictly limited
                   Text(
-                    _getSuggestionReason(),
+                    _getSuggestionReason(suggestion),
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 11, // Smaller font
                       color: Colors.grey[700],
                     ),
+                    maxLines: 1, // Only 1 line for description
+                    overflow: TextOverflow.ellipsis,
                   ),
                   
-                  const SizedBox(height: 4),
+                  const Spacer(), // Use spacer for flexibility
                   
-                  // Calories
+                  // Bottom row with calories and actions
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Icon(
-                        Icons.local_fire_department,
-                        size: 16,
-                        color: Colors.orange[600],
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${widget.suggestion.calories} cal',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ],
-                  ),
-                  
-                  const SizedBox(height: 8),
-                  
-                  // Action buttons
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      // Like button
-                      IconButton(
-                        icon: Icon(
-                          _isLiked ? Icons.thumb_up : Icons.thumb_up_outlined,
-                          color: _isLiked ? const Color(0xFFD2EB50) : Colors.grey[500],
-                          size: 20,
-                        ),
-                        onPressed: _handleLike,
-                        tooltip: 'Like',
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
+                      // Calories
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.local_fire_department,
+                            size: 14, // Smaller icon
+                            color: Colors.orange[600],
+                          ),
+                          const SizedBox(width: 2), // Reduced spacing
+                          Text(
+                            '${suggestion.calories} cal',
+                            style: const TextStyle(
+                              fontSize: 12, // Smaller font
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
                       
-                      const SizedBox(width: 16),
-                      
-                      // Dislike button
-                      IconButton(
-                        icon: Icon(
-                          _isDisliked ? Icons.thumb_down : Icons.thumb_down_outlined,
-                          color: _isDisliked ? Colors.red[400] : Colors.grey[500],
-                          size: 20,
-                        ),
-                        onPressed: _handleDislike,
-                        tooltip: 'Dislike',
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
+                      // Like/dislike buttons
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          InkWell(
+                            onTap: _handleLike,
+                            child: Padding(
+                              padding: const EdgeInsets.all(4.0),
+                              child: Icon(
+                                _isLiked ? Icons.thumb_up : Icons.thumb_up_outlined,
+                                color: _isLiked ? const Color(0xFFD2EB50) : Colors.grey[500],
+                                size: 16, // Smaller icon
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          InkWell(
+                            onTap: _handleDislike,
+                            child: Padding(
+                              padding: const EdgeInsets.all(4.0),
+                              child: Icon(
+                                _isDisliked ? Icons.thumb_down : Icons.thumb_down_outlined,
+                                color: _isDisliked ? Colors.red[400] : Colors.grey[500],
+                                size: 16, // Smaller icon
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -217,5 +285,29 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> {
         ),
       ),
     );
+  }
+  
+  String _getSuggestionReason(FoodSuggestion suggestion) {
+    // Generate a shorter reason based on macros
+    String reason;
+    
+    if (suggestion.protein > 20) {
+      reason = "Excellent source of protein for fitness";
+    } else if (suggestion.carbs > 40) {
+      reason = "Good energy source for workouts";
+    } else if (suggestion.fat < 10) {
+      reason = "Low in fat, fits your calorie budget";
+    } else if (suggestion.calories < 300) {
+      reason = "Low calorie option for your daily goals";
+    } else {
+      reason = "Balanced nutrition for your needs";
+    }
+    
+    // Ensure text is short enough
+    if (reason.length > 40) {
+      return reason.substring(0, 37) + "...";
+    }
+    
+    return reason;
   }
 }

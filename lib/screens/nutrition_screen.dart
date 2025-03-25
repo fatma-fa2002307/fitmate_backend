@@ -20,7 +20,7 @@ class NutritionPage extends StatefulWidget {
   State<NutritionPage> createState() => _NutritionPageState();
 }
 
-class _NutritionPageState extends State<NutritionPage> {
+class _NutritionPageState extends State<NutritionPage> with SingleTickerProviderStateMixin {
   // App navigation
   int _selectedIndex = 2;
   
@@ -46,14 +46,12 @@ class _NutritionPageState extends State<NutritionPage> {
   
   // Food suggestions state
   final FoodSuggestionService _foodSuggestionService = FoodSuggestionService();
+  final FoodRepository _foodRepository = FoodRepository();
   List<FoodSuggestion> _suggestions = [];
   bool _suggestionsLoading = true;
   String _suggestionsError = '';
   int _currentSuggestionIndex = 0;
   SuggestionMilestone _currentMilestone = SuggestionMilestone.START;
-
-  // Initialize repository
-  final FoodRepository _foodRepository = FoodRepository();
 
   @override
   void initState() {
@@ -255,7 +253,7 @@ class _NutritionPageState extends State<NutritionPage> {
   }
   
   // Handle when a suggestion is liked or disliked
-  void _handleSuggestionPreferenceChange() {
+  void _handlePreferenceChange() {
     // Move to next suggestion when preference changes
     if (_suggestions.length > 1) {
       setState(() {
@@ -483,7 +481,7 @@ class _NutritionPageState extends State<NutritionPage> {
                       ),
                     ),
                     
-                    // Meal suggestion section
+                    // Food Suggestion section
                     if (isToday) // Only show suggestions for today
                       Container(
                         margin: const EdgeInsets.only(top: 16),
@@ -507,19 +505,6 @@ class _NutritionPageState extends State<NutritionPage> {
                                   ),
                                 ),
                                 const Spacer(),
-                                if (_suggestions.isNotEmpty && !_suggestionsLoading)
-                                  TextButton(
-                                    onPressed: _loadFoodSuggestions,
-                                    style: TextButton.styleFrom(
-                                      minimumSize: Size.zero,
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                    ),
-                                    child: const Text(
-                                      'Refresh',
-                                      style: TextStyle(color: Color(0xFFD2EB50)),
-                                    ),
-                                  ),
                               ],
                             ),
                             const SizedBox(height: 8),
@@ -563,39 +548,19 @@ class _NutritionPageState extends State<NutritionPage> {
                                 ),
                               )
                             else
-                              Column(
-                                children: [
-                                  // Current suggestion
-                                  FoodSuggestionCard(
-                                    suggestion: _suggestions[_currentSuggestionIndex],
-                                    customReason: _getPersonalizedReason(_suggestions[_currentSuggestionIndex]),
-                                    onLike: _handleSuggestionPreferenceChange,
-                                    onDislike: _handleSuggestionPreferenceChange,
-                                  ),
-                                  
-                                  // Navigation dots
-                                  if (_suggestions.length > 1)
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(vertical: 8.0),
-                                      child: Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          for (int i = 0; i < _suggestions.length; i++)
-                                            Container(
-                                              width: 8,
-                                              height: 8,
-                                              margin: const EdgeInsets.symmetric(horizontal: 4),
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                color: i == _currentSuggestionIndex
-                                                    ? const Color(0xFFD2EB50)
-                                                    : Colors.grey[300],
-                                              ),
-                                            ),
-                                        ],
-                                      ),
-                                    ),
-                                ],
+                              Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                                child: FoodSuggestionCard(
+                                  suggestions: _suggestions,
+                                  onLike: _handlePreferenceChange,
+                                  onDislike: _handlePreferenceChange,
+                                  onPageChanged: (index) {
+                                    setState(() {
+                                      _currentSuggestionIndex = index;
+                                    });
+                                  },
+                                  initialIndex: _currentSuggestionIndex,
+                                ),
                               ),
                           ],
                         ),
@@ -615,25 +580,7 @@ class _NutritionPageState extends State<NutritionPage> {
                               color: Colors.grey[700],
                             ),
                           ),
-                          if (isToday)
-                            TextButton.icon(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => LogFoodManuallyScreen(),
-                                  ),
-                                ).then((_) => _loadData());
-                              },
-                              icon: const Icon(Icons.add, size: 18),
-                              label: const Text('ADD FOOD'),
-                              style: TextButton.styleFrom(
-                                foregroundColor: const Color(0xFFD2EB50),
-                                padding: EdgeInsets.zero,
-                                minimumSize: const Size(0, 0),
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              ),
-                            ),
+                          // Plus button removed as we're using the floating action button
                         ],
                       ),
                     ),
@@ -755,7 +702,7 @@ class _NutritionPageState extends State<NutritionPage> {
               ),
             ),
       
-      // Add floating action button only for today's view
+      // Floating action button for adding food (only for today's view)
       floatingActionButton: isToday ? FloatingActionButton(
         onPressed: () {
           Navigator.push(
