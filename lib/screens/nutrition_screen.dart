@@ -8,6 +8,8 @@ import 'package:fitmate/viewmodels/nutrition_viewmodel.dart';
 import 'package:fitmate/widgets/bottom_nav_bar.dart';
 import 'package:fitmate/widgets/food_suggestion_card.dart';
 import 'package:fitmate/screens/logFoodManually.dart';
+import 'animated_macro_wheel.dart'; // Import the macro wheel widget
+import 'advanced_circular_indicator.dart'; // Import the advanced circular indicator
 
 class NutritionPage extends StatefulWidget {
   const NutritionPage({Key? key}) : super(key: key);
@@ -16,20 +18,54 @@ class NutritionPage extends StatefulWidget {
   State<NutritionPage> createState() => _NutritionPageState();
 }
 
-class _NutritionPageState extends State<NutritionPage> {
+class _NutritionPageState extends State<NutritionPage>
+    with SingleTickerProviderStateMixin {
   int _selectedIndex = 2;
   late NutritionViewModel _viewModel;
+  bool _isAnimating = false;
+  late AnimationController _animationController;
 
   @override
   void initState() {
     super.initState();
+    // Initialize animation controller
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+
     // Initialize ViewModel
     _viewModel = NutritionViewModel();
+    // Add listener to trigger animations when data changes
+    _viewModel.addListener(_onViewModelChanged);
     _initializeData();
   }
 
+  @override
+  void dispose() {
+    _animationController.dispose();
+    _viewModel.removeListener(_onViewModelChanged);
+    super.dispose();
+  }
+
+  void _onViewModelChanged() {
+    // This method will be called whenever the viewModel notifies its listeners
+    // If we're not already animating, start a new animation
+    if (!_animationController.isAnimating) {
+      _animationController.reset();
+      setState(() => _isAnimating = true);
+      _animationController.forward();
+    }
+  }
+
   Future<void> _initializeData() async {
+    setState(() => _isAnimating = false);
     await _viewModel.init();
+
+    // Reset and start animation after data is loaded
+    _animationController.reset();
+    setState(() => _isAnimating = true);
+    _animationController.forward();
   }
 
   void _onItemTapped(int index) {
@@ -67,7 +103,6 @@ class _NutritionPageState extends State<NutritionPage> {
                     color: const Color(0xFFD2EB50),
                     child: _buildMainContent(viewModel),
                   ),
-            // Floating action button for adding food (only for today's view)
             floatingActionButton:
                 viewModel.isToday ? _buildFloatingActionButton(context) : null,
             bottomNavigationBar: BottomNavBar(
@@ -157,36 +192,40 @@ class _NutritionPageState extends State<NutritionPage> {
                 flex: 2,
                 child: Column(
                   children: [
-                    CircularPercentIndicator(
-                      radius: 60.0,
-                      lineWidth: 10.0,
-                      percent: viewModel.caloriePercentage,
-                      center: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            viewModel.totalCalories.toInt().toString(),
-                            style: GoogleFonts.montserrat(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
+                    SizedBox(
+                      height: 120,
+                      child: Center(
+                        child: AdvancedCircularProgressIndicator(
+                          progress: viewModel.caloriePercentage,
+                          radius: 60.0,
+                          lineWidth: 12.0,
+                          progressColor: const Color(0xFFD2EB50),
+                          backgroundColor: Colors.grey[200]!,
+                          animate: _isAnimating,
+                          animationDuration: const Duration(milliseconds: 1500),
+                          allowOverflow: true,
+                          center: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                viewModel.totalCalories.toInt().toString(),
+                                style: GoogleFonts.montserrat(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                'kcal',
+                                style: GoogleFonts.montserrat(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
                           ),
-                          Text(
-                            'kcal',
-                            style: GoogleFonts.montserrat(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
-                      progressColor: const Color(0xFFD2EB50),
-                      backgroundColor: Colors.grey[200]!,
-                      circularStrokeCap: CircularStrokeCap.round,
-                      animation: true,
-                      animationDuration: 1200,
                     ),
-                    const SizedBox(height: 8),
                     Text(
                       'Calories',
                       style: GoogleFonts.montserrat(
@@ -197,7 +236,6 @@ class _NutritionPageState extends State<NutritionPage> {
                   ],
                 ),
               ),
-
               // Other macros grid
               Expanded(
                 flex: 3,
@@ -206,26 +244,31 @@ class _NutritionPageState extends State<NutritionPage> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        _buildMacroWheel(
-                          'Protein',
-                          viewModel.totalProtein.toInt(),
-                          viewModel.dailyMacros['protein']?.toInt() ?? 150,
-                          viewModel.proteinPercentage,
-                          Colors.red[400]!,
+                        AnimatedMacroWheel(
+                          label: 'Protein',
+                          current: viewModel.totalProtein.toInt(),
+                          target:
+                              viewModel.dailyMacros['protein']?.toInt() ?? 150,
+                          percentage: viewModel.proteinPercentage,
+                          color: Colors.red[400]!,
+                          animate: _isAnimating,
                         ),
-                        _buildMacroWheel(
-                          'Carbs',
-                          viewModel.totalCarbs.toInt(),
-                          viewModel.dailyMacros['carbs']?.toInt() ?? 225,
-                          viewModel.carbsPercentage,
-                          Colors.blue[400]!,
+                        AnimatedMacroWheel(
+                          label: 'Carbs',
+                          current: viewModel.totalCarbs.toInt(),
+                          target:
+                              viewModel.dailyMacros['carbs']?.toInt() ?? 225,
+                          percentage: viewModel.carbsPercentage,
+                          color: Colors.blue[400]!,
+                          animate: _isAnimating,
                         ),
-                        _buildMacroWheel(
-                          'Fat',
-                          viewModel.totalFat.toInt(),
-                          viewModel.dailyMacros['fat']?.toInt() ?? 65,
-                          viewModel.fatPercentage,
-                          Colors.amber[700]!,
+                        AnimatedMacroWheel(
+                          label: 'Fat',
+                          current: viewModel.totalFat.toInt(),
+                          target: viewModel.dailyMacros['fat']?.toInt() ?? 65,
+                          percentage: viewModel.fatPercentage,
+                          color: Colors.amber[700]!,
+                          animate: _isAnimating,
                         ),
                       ],
                     ),
@@ -236,70 +279,6 @@ class _NutritionPageState extends State<NutritionPage> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildMacroWheel(
-      String label, int current, int target, double percentage, Color color) {
-    return Column(
-      children: [
-        SizedBox(
-          height: 70,
-          width: 70,
-          child: Stack(
-            children: [
-              Center(
-                child: CircularPercentIndicator(
-                  radius: 28.0,
-                  lineWidth: 6.0,
-                  percent: percentage,
-                  progressColor: color,
-                  backgroundColor: Colors.grey[200]!,
-                  circularStrokeCap: CircularStrokeCap.round,
-                  animation: true,
-                  animationDuration: 1200,
-                ),
-              ),
-              Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      current.toString(),
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      'g',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: GoogleFonts.montserrat(
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        Text(
-          '$current/$target',
-          style: TextStyle(
-            fontSize: 10,
-            color: Colors.grey[600],
-          ),
-        ),
-      ],
     );
   }
 
