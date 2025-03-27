@@ -41,7 +41,12 @@ class FoodSuggestionEngine:
                 {"id": "fb-13", "title": "Greek Yogurt", "image": "greek_yogurt.jpg", "calories": 120, "protein": 15, "carbs": 8, "fat": 0},
                 {"id": "fb-14", "title": "Hard Boiled Egg", "image": "boiled_egg.jpg", "calories": 80, "protein": 7, "carbs": 0, "fat": 5},
                 {"id": "fb-15", "title": "Strawberries", "image": "strawberries.jpg", "calories": 50, "protein": 1, "carbs": 12, "fat": 0}
-            ]
+            ],
+            MilestoneType.COMPLETED: [
+                {"id": "fb-16", "title": "Cucumber Slices", "image": "cucumber.jpg", "calories": 16, "protein": 0.7, "carbs": 3.1, "fat": 0.1},
+                {"id": "fb-17", "title": "Herbal Tea", "image": "herbal_tea.jpg", "calories": 0, "protein": 0, "carbs": 0, "fat": 0},
+                {"id": "fb-18", "title": "Celery Sticks", "image": "celery.jpg", "calories": 10, "protein": 0.5, "carbs": 2, "fat": 0}
+    ]
         }
         
         # Milestone calorie percentage configurations
@@ -50,7 +55,8 @@ class FoodSuggestionEngine:
             MilestoneType.QUARTER: 0.25,      # 25% of daily calories for snack/light meal
             MilestoneType.HALF: 0.35,         # 35% of daily calories for main meal
             MilestoneType.THREE_QUARTERS: 0.2, # 20% of daily calories for light dinner
-            MilestoneType.ALMOST_COMPLETE: 0.1 # 10% of daily calories for small snack
+            MilestoneType.ALMOST_COMPLETE: 0.1, # 10% of daily calories for small snack
+            MilestoneType.COMPLETED: 0.05    # 5% or less for zero/ultra-low calorie options
         }
 
     def get_milestone_from_percentage(self, percentage: float) -> MilestoneType:
@@ -63,8 +69,10 @@ class FoodSuggestionEngine:
             return MilestoneType.HALF
         elif percentage < 0.85:
             return MilestoneType.THREE_QUARTERS
-        else:
+        elif percentage < 1.0:
             return MilestoneType.ALMOST_COMPLETE
+        else:
+            return MilestoneType.COMPLETED  #for 100%+
 
     def generate_suggestions(self, request: FoodSuggestionRequest) -> List[FoodSuggestion]:
         """Generate food suggestions based on user's calorie consumption milestone."""
@@ -122,7 +130,8 @@ class FoodSuggestionEngine:
                 MilestoneType.QUARTER: "mid-morning snack",
                 MilestoneType.HALF: "lunch (mid-day meal)",
                 MilestoneType.THREE_QUARTERS: "dinner (evening meal)",
-                MilestoneType.ALMOST_COMPLETE: "evening snack"
+                MilestoneType.ALMOST_COMPLETE: "evening snack",
+                MilestoneType.COMPLETED: "zero/ultra-low calorie option"
             }
             
             milestone_description = milestone_names[current_milestone]
@@ -142,6 +151,7 @@ For each food recommendation, provide:
 3. Estimated calories (within the target range)
 4. Estimated macronutrients (protein, carbs, and fat in grams)
 
+FOLLOW INSTRUCTIONS CAREFULLY OR THE RESPONSE IS INVALID! NO EXPLANATIONS OR ADDITIONAL TEXT NEEDED.
 Return ONLY in this JSON format:
 ```json
 [
@@ -170,7 +180,7 @@ Return ONLY in this JSON format:
                     },
                     {"role": "user", "content": prompt}
                 ],
-                options={"temperature": 0.7}
+                options={"temperature": 0.5}
             )
             
             content = response['message']['content'].strip()

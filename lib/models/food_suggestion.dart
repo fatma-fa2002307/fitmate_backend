@@ -7,6 +7,7 @@ enum SuggestionMilestone {
   HALF,             // 50% of daily calories consumed
   THREE_QUARTERS,   // 75% of daily calories consumed
   ALMOST_COMPLETE,  // 90% of daily calories consumed
+  COMPLETED,        // 100%+ of daily calories consumed
 }
 
 /// Extension to provide helper methods for SuggestionMilestone
@@ -23,6 +24,8 @@ extension SuggestionMilestoneExtension on SuggestionMilestone {
         return 'Dinner';
       case SuggestionMilestone.ALMOST_COMPLETE:
         return 'Evening Snack';
+      case SuggestionMilestone.COMPLETED:
+        return 'Ultra-Low Calorie Option';
     }
   }
   
@@ -36,8 +39,10 @@ extension SuggestionMilestoneExtension on SuggestionMilestone {
       return SuggestionMilestone.HALF;
     } else if (percentage < 0.85) {
       return SuggestionMilestone.THREE_QUARTERS;
-    } else {
+    } else if (percentage < 1.0) {
       return SuggestionMilestone.ALMOST_COMPLETE;
+    } else {
+      return SuggestionMilestone.COMPLETED;
     }
   }
   

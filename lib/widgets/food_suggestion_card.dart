@@ -9,6 +9,7 @@ class FoodSuggestionCard extends StatefulWidget {
   final Function? onDislike;
   final Function(int)? onPageChanged;
   final int initialIndex;
+  final SuggestionMilestone? milestone;
 
   const FoodSuggestionCard({
     Key? key,
@@ -17,6 +18,7 @@ class FoodSuggestionCard extends StatefulWidget {
     this.onDislike,
     this.onPageChanged,
     this.initialIndex = 0,
+    this.milestone,
   }) : super(key: key);
 
   @override
@@ -99,11 +101,38 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> {
       return const SizedBox.shrink();
     }
     
+    // Determine if we're displaying suggestions for a user who's reached their calorie goal
+    final isCompletedMilestone = widget.milestone == SuggestionMilestone.COMPLETED;
+    
     return Column(
       children: [
+        // Milestone header
+        if (widget.milestone != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8.0),
+            child: Row(
+              children: [
+                Icon(
+                  _getMilestoneIcon(widget.milestone!),
+                  size: 16,
+                  color: _getMilestoneColor(widget.milestone!),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  widget.milestone!.displayName,
+                  style: GoogleFonts.dmSans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: _getMilestoneColor(widget.milestone!),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
         // Food suggestion card with swipe functionality
         SizedBox(
-          height: 120, // Standard card height
+          height: 140, // Slightly increased height to accommodate tags
           child: PageView.builder(
             controller: _pageController,
             itemCount: widget.suggestions.length,
@@ -119,7 +148,7 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> {
             },
             itemBuilder: (context, index) {
               final suggestion = widget.suggestions[index];
-              return _buildSuggestionCard(suggestion);
+              return _buildSuggestionCard(suggestion, isCompletedMilestone);
             },
           ),
         ),
@@ -150,46 +179,116 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> {
     );
   }
   
-  Widget _buildSuggestionCard(FoodSuggestion suggestion) {
+  // Get appropriate icon for the current milestone
+  IconData _getMilestoneIcon(SuggestionMilestone milestone) {
+    switch (milestone) {
+      case SuggestionMilestone.START:
+        return Icons.wb_sunny_outlined; // Sunrise/morning icon
+      case SuggestionMilestone.QUARTER:
+        return Icons.coffee_outlined; // Mid-morning snack icon
+      case SuggestionMilestone.HALF:
+        return Icons.restaurant_outlined; // Lunch icon
+      case SuggestionMilestone.THREE_QUARTERS:
+        return Icons.dinner_dining_outlined; // Dinner icon
+      case SuggestionMilestone.ALMOST_COMPLETE:
+        return Icons.nightlight_outlined; // Evening icon
+      case SuggestionMilestone.COMPLETED:
+        return Icons.check_circle_outline; // Completed icon
+      default:
+        return Icons.restaurant_menu;
+    }
+  }
+
+  // Get appropriate color for the current milestone
+  Color _getMilestoneColor(SuggestionMilestone milestone) {
+    switch (milestone) {
+      case SuggestionMilestone.START:
+        return Colors.orange[700]!;
+      case SuggestionMilestone.QUARTER:
+        return Colors.amber[700]!;
+      case SuggestionMilestone.HALF:
+        return Colors.green[700]!;
+      case SuggestionMilestone.THREE_QUARTERS:
+        return Colors.blue[700]!;
+      case SuggestionMilestone.ALMOST_COMPLETE:
+        return Colors.indigo[700]!;
+      case SuggestionMilestone.COMPLETED:
+        return Colors.green[700]!;
+      default:
+        return Colors.black87;
+    }
+  }
+  
+  Widget _buildSuggestionCard(FoodSuggestion suggestion, bool isCompletedMilestone) {
     // Base URL for food images
     final baseUrl = 'https://tunnel.fitnessmates.net';
     final imageUrl = '$baseUrl/food-images/${suggestion.image}';
     
+    // Determine if this is an ultra-low calorie option
+    final bool isUltraLowCalorie = suggestion.calories <= 50;
+    
     return Card(
-      elevation: 1,
+      elevation: 2,
       margin: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
+        side: isCompletedMilestone && isUltraLowCalorie
+            ? BorderSide(color: Colors.green[300]!, width: 1.5)
+            : BorderSide.none,
       ),
       child: Padding(
-        padding: const EdgeInsets.all(8.0), // Reduced padding
+        padding: const EdgeInsets.all(12.0),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Food image
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                imageUrl,
-                width: 60, // Smaller image
-                height: 60, // Smaller image
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    width: 60,
-                    height: 60,
-                    color: Colors.grey[200],
-                    child: Icon(
-                      Icons.restaurant,
-                      size: 24,
-                      color: Colors.grey[400],
+              child: Stack(
+                children: [
+                  Image.network(
+                    imageUrl,
+                    width: 70,
+                    height: 70,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        width: 70,
+                        height: 70,
+                        color: Colors.grey[200],
+                        child: Icon(
+                          Icons.restaurant,
+                          size: 24,
+                          color: Colors.grey[400],
+                        ),
+                      );
+                    },
+                  ),
+                  // Ultra-low calorie badge
+                  if (isUltraLowCalorie)
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.green[700],
+                          borderRadius: const BorderRadius.only(
+                            bottomRight: Radius.circular(8),
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.eco,
+                          color: Colors.white,
+                          size: 12,
+                        ),
+                      ),
                     ),
-                  );
-                },
+                ],
               ),
             ),
             
-            const SizedBox(width: 8), // Reduced spacing
+            const SizedBox(width: 12),
             
             // Content
             Expanded(
@@ -197,35 +296,59 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Title
-                  Text(
-                    suggestion.title,
-                    style: const TextStyle(
-                      fontSize: 14, // Smaller font
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  // Title with optional tag
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          suggestion.title,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (isCompletedMilestone && isUltraLowCalorie)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.green[100],
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            'Ultra-Low Cal',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green[800],
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                   
-                  const SizedBox(height: 2), // Reduced spacing
+                  const SizedBox(height: 4),
                   
-                  // Reason text - More strictly limited
+                  // Reason text with more context
                   Text(
-                    _getSuggestionReason(suggestion),
+                    _getSuggestionReason(suggestion, isCompletedMilestone),
                     style: TextStyle(
-                      fontSize: 11, // Smaller font
+                      fontSize: 12,
                       color: Colors.grey[700],
+                      fontStyle: FontStyle.italic,
                     ),
-                    maxLines: 1, // Only 1 line for description
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                   
-                  const Spacer(), // Use spacer for flexibility
+                  const Spacer(),
                   
                   // Bottom row with calories and actions
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       // Calories
                       Row(
@@ -233,18 +356,32 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> {
                         children: [
                           Icon(
                             Icons.local_fire_department,
-                            size: 14, // Smaller icon
-                            color: Colors.orange[600],
+                            size: 14,
+                            color: suggestion.calories <= 50 
+                                ? Colors.green[600]
+                                : Colors.orange[600],
                           ),
-                          const SizedBox(width: 2), // Reduced spacing
+                          const SizedBox(width: 2),
                           Text(
                             '${suggestion.calories} cal',
-                            style: const TextStyle(
-                              fontSize: 12, // Smaller font
-                              fontWeight: FontWeight.w500,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: suggestion.calories <= 50 
+                                  ? Colors.green[600]
+                                  : Colors.black87,
                             ),
                           ),
                         ],
+                      ),
+                      
+                      // Macros summary
+                      Text(
+                        '${suggestion.protein.toStringAsFixed(1)}p · ${suggestion.carbs.toStringAsFixed(1)}c · ${suggestion.fat.toStringAsFixed(1)}f',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Colors.grey[600],
+                        ),
                       ),
                       
                       // Like/dislike buttons
@@ -253,24 +390,26 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> {
                         children: [
                           InkWell(
                             onTap: _handleLike,
+                            borderRadius: BorderRadius.circular(20),
                             child: Padding(
                               padding: const EdgeInsets.all(4.0),
                               child: Icon(
                                 _isLiked ? Icons.thumb_up : Icons.thumb_up_outlined,
                                 color: _isLiked ? const Color(0xFFD2EB50) : Colors.grey[500],
-                                size: 16, // Smaller icon
+                                size: 18,
                               ),
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 8),
                           InkWell(
                             onTap: _handleDislike,
+                            borderRadius: BorderRadius.circular(20),
                             child: Padding(
                               padding: const EdgeInsets.all(4.0),
                               child: Icon(
                                 _isDisliked ? Icons.thumb_down : Icons.thumb_down_outlined,
                                 color: _isDisliked ? Colors.red[400] : Colors.grey[500],
-                                size: 16, // Smaller icon
+                                size: 18,
                               ),
                             ),
                           ),
@@ -287,27 +426,66 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> {
     );
   }
   
-  String _getSuggestionReason(FoodSuggestion suggestion) {
-    // Generate a shorter reason based on macros
-    String reason;
+  String _getSuggestionReason(FoodSuggestion suggestion, bool isCompletedMilestone) {
+    // Generate a tailored reason based on macros and milestone
     
-    if (suggestion.protein > 20) {
-      reason = "Excellent source of protein for fitness";
-    } else if (suggestion.carbs > 40) {
-      reason = "Good energy source for workouts";
-    } else if (suggestion.fat < 10) {
-      reason = "Low in fat, fits your calorie budget";
+    // For completed milestone (100%+ calories), focus on low calorie benefits
+    if (isCompletedMilestone) {
+      if (suggestion.calories <= 10) {
+        return "Virtually zero-calorie option to satisfy cravings";
+      } else if (suggestion.calories <= 30) {
+        return "Ultra-low calorie choice that won't impact your goals";
+      } else if (suggestion.calories <= 50) {
+        return "Low calorie option to enjoy without guilt";
+      } else {
+        return "Light option to round out your day";
+      }
+    }
+    
+    // For high protein foods
+    if (suggestion.protein >= 20) {
+      return "Excellent source of protein for muscle recovery";
+    } else if (suggestion.protein >= 15) {
+      return "Good protein source to support your fitness goals";
+    } else if (suggestion.protein >= 10) {
+      return "Provides helpful protein for your daily needs";
+    }
+    
+    // For high carb foods
+    if (suggestion.carbs >= 40) {
+      if (widget.milestone == SuggestionMilestone.START || 
+          widget.milestone == SuggestionMilestone.QUARTER) {
+        return "Energy-rich carbs to fuel your morning activities";
+      } else if (widget.milestone == SuggestionMilestone.HALF) {
+        return "Carb-focused option to power you through the day";
+      } else {
+        return "Carbohydrate source for sustained energy";
+      }
+    }
+    
+    // For high fat foods
+    if (suggestion.fat >= 15) {
+      return "Healthy fats to keep you satisfied longer";
+    } else if (suggestion.fat >= 10) {
+      return "Contains quality fats for nutrient absorption";
+    }
+    
+    // For low fat options
+    if (suggestion.fat < 3 && suggestion.calories > 100) {
+      return "Low in fat, fits well within your daily goals";
+    }
+    
+    // For low calorie options
+    if (suggestion.calories < 30) {
+      return "Virtually zero-calorie option to satisfy cravings";
+    }else if (suggestion.calories < 200) {
+      return "Light option to keep you on track";
     } else if (suggestion.calories < 300) {
-      reason = "Low calorie option for your daily goals";
+      return "Moderate calorie choice with balanced nutrition";
+    } else if (suggestion.calories < 400) {
+      return "Substantial meal with good nutritional value";
     } else {
-      reason = "Balanced nutrition for your needs";
+      return "Hearty option that delivers complete nutrition";
     }
-    
-    // Ensure text is short enough
-    if (reason.length > 40) {
-      return reason.substring(0, 37) + "...";
-    }
-    
-    return reason;
   }
 }

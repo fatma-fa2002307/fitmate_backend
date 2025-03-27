@@ -195,34 +195,43 @@ class _NutritionPageState extends State<NutritionPage>
                     SizedBox(
                       height: 120,
                       child: Center(
-                        child: AdvancedCircularProgressIndicator(
-                          progress: viewModel.caloriePercentage,
-                          radius: 60.0,
-                          lineWidth: 12.0,
-                          progressColor: const Color(0xFFD2EB50),
-                          backgroundColor: Colors.grey[200]!,
-                          animate: _isAnimating,
-                          animationDuration: const Duration(milliseconds: 1500),
-                          allowOverflow: true,
-                          center: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                viewModel.totalCalories.toInt().toString(),
-                                style: GoogleFonts.montserrat(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
+                        child: AnimatedBuilder(
+                          animation: _animationController,
+                          builder: (context, child) {
+                            return Transform.scale(
+                              scale: _isAnimating ? 1.0 + (_animationController.value * 0.1 * (1 - _animationController.value) * 2) : 1.0,
+                              child: AdvancedCircularProgressIndicator(
+                                progress: viewModel.caloriePercentage,
+                                radius: 60.0,
+                                lineWidth: 12.0,
+                                progressColor: const Color(0xFFD2EB50),
+                                backgroundColor: Colors.grey[200]!,
+                                animate: _isAnimating,
+                                animationDuration: const Duration(milliseconds: 1500),
+                                allowOverflow: true,
+                                center: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      viewModel.totalCalories.toInt().toString(),
+                                      style: GoogleFonts.montserrat(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                        color: _isAnimating ? Color.lerp(Colors.black, const Color(0xFFD2EB50), _animationController.value * (1 - _animationController.value) * 4) : Colors.black,
+                                      ),
+                                    ),
+                                    Text(
+                                      'kcal',
+                                      style: GoogleFonts.montserrat(
+                                        fontSize: 12,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                              Text(
-                                'kcal',
-                                style: GoogleFonts.montserrat(
-                                  fontSize: 12,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                            ],
-                          ),
+                            );
+                          },
                         ),
                       ),
                     ),

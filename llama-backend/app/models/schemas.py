@@ -44,6 +44,8 @@ class MilestoneType(str, Enum):
     HALF = "HALF"                # 50% milestone 
     THREE_QUARTERS = "THREE_QUARTERS"  # 75% milestone
     ALMOST_COMPLETE = "ALMOST_COMPLETE"  # 90% milestone
+    COMPLETED = "COMPLETED"      # 100%+ milestone 
+
 
 class FoodSuggestion(BaseModel):
     id: str

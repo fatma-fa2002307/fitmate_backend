@@ -49,22 +49,22 @@ class NutritionViewModel with ChangeNotifier {
   // Calculated properties
   double get caloriePercentage => 
       (_dailyMacros['calories'] ?? 2000) > 0 
-          ? (_totalCalories / (_dailyMacros['calories'] ?? 2000)).clamp(0.0, 1.0) 
+          ? (_totalCalories / (_dailyMacros['calories'] ?? 2000))
           : 0.0;
   
   double get proteinPercentage => 
       (_dailyMacros['protein'] ?? 150) > 0 
-          ? (_totalProtein / (_dailyMacros['protein'] ?? 150)).clamp(0.0, 1.0) 
+          ? (_totalProtein / (_dailyMacros['protein'] ?? 150))
           : 0.0;
   
   double get carbsPercentage => 
       (_dailyMacros['carbs'] ?? 225) > 0 
-          ? (_totalCarbs / (_dailyMacros['carbs'] ?? 225)).clamp(0.0, 1.0) 
+          ? (_totalCarbs / (_dailyMacros['carbs'] ?? 225))
           : 0.0;
   
   double get fatPercentage => 
       (_dailyMacros['fat'] ?? 65) > 0 
-          ? (_totalFat / (_dailyMacros['fat'] ?? 65)).clamp(0.0, 1.0) 
+          ? (_totalFat / (_dailyMacros['fat'] ?? 65)) 
           : 0.0;
   
   bool get isToday => 
