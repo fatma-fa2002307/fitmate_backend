@@ -29,22 +29,23 @@ class FoodSuggestionCard extends StatefulWidget {
 class _FoodSuggestionCardState extends State<FoodSuggestionCard> {
   late PageController _pageController;
   int _currentIndex = 0;
-  
+
   // Service to handle food suggestion interactions
-  final EnhancedFoodSuggestionService _foodSuggestionService = EnhancedFoodSuggestionService();
-  
+  final EnhancedFoodSuggestionService _foodSuggestionService =
+      EnhancedFoodSuggestionService();
+
   // Local state for liked/disliked status
   bool _isLiked = false;
   bool _isDisliked = false;
   bool _isExpanded = false;
-  
+
   @override
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
     _pageController = PageController(initialPage: _currentIndex);
   }
-  
+
   @override
   void dispose() {
     _pageController.dispose();
@@ -54,49 +55,45 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> {
   /// Handle liking a food suggestion
   void _handleLike() async {
     if (_isLiked) return;
-    
+
     setState(() {
       _isLiked = true;
       _isDisliked = false;
     });
-    
+
     // Call service to update preference
     if (widget.suggestions.isNotEmpty) {
       await _foodSuggestionService.rateSuggestion(
-        widget.suggestions[_currentIndex].id, 
-        true
-      );
+          widget.suggestions[_currentIndex].id, true);
     }
-    
+
     // Call callback if provided
     if (widget.onLike != null) {
       widget.onLike!();
     }
   }
-  
+
   /// Handle disliking a food suggestion
   void _handleDislike() async {
     if (_isDisliked) return;
-    
+
     setState(() {
       _isDisliked = true;
       _isLiked = false;
     });
-    
+
     // Call service to update preference
     if (widget.suggestions.isNotEmpty) {
       await _foodSuggestionService.rateSuggestion(
-        widget.suggestions[_currentIndex].id, 
-        false
-      );
+          widget.suggestions[_currentIndex].id, false);
     }
-    
+
     // Call callback if provided
     if (widget.onDislike != null) {
       widget.onDislike!();
     }
   }
-  
+
   /// Open recipe URL in browser
   void _openRecipeUrl() async {
     final suggestion = widget.suggestions[_currentIndex];
@@ -117,10 +114,11 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> {
     if (widget.suggestions.isEmpty) {
       return const SizedBox.shrink();
     }
-    
+
     // Determine if we're displaying suggestions for a user who's reached their calorie goal
-    final isCompletedMilestone = widget.milestone == SuggestionMilestone.COMPLETED;
-    
+    final isCompletedMilestone =
+        widget.milestone == SuggestionMilestone.COMPLETED;
+
     return Column(
       children: [
         // Milestone header
@@ -146,7 +144,7 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> {
               ],
             ),
           ),
-          
+
         // Food suggestion card with swipe functionality
         AnimatedContainer(
           duration: const Duration(milliseconds: 300),
@@ -171,7 +169,7 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> {
             },
           ),
         ),
-        
+
         // Indicator dots
         if (widget.suggestions.length > 1)
           Padding(
@@ -197,7 +195,7 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> {
       ],
     );
   }
-  
+
   // Get appropriate icon for the current milestone
   IconData _getMilestoneIcon(SuggestionMilestone milestone) {
     switch (milestone) {
@@ -237,11 +235,12 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> {
         return Colors.black87;
     }
   }
-  
-  Widget _buildSuggestionCard(FoodSuggestion suggestion, bool isCompletedMilestone) {
+
+  Widget _buildSuggestionCard(
+      FoodSuggestion suggestion, bool isCompletedMilestone) {
     // Determine if this is an ultra-low calorie option
     final bool isUltraLowCalorie = suggestion.calories <= 50;
-    
+
     return Card(
       elevation: 2,
       margin: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
@@ -288,7 +287,8 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> {
                           top: 0,
                           left: 0,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 4, vertical: 2),
                             decoration: BoxDecoration(
                               color: Colors.green[700],
                               borderRadius: const BorderRadius.only(
@@ -305,9 +305,9 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> {
                     ],
                   ),
                 ),
-                
+
                 const SizedBox(width: 12),
-                
+
                 // Content
                 Expanded(
                   child: Column(
@@ -330,7 +330,8 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> {
                           ),
                           if (isCompletedMilestone && isUltraLowCalorie)
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
                                 color: Colors.green[100],
                                 borderRadius: BorderRadius.circular(4),
@@ -346,12 +347,13 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> {
                             ),
                         ],
                       ),
-                      
+
                       const SizedBox(height: 4),
-                      
+
                       // LLaMA-generated explanation
                       Text(
-                        suggestion.explanation ?? _getDefaultReason(suggestion, isCompletedMilestone),
+                        suggestion.explanation ??
+                            _getDefaultReason(suggestion, isCompletedMilestone),
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.grey[700],
@@ -365,10 +367,10 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> {
                 ),
               ],
             ),
-            
+
             // Divider
             Divider(color: Colors.grey[200]),
-            
+
             // Bottom section
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -381,7 +383,7 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> {
                     Icon(
                       Icons.local_fire_department,
                       size: 14,
-                      color: suggestion.calories <= 50 
+                      color: suggestion.calories <= 50
                           ? Colors.green[600]
                           : Colors.orange[600],
                     ),
@@ -391,14 +393,14 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> {
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: suggestion.calories <= 50 
+                        color: suggestion.calories <= 50
                             ? Colors.green[600]
                             : Colors.black87,
                       ),
                     ),
                   ],
                 ),
-                
+
                 // Macros summary
                 Text(
                   '${suggestion.protein.toStringAsFixed(1)}p · ${suggestion.carbs.toStringAsFixed(1)}c · ${suggestion.fat.toStringAsFixed(1)}f',
@@ -407,7 +409,7 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> {
                     color: Colors.grey[600],
                   ),
                 ),
-                
+
                 // Button row
                 Row(
                   mainAxisSize: MainAxisSize.min,
@@ -429,9 +431,9 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> {
                         ),
                       ),
                     ),
-                    
+
                     const SizedBox(width: 4),
-                    
+
                     // Like button
                     InkWell(
                       onTap: _handleLike,
@@ -440,14 +442,16 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> {
                         padding: const EdgeInsets.all(4.0),
                         child: Icon(
                           _isLiked ? Icons.thumb_up : Icons.thumb_up_outlined,
-                          color: _isLiked ? const Color(0xFFD2EB50) : Colors.grey[500],
+                          color: _isLiked
+                              ? const Color(0xFFD2EB50)
+                              : Colors.grey[500],
                           size: 18,
                         ),
                       ),
                     ),
-                    
+
                     const SizedBox(width: 4),
-                    
+
                     // Dislike button
                     InkWell(
                       onTap: _handleDislike,
@@ -455,8 +459,11 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> {
                       child: Padding(
                         padding: const EdgeInsets.all(4.0),
                         child: Icon(
-                          _isDisliked ? Icons.thumb_down : Icons.thumb_down_outlined,
-                          color: _isDisliked ? Colors.red[400] : Colors.grey[500],
+                          _isDisliked
+                              ? Icons.thumb_down
+                              : Icons.thumb_down_outlined,
+                          color:
+                              _isDisliked ? Colors.red[400] : Colors.grey[500],
                           size: 18,
                         ),
                       ),
@@ -465,26 +472,29 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> {
                 ),
               ],
             ),
-            
+
             // Expanded section with recipe details and link
             if (_isExpanded) ...[
               const SizedBox(height: 8),
-              
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildDetailItem(Icons.timer, 'Ready in', '${suggestion.readyInMinutes ?? "--"} min'),
-                  _buildDetailItem(Icons.room_service, 'Servings', '${suggestion.servings ?? "--"}'),
-                  
+                  _buildDetailItem(Icons.timer, 'Ready in',
+                      '${suggestion.readyInMinutes ?? "--"} min'),
+                  _buildDetailItem(Icons.room_service, 'Servings',
+                      '${suggestion.servings ?? "--"}'),
+
                   // View Recipe button if URL is available
-                  if (suggestion.sourceUrl != null && suggestion.sourceUrl!.isNotEmpty)
+                  if (suggestion.sourceUrl != null &&
+                      suggestion.sourceUrl!.isNotEmpty)
                     TextButton.icon(
                       onPressed: _openRecipeUrl,
                       icon: const Icon(Icons.open_in_new, size: 14),
                       label: const Text('View Recipe'),
                       style: TextButton.styleFrom(
                         foregroundColor: const Color(0xFFD2EB50),
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         textStyle: const TextStyle(fontSize: 12),
@@ -498,7 +508,7 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> {
       ),
     );
   }
-  
+
   Widget _buildDetailItem(IconData icon, String label, String value) {
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -522,23 +532,25 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> {
       ],
     );
   }
-  
-  String _getDefaultReason(FoodSuggestion suggestion, bool isCompletedMilestone) {
+
+  String _getDefaultReason(
+      FoodSuggestion suggestion, bool isCompletedMilestone) {
     if (isCompletedMilestone) {
       return "Ultra-low calorie option that won't impact your daily goals.";
     }
-    
+
     if (suggestion.protein > 20) {
       return "High in protein to support muscle recovery and growth.";
     }
-    
+
     if (suggestion.carbs > 40) {
       return "Rich in carbs to provide energy for your activities.";
     }
-    
+
     if (suggestion.fat > 15) {
       return "Contains healthy fats to keep you satisfied longer.";
     }
-    
+
     return "Balanced nutrition to support your fitness goals.";
   }
+}

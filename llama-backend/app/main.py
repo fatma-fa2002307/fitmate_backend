@@ -4,9 +4,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 import os
 from datetime import datetime
-from app.models.schemas import WorkoutRequest, FoodSuggestionRequest, FoodSuggestionResponse
+from app.models.schemas import WorkoutRequest, FoodSuggestionRequest, FoodSuggestionResponse, FoodParameterRequest, FoodParameterResponse
 from app.engine.workout import WorkoutEngine
 from app.engine.food import FoodSuggestionEngine
+from app.engine.food_paramteres import FoodParameterEngine
 
 app = FastAPI()
 
@@ -29,6 +30,7 @@ food_images_dir = os.path.join(base_dir, "data", "food-images")
 # Initialize engines
 workout_engine = WorkoutEngine()
 food_engine = FoodSuggestionEngine()
+food_parameter_engine = FoodParameterEngine()
 
 # Print directories for debugging
 print(f"Base dir: {base_dir}")
@@ -83,6 +85,21 @@ async def generate_food_suggestions(data: FoodSuggestionRequest) -> FoodSuggesti
     except Exception as e:
         print(f"Error generating food suggestions: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Food suggestion generation failed: {str(e)}")
+
+@app.post("/generate_food_parameters/")
+async def generate_food_parameters(data: FoodParameterRequest) -> FoodParameterResponse:
+    try:
+        print(f"Received request for food parameters: {data}")
+        
+        # Generate food parameters based on user's profile
+        response = food_parameter_engine.generate_food_parameters(data)
+        
+        print(f"Generated food parameters: {response}")
+        return response
+        
+    except Exception as e:
+        print(f"Error generating food parameters: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Food parameter generation failed: {str(e)}")
 
 @app.get("/food-images/{image_name}")
 async def get_food_image(image_name: str):
