@@ -6,7 +6,7 @@ import os
 from datetime import datetime
 from app.models.schemas import WorkoutRequest, FoodSuggestionRequest, FoodSuggestionResponse, FoodParameterRequest, FoodParameterResponse
 from app.engine.workout import WorkoutEngine
-from app.engine.food import FoodSuggestionEngine
+#from app.engine.food import FoodSuggestionEngine
 from app.engine.food_paramteres import FoodParameterEngine
 
 app = FastAPI()
@@ -29,7 +29,7 @@ food_images_dir = os.path.join(base_dir, "data", "food-images")
 
 # Initialize engines
 workout_engine = WorkoutEngine()
-food_engine = FoodSuggestionEngine()
+#food_engine = FoodSuggestionEngine()
 food_parameter_engine = FoodParameterEngine()
 
 # Print directories for debugging
@@ -60,31 +60,6 @@ def generate_workout_options(data: WorkoutRequest):
         print(f"Error in endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/generate_food_suggestions/")
-async def generate_food_suggestions(data: FoodSuggestionRequest) -> FoodSuggestionResponse:
-    try:
-        print(f"Received request for food suggestions: {data}")
-        
-        # Generate food suggestions based on calorie milestone
-        suggestions = food_engine.generate_suggestions(data)
-        
-        # Calculate milestone based on percentage
-        percentage_consumed = data.consumedCalories / data.totalCalories if data.totalCalories > 0 else 0
-        milestone = food_engine.get_milestone_from_percentage(percentage_consumed)
-        
-        # Create response
-        response = FoodSuggestionResponse(
-            milestone=milestone,
-            suggestions=suggestions,
-            timestamp=datetime.now()
-        )
-        
-        print(f"Generated food suggestions: {response}")
-        return response
-        
-    except Exception as e:
-        print(f"Error generating food suggestions: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Food suggestion generation failed: {str(e)}")
 
 @app.post("/generate_food_parameters/")
 async def generate_food_parameters(data: FoodParameterRequest) -> FoodParameterResponse:

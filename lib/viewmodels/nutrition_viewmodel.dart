@@ -14,6 +14,7 @@ class NutritionViewModel with ChangeNotifier {
 
   // State
   bool _isLoading = true;
+  bool _isRetrying = false;  // New state for retry operation
   List<Map<String, dynamic>> _todaysFoodLogs = [];
   DateTime _selectedDate = DateTime.now();
   double _totalCalories = 0;
@@ -32,6 +33,7 @@ class NutritionViewModel with ChangeNotifier {
 
   // Getters
   bool get isLoading => _isLoading;
+  bool get isRetrying => _isRetrying;  // New getter for retry state
   List<Map<String, dynamic>> get todaysFoodLogs => _todaysFoodLogs;
   DateTime get selectedDate => _selectedDate;
   double get totalCalories => _totalCalories;
@@ -311,9 +313,12 @@ class NutritionViewModel with ChangeNotifier {
     }
   }
 
-  // Load food suggestions
+  // Load food suggestions with retry functionality
   Future<void> _loadFoodSuggestions() async {
-    setState(() => _suggestionsLoading = true);
+    setState(() {
+      _suggestionsLoading = true;
+      _suggestionsError = '';
+    });
 
     try {
       // Calculate current milestone
@@ -334,10 +339,46 @@ class NutritionViewModel with ChangeNotifier {
       _currentSuggestionIndex = 0;
       notifyListeners();
     } catch (e) {
-      _suggestionsError = 'Unable to load suggestions';
+      _suggestionsError = 'Unable to load suggestions. Tap to retry.';
       _suggestionsLoading = false;
       notifyListeners();
       print('Error loading suggestions: $e');
+    }
+  }
+
+  // Retry loading food suggestions
+  Future<void> retryLoadFoodSuggestions() async {
+    setState(() {
+      _isRetrying = true;
+      _suggestionsLoading = true;
+      _suggestionsError = '';
+    });
+
+    try {
+      // Calculate current milestone
+      final percentage = _totalCalories / (_dailyMacros['calories'] ?? 2000);
+      _currentMilestone =
+          SuggestionMilestoneExtension.fromPercentage(percentage);
+
+      // Get suggestions from the enhanced service
+      final suggestions =
+          await _foodSuggestionService.getSuggestionsForCurrentMilestone(
+        totalCalories: _dailyMacros['calories'] ?? 2000,
+        consumedCalories: _totalCalories,
+        goal: _userGoal,
+      );
+
+      _suggestions = suggestions;
+      _suggestionsError = '';
+      _currentSuggestionIndex = 0;
+    } catch (e) {
+      _suggestionsError = 'Unable to load suggestions. Tap to retry.';
+      print('Error retrying food suggestions: $e');
+    } finally {
+      setState(() {
+        _suggestionsLoading = false;
+        _isRetrying = false;
+      });
     }
   }
 

@@ -291,7 +291,7 @@ class _NutritionPageState extends State<NutritionPage>
     );
   }
 
-  Widget _buildFoodSuggestions(NutritionViewModel viewModel) {
+Widget _buildFoodSuggestions(NutritionViewModel viewModel) {
     return Container(
       margin: const EdgeInsets.only(top: 16),
       padding: const EdgeInsets.all(16),
@@ -338,9 +338,28 @@ class _NutritionPageState extends State<NutritionPage>
                       viewModel.suggestionsError,
                       style: TextStyle(color: Colors.grey[600]),
                     ),
-                    TextButton(
-                      onPressed: () => _initializeData(),
-                      child: const Text('Try Again'),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      onPressed: viewModel.isRetrying 
+                        ? null 
+                        : () => viewModel.retryLoadFoodSuggestions(),
+                      icon: viewModel.isRetrying 
+                        ? Container(
+                            width: 20,
+                            height: 20,
+                            padding: const EdgeInsets.all(2.0),
+                            child: const CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Icon(Icons.refresh),
+                      label: Text(viewModel.isRetrying ? 'Retrying...' : 'Retry'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFD2EB50),
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: Colors.grey[400],
+                      ),
                     ),
                   ],
                 ),

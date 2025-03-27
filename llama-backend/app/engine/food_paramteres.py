@@ -92,6 +92,7 @@ class FoodParameterEngine:
                 current_milestone=current_milestone,
                 total_calories=total_calories,
                 consumed_calories=consumed_calories,
+                percentage_consumed=percentage_consumed,  # Pass calculated percentage
                 goal=request.goal,
                 disliked_food_ids=request.dislikedFoodIds or []
             )
@@ -120,7 +121,8 @@ class FoodParameterEngine:
             )
     
     def _generate_via_llm(self, current_milestone: MilestoneType, total_calories: float, 
-                         consumed_calories: float, goal: str, disliked_food_ids: List[str]) -> Optional[FoodParameterResponse]:
+                         consumed_calories: float, percentage_consumed: float, 
+                         goal: str, disliked_food_ids: List[str]) -> Optional[FoodParameterResponse]:
         """Generate food parameters using LLama model."""
         try:
             # Prepare prompt for LLM
