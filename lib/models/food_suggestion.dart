@@ -62,6 +62,12 @@ class FoodSuggestion {
   final double carbs;
   final double fat;
   
+  // New fields from Spoonacular
+  final String? sourceUrl;
+  final int? readyInMinutes;
+  final int? servings;
+  final String? explanation;  // LLaMA-generated explanation
+  
   FoodSuggestion({
     required this.id,
     required this.title,
@@ -70,6 +76,10 @@ class FoodSuggestion {
     required this.protein,
     required this.carbs,
     required this.fat,
+    this.sourceUrl,
+    this.readyInMinutes,
+    this.servings,
+    this.explanation,
   });
   
   /// Create a FoodSuggestion from a map (API or Firestore)
@@ -82,6 +92,10 @@ class FoodSuggestion {
       protein: (map['protein'] ?? 0).toDouble(),
       carbs: (map['carbs'] ?? 0).toDouble(),
       fat: (map['fat'] ?? 0).toDouble(),
+      sourceUrl: map['sourceUrl'],
+      readyInMinutes: map['readyInMinutes'],
+      servings: map['servings'],
+      explanation: map['explanation'],
     );
   }
   
@@ -95,6 +109,10 @@ class FoodSuggestion {
       'protein': protein,
       'carbs': carbs,
       'fat': fat,
+      'sourceUrl': sourceUrl,
+      'readyInMinutes': readyInMinutes,
+      'servings': servings,
+      'explanation': explanation,
     };
   }
 }

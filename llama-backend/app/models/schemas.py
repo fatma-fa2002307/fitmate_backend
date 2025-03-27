@@ -37,7 +37,7 @@ class WorkoutOptionsResponse(BaseModel):
     options: List[List[Dict[str, Any]]]  # List of workout option lists
     category: str
 
-# New schemas for food suggestions
+# Food-related schemas
 class MilestoneType(str, Enum):
     START = "START"              # 0% milestone
     QUARTER = "QUARTER"          # 25% milestone
@@ -55,6 +55,10 @@ class FoodSuggestion(BaseModel):
     protein: float
     carbs: float
     fat: float
+    sourceUrl: Optional[str] = None
+    readyInMinutes: Optional[int] = None
+    servings: Optional[int] = None
+    explanation: Optional[str] = None
 
 class FoodSuggestionRequest(BaseModel):
     userId: str
@@ -66,4 +70,22 @@ class FoodSuggestionRequest(BaseModel):
 class FoodSuggestionResponse(BaseModel):
     milestone: MilestoneType
     suggestions: List[FoodSuggestion]
+    timestamp: datetime = datetime.now()
+
+# New schemas for food parameters
+class FoodParameterRequest(BaseModel):
+    userId: str
+    totalCalories: float
+    consumedCalories: float
+    goal: str  # User's fitness goal
+    milestone: Optional[str] = None
+    dislikedFoodIds: Optional[List[str]] = None
+
+class FoodParameterResponse(BaseModel):
+    milestone: MilestoneType
+    mealType: str  # breakfast, lunch, dinner, snack, etc.
+    targetCalories: float
+    macroRatios: Dict[str, float]  # protein, carbs, fat percentages
+    explanations: List[str]  # Personalized nutritional explanations
+    dietaryFocus: str  # e.g., "high-protein, low-carb"
     timestamp: datetime = datetime.now()
