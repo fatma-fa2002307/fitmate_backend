@@ -6,7 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:fitmate/viewmodels/nutrition_viewmodel.dart';
 import 'package:fitmate/widgets/bottom_nav_bar.dart';
 import 'package:fitmate/widgets/food_suggestion_card.dart';
-import 'package:fitmate/screens/nutrition_screens//logFoodManually.dart';
+import 'package:fitmate/screens/nutrition_screens/logFoodManually.dart';
 import 'advanced_circular_indicator.dart';
 import 'animated_macro_wheel.dart';
 
