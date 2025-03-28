@@ -6,7 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:fitmate/viewmodels/nutrition_viewmodel.dart';
 import 'package:fitmate/widgets/bottom_nav_bar.dart';
 import 'package:fitmate/widgets/food_suggestion_card.dart';
-import 'package:fitmate/screens/logFoodManually.dart';
+import 'package:fitmate/screens/nutrition_screens//logFoodManually.dart';
 import 'advanced_circular_indicator.dart';
 import 'animated_macro_wheel.dart';
 
@@ -92,18 +92,18 @@ class _NutritionPageState extends State<NutritionPage>
             ),
             body: viewModel.isLoading
                 ? const Center(
-                    child: CircularProgressIndicator(
-                      valueColor:
-                          AlwaysStoppedAnimation<Color>(Color(0xFFD2EB50)),
-                    ),
-                  )
+              child: CircularProgressIndicator(
+                valueColor:
+                AlwaysStoppedAnimation<Color>(Color(0xFFD2EB50)),
+              ),
+            )
                 : RefreshIndicator(
-                    onRefresh: _initializeData,
-                    color: const Color(0xFFD2EB50),
-                    child: _buildMainContent(viewModel),
-                  ),
+              onRefresh: _initializeData,
+              color: const Color(0xFFD2EB50),
+              child: _buildMainContent(viewModel),
+            ),
             floatingActionButton:
-                viewModel.isToday ? _buildFloatingActionButton(context) : null,
+            viewModel.isToday ? _buildFloatingActionButton(context) : null,
             bottomNavigationBar: BottomNavBar(
               currentIndex: _selectedIndex,
               onTap: _onItemTapped,
@@ -256,7 +256,7 @@ class _NutritionPageState extends State<NutritionPage>
                           label: 'Protein',
                           current: viewModel.totalProtein.toInt(),
                           target:
-                              viewModel.dailyMacros['protein']?.toInt() ?? 150,
+                          viewModel.dailyMacros['protein']?.toInt() ?? 150,
                           percentage: viewModel.proteinPercentage,
                           color: Colors.red[400]!,
                           animate: _isAnimating,
@@ -265,7 +265,7 @@ class _NutritionPageState extends State<NutritionPage>
                           label: 'Carbs',
                           current: viewModel.totalCarbs.toInt(),
                           target:
-                              viewModel.dailyMacros['carbs']?.toInt() ?? 225,
+                          viewModel.dailyMacros['carbs']?.toInt() ?? 225,
                           percentage: viewModel.carbsPercentage,
                           color: Colors.blue[400]!,
                           animate: _isAnimating,
@@ -338,20 +338,20 @@ class _NutritionPageState extends State<NutritionPage>
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton.icon(
-                      onPressed: viewModel.isRetrying 
-                        ? null 
-                        : () => viewModel.retryLoadFoodSuggestions(),
-                      icon: viewModel.isRetrying 
-                        ? Container(
-                            width: 20,
-                            height: 20,
-                            padding: const EdgeInsets.all(2.0),
-                            child: const CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : const Icon(Icons.refresh),
+                      onPressed: viewModel.isRetrying
+                          ? null
+                          : () => viewModel.retryLoadFoodSuggestions(),
+                      icon: viewModel.isRetrying
+                          ? Container(
+                        width: 20,
+                        height: 20,
+                        padding: const EdgeInsets.all(2.0),
+                        child: const CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                          : const Icon(Icons.refresh),
                       label: Text(viewModel.isRetrying ? 'Retrying...' : 'Retry'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFD2EB50),
@@ -364,28 +364,28 @@ class _NutritionPageState extends State<NutritionPage>
               ),
             )
           else if (viewModel.suggestions.isEmpty)
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Text(
-                  'No suggestions available',
-                  style: TextStyle(
-                    color: Colors.grey[600],
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Text(
+                    'No suggestions available',
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                    ),
                   ),
                 ),
+              )
+            else
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: FoodSuggestionCard(
+                  suggestions: viewModel.suggestions,
+                  onLike: () => viewModel.handleFoodPreference(true),
+                  onDislike: () => viewModel.handleFoodPreference(false),
+                  initialIndex: viewModel.currentSuggestionIndex,
+                  milestone: viewModel.currentMilestone,
+                ),
               ),
-            )
-          else
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8.0),
-              child: FoodSuggestionCard(
-                suggestions: viewModel.suggestions,
-                onLike: () => viewModel.handleFoodPreference(true),
-                onDislike: () => viewModel.handleFoodPreference(false),
-                initialIndex: viewModel.currentSuggestionIndex,
-                milestone: viewModel.currentMilestone,
-              ),
-            ),
         ],
       ),
     );
@@ -520,10 +520,10 @@ class _NutritionPageState extends State<NutritionPage>
         ),
         trailing: viewModel.isToday
             ? IconButton(
-                icon: const Icon(Icons.delete_outline),
-                color: Colors.grey[600],
-                onPressed: () => viewModel.deleteFood(food['id']),
-              )
+          icon: const Icon(Icons.delete_outline),
+          color: Colors.grey[600],
+          onPressed: () => viewModel.deleteFood(food['id']),
+        )
             : null,
       ),
     );

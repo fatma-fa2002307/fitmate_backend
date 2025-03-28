@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fitmate/services/workout_service.dart';
-import 'package:fitmate/screens/home_page.dart';
+import 'package:fitmate/screens/login_screens/home_page.dart';
 
 class WorkoutCompletionScreen extends StatefulWidget {
   final int completedExercises;

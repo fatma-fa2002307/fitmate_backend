@@ -7,7 +7,7 @@ import 'package:fitmate/screens/register_screens/height_question.dart';
 import 'package:fitmate/screens/register_screens/gender_question.dart';
 import 'package:fitmate/screens/register_screens/goal_question.dart';
 import 'package:fitmate/screens/register_screens/credentials.dart';
-import 'package:fitmate/screens/edit_profile.dart';
+import 'package:fitmate/screens/login_screens/edit_profile.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();

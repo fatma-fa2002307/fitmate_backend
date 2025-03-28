@@ -1,8 +1,8 @@
 import 'package:fitmate/screens/workout_screens/workout_page.dart';
 import 'package:flutter/material.dart';
-import 'package:fitmate/screens/home_page.dart';
-import 'package:fitmate/screens/edit_profile.dart';
-import 'package:fitmate/screens/nutrition_screen.dart';
+import 'package:fitmate/screens/login_screens/home_page.dart';
+import 'package:fitmate/screens/login_screens/edit_profile.dart';
+import 'package:fitmate/screens/nutrition_screens/nutrition_screen.dart';
 
 class BottomNavBar extends StatelessWidget {
   final int currentIndex;

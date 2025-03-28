@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fitmate/repositories/food_repository.dart';
+import 'package:fitmate/screens/login_screens/welcome_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fitmate/widgets/bottom_nav_bar.dart';
@@ -984,11 +985,24 @@ class _EditProfilePageState extends State<EditProfilePage> {
                                     ),
                                   ),
                                   ElevatedButton(
-                                    onPressed: () {
-                                      Navigator.pop(context);
-                                      FirebaseAuth.instance.signOut().then((_) {
-                                        Navigator.pushReplacementNamed(context, '/login');
-                                      });
+                                    onPressed: () async { // Make the onPressed async
+                                      try {
+                                        // Sign out first
+                                        await FirebaseAuth.instance.signOut();
+
+                                        // Then navigate to the WelcomePage
+                                        Navigator.of(context).pushAndRemoveUntil(
+                                          MaterialPageRoute(builder: (context) => const WelcomePage()),
+                                              (route) => false,
+                                        );
+                                      } catch (e) {
+                                        // Handle any potential errors during sign-out
+                                        print("Error during sign out: $e");
+                                        // Optionally show an error message to the user
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text('Failed to logout. Please try again.')),
+                                        );
+                                      }
                                     },
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: const Color(0xFFD2EB50),
@@ -1002,7 +1016,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                                         color: Colors.black,
                                       ),
                                     ),
-                                  ),
+                                  )
                                 ],
                               ),
                             );

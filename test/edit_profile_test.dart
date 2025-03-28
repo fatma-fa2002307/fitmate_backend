@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fitmate/screens/edit_profile.dart';
+import 'package:fitmate/screens/login_screens/edit_profile.dart';
 
 void main() {
   test('Full Name validation works', () {

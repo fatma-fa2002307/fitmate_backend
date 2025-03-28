@@ -1,11 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:fitmate/screens/edit_profile.dart';
+import 'package:fitmate/screens/login_screens/edit_profile.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fitmate/widgets/bottom_nav_bar.dart';
-import 'package:percent_indicator/percent_indicator.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -98,23 +97,63 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ],
                   ),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => EditProfilePage()),
+                  FutureBuilder<DocumentSnapshot>(
+                    future: FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(FirebaseAuth.instance.currentUser?.uid)
+                        .get(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const CircleAvatar(
+                          radius: 24,
+                          backgroundColor: Colors.grey, // Loading indicator
+                        );
+                      }
+                      if (snapshot.hasError || !snapshot.hasData || !snapshot.data!.exists) {
+                        return GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => EditProfilePage()),
+                            );
+                          },
+                          child: const CircleAvatar(
+                            radius: 24,
+                            backgroundColor: Color(0xFFD2EB50),
+                            child: Icon(
+                              Icons.person_2,
+                              color: Colors.white,
+                              size: 28,
+                            ),
+                          ),
+                        );
+                      }
+                      String? profileImage = (snapshot.data!.data() as Map<String, dynamic>)['profileImage'];
+
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => EditProfilePage()),
+                          );
+                        },
+                        child: CircleAvatar(
+                          radius: 24,
+                          backgroundImage: profileImage != null
+                              ? NetworkImage(profileImage)
+                              : null, // Use network image if available
+                          backgroundColor: profileImage == null ? const Color(0xFFD2EB50) : null,
+                          child: profileImage == null
+                              ? const Icon(
+                            Icons.person_2,
+                            color: Colors.white,
+                            size: 28,
+                          )
+                              : null,
+                        ),
                       );
                     },
-                    child: const CircleAvatar(
-                      radius: 24,
-                      backgroundColor: Color(0xFFD2EB50),
-                      child: Icon(
-                        Icons.person_2,
-                        color: Colors.white,
-                        size: 28,
-                      ),
-                    ),
-                  )
+                  ),
                 ],
               ),
               const SizedBox(height: 24),
@@ -221,68 +260,37 @@ class _HomePageState extends State<HomePage> {
               ),
               const SizedBox(height: 16),
               Row(
-                children: [
-                  // Expanded(
-                  //   child: Container(
-                  //     height: 180,
-                  //     padding: const EdgeInsets.all(16),
-                  //     decoration: BoxDecoration(
-                  //       color: Colors.white,
-                  //       borderRadius: BorderRadius.circular(12),
-                  //     ),
-                  //     child: Column(
-                  //       children: [
-                  //         CircularPercentIndicator(
-                  //           radius: 60.0,
-                  //           lineWidth: 10.0,
-                  //           percent: _totalCalories / _dailyCaloriesGoal,
-                  //           center: Text(
-                  //             "${_totalCalories.toStringAsFixed(0)} Kcal",
-                  //             style: const TextStyle(
-                  //               color: Color(0xFFD2EB50),
-                  //               fontWeight: FontWeight.bold,
-                  //             ),
-                  //           ),
-                  //           progressColor: Color(0xFFD2EB50),
-                  //         ),
-                  //         const Text(
-                  //           "Kcal",
-                  //           style: TextStyle(color: Colors.grey, fontSize: 14),
-                  //         ),
-                  //       ],
-                  //     ),
-                  //   ),
-                  // ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Container(
-                      height: 180,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Image.asset(
-                              'assets/data/images/yoga-pose.png',
-                              width: 60,
-                              height: 60,
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              "Total Workouts",
-                              style: TextStyle(color: Colors.grey, fontSize: 14),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  )
-                ],
+                // children: [
+                //   const SizedBox(width: 16),
+                //   Expanded(
+                //     child: Container(
+                //       height: 180,
+                //       padding: const EdgeInsets.all(16),
+                //       decoration: BoxDecoration(
+                //         color: Colors.white,
+                //         borderRadius: BorderRadius.circular(12),
+                //       ),
+                //       child: Center(
+                //         child: Column(
+                //           mainAxisAlignment: MainAxisAlignment.center,
+                //           crossAxisAlignment: CrossAxisAlignment.center,
+                //           children: [
+                //             Image.asset(
+                //               'assets/data/images/yoga-pose.png',
+                //               width: 60,
+                //               height: 60,
+                //             ),
+                //             const SizedBox(height: 8),
+                //             const Text(
+                //               "Total Workouts",
+                //               style: TextStyle(color: Colors.grey, fontSize: 14),
+                //             ),
+                //           ],
+                //         ),
+                //       ),
+                //     ),
+                //   )
+                // ],
               ),
             ],
           ),
