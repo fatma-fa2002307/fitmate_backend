@@ -3,7 +3,7 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 from enum import Enum
 
-# Existing schema
+# Workout-related schemas (existing)
 class WorkoutRequest(BaseModel):
     age: int
     gender: str
@@ -37,7 +37,7 @@ class WorkoutOptionsResponse(BaseModel):
     options: List[List[Dict[str, Any]]]  # List of workout option lists
     category: str
 
-# Food-related schemas
+# Food-related schemas (new)
 class MilestoneType(str, Enum):
     START = "START"              # 0% milestone
     QUARTER = "QUARTER"          # 25% milestone
@@ -46,7 +46,7 @@ class MilestoneType(str, Enum):
     ALMOST_COMPLETE = "ALMOST_COMPLETE"  # 90% milestone
     COMPLETED = "COMPLETED"      # 100%+ milestone 
 
-
+# Food suggestion model
 class FoodSuggestion(BaseModel):
     id: str
     title: str
@@ -59,7 +59,9 @@ class FoodSuggestion(BaseModel):
     readyInMinutes: Optional[int] = None
     servings: Optional[int] = None
     explanation: Optional[str] = None
+    foodType: Optional[str] = None  # recipe, drink, or ingredient
 
+# Input request model for food suggestions
 class FoodSuggestionRequest(BaseModel):
     userId: str
     totalCalories: float
@@ -67,12 +69,13 @@ class FoodSuggestionRequest(BaseModel):
     goal: str  # User's fitness goal
     dislikedFoodIds: Optional[List[str]] = None
 
+# Response model for food suggestions
 class FoodSuggestionResponse(BaseModel):
     milestone: MilestoneType
     suggestions: List[FoodSuggestion]
     timestamp: datetime = datetime.now()
 
-# New schemas for food parameters
+# Food parameter request model (existing)
 class FoodParameterRequest(BaseModel):
     userId: str
     totalCalories: float
@@ -81,6 +84,7 @@ class FoodParameterRequest(BaseModel):
     milestone: Optional[str] = None
     dislikedFoodIds: Optional[List[str]] = None
 
+# Food parameter response model (existing)
 class FoodParameterResponse(BaseModel):
     milestone: MilestoneType
     mealType: str  # breakfast, lunch, dinner, snack, etc.

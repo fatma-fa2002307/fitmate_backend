@@ -62,12 +62,12 @@ class FoodSuggestion {
   final double carbs;
   final double fat;
   
-  // Additional fields
+  // New fields from Spoonacular
   final String? sourceUrl;
   final int? readyInMinutes;
   final int? servings;
-  final String? explanation;
-  final bool isSimpleIngredient;  // Flag to distinguish between recipes and simple ingredients
+  final String? explanation;  // LLaMA-generated explanation
+  final String? foodType;     // recipe, drink, or ingredient
   
   FoodSuggestion({
     required this.id,
@@ -81,13 +81,13 @@ class FoodSuggestion {
     this.readyInMinutes,
     this.servings,
     this.explanation,
-    this.isSimpleIngredient = false,
+    this.foodType,
   });
   
   /// Create a FoodSuggestion from a map (API or Firestore)
   factory FoodSuggestion.fromMap(Map<String, dynamic> map) {
     return FoodSuggestion(
-      id: map['id'] ?? '',
+      id: map['id']?.toString() ?? '',
       title: map['title'] ?? '',
       image: map['image'] ?? '',
       calories: (map['calories'] ?? 0),
@@ -98,7 +98,7 @@ class FoodSuggestion {
       readyInMinutes: map['readyInMinutes'],
       servings: map['servings'],
       explanation: map['explanation'],
-      isSimpleIngredient: map['isSimpleIngredient'] ?? false,
+      foodType: map['foodType'],
     );
   }
   
@@ -116,8 +116,25 @@ class FoodSuggestion {
       'readyInMinutes': readyInMinutes,
       'servings': servings,
       'explanation': explanation,
-      'isSimpleIngredient': isSimpleIngredient,
+      'foodType': foodType,
     };
+  }
+
+  /// Determine if this is a drink option
+  bool get isDrink => foodType == 'drink';
+
+  /// Determine if this is a recipe option
+  bool get isRecipe => foodType == 'recipe';
+
+  /// Determine if this is an ingredient option
+  bool get isIngredient => foodType == 'ingredient';
+
+  /// Get a descriptive type for display
+  String get displayType {
+    if (isDrink) return 'Drink';
+    if (isRecipe) return 'Recipe';
+    if (isIngredient) return 'Simple Food';
+    return readyInMinutes != null && readyInMinutes! > 0 ? 'Recipe' : 'Food';
   }
 }
 

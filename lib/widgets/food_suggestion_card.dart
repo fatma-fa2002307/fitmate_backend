@@ -121,34 +121,11 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> {
 
     return Column(
       children: [
-        // Milestone header
-        if (widget.milestone != null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8.0),
-            child: Row(
-              children: [
-                Icon(
-                  _getMilestoneIcon(widget.milestone!),
-                  size: 16,
-                  color: _getMilestoneColor(widget.milestone!),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  widget.milestone!.displayName,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: _getMilestoneColor(widget.milestone!),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
         // Food suggestion card with swipe functionality
         AnimatedContainer(
           duration: const Duration(milliseconds: 300),
-          height: _isExpanded ? 230 : 160, // Increased height for expanded view
+          // Increase height when expanded to ensure description is fully visible
+          height: _isExpanded ? 250 : 180,
           child: PageView.builder(
             controller: _pageController,
             itemCount: widget.suggestions.length,
@@ -196,50 +173,20 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> {
     );
   }
 
-  // Get appropriate icon for the current milestone
-  IconData _getMilestoneIcon(SuggestionMilestone milestone) {
-    switch (milestone) {
-      case SuggestionMilestone.START:
-        return Icons.wb_sunny_outlined; // Sunrise/morning icon
-      case SuggestionMilestone.QUARTER:
-        return Icons.coffee_outlined; // Mid-morning snack icon
-      case SuggestionMilestone.HALF:
-        return Icons.restaurant_outlined; // Lunch icon
-      case SuggestionMilestone.THREE_QUARTERS:
-        return Icons.dinner_dining_outlined; // Dinner icon
-      case SuggestionMilestone.ALMOST_COMPLETE:
-        return Icons.nightlight_outlined; // Evening icon
-      case SuggestionMilestone.COMPLETED:
-        return Icons.check_circle_outline; // Completed icon
-      default:
-        return Icons.restaurant_menu;
-    }
-  }
-
-  // Get appropriate color for the current milestone
-  Color _getMilestoneColor(SuggestionMilestone milestone) {
-    switch (milestone) {
-      case SuggestionMilestone.START:
-        return Colors.orange[700]!;
-      case SuggestionMilestone.QUARTER:
-        return Colors.amber[700]!;
-      case SuggestionMilestone.HALF:
-        return Colors.green[700]!;
-      case SuggestionMilestone.THREE_QUARTERS:
-        return Colors.blue[700]!;
-      case SuggestionMilestone.ALMOST_COMPLETE:
-        return Colors.indigo[700]!;
-      case SuggestionMilestone.COMPLETED:
-        return Colors.green[700]!;
-      default:
-        return Colors.black87;
-    }
-  }
-
   Widget _buildSuggestionCard(
       FoodSuggestion suggestion, bool isCompletedMilestone) {
     // Determine if this is an ultra-low calorie option
     final bool isUltraLowCalorie = suggestion.calories <= 50;
+    
+    // Get appropriate food type icon
+    IconData foodTypeIcon = Icons.restaurant;
+    if (suggestion.isDrink) {
+      foodTypeIcon = Icons.local_drink;
+    } else if (suggestion.isIngredient) {
+      foodTypeIcon = Icons.eco;
+    } else if (suggestion.isRecipe) {
+      foodTypeIcon = Icons.menu_book;
+    }
 
     return Card(
       elevation: 2,
@@ -258,12 +205,13 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Food image
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Stack(
-                    children: [
-                      Image.network(
+                // Food type badge and image
+                Stack(
+                  children: [
+                    // Food image
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
                         suggestion.image,
                         width: 70,
                         height: 70,
@@ -274,36 +222,65 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> {
                             height: 70,
                             color: Colors.grey[200],
                             child: Icon(
-                              Icons.restaurant,
+                              foodTypeIcon,
                               size: 24,
                               color: Colors.grey[400],
                             ),
                           );
                         },
                       ),
-                      // Ultra-low calorie badge
-                      if (isUltraLowCalorie)
-                        Positioned(
-                          top: 0,
-                          left: 0,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 4, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.green[700],
-                              borderRadius: const BorderRadius.only(
-                                bottomRight: Radius.circular(8),
-                              ),
+                    ),
+                    
+                    // Food type badge
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 4, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: suggestion.isDrink
+                              ? Colors.blue[700]
+                              : suggestion.isIngredient
+                                  ? Colors.green[700]
+                                  : Colors.orange[700],
+                          borderRadius: const BorderRadius.only(
+                            bottomRight: Radius.circular(8),
+                          ),
+                        ),
+                        child: Icon(
+                          foodTypeIcon,
+                          color: Colors.white,
+                          size: 12,
+                        ),
+                      ),
+                    ),
+                    
+                    // Ultra-low calorie badge (if applicable)
+                    if (isUltraLowCalorie)
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 4, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.green[700],
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(8),
                             ),
-                            child: const Icon(
-                              Icons.eco,
+                          ),
+                          child: const Text(
+                            "Low Cal",
+                            style: TextStyle(
                               color: Colors.white,
-                              size: 12,
+                              fontSize: 8,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
-                    ],
-                  ),
+                      ),
+                  ],
                 ),
 
                 const SizedBox(width: 12),
@@ -328,39 +305,42 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          if (isCompletedMilestone && isUltraLowCalorie)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.green[100],
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                'Ultra-Low Cal',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.green[800],
-                                ),
+                          // Display food type
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              suggestion.displayType,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey[800],
                               ),
                             ),
+                          ),
                         ],
                       ),
 
                       const SizedBox(height: 4),
 
                       // LLaMA-generated explanation
-                      Text(
-                        suggestion.explanation ??
-                            _getDefaultReason(suggestion, isCompletedMilestone),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[700],
-                          fontStyle: FontStyle.italic,
+                      // Only display the full text when expanded, otherwise limit it
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 200),
+                        child: Text(
+                          suggestion.explanation ?? "A balanced nutritional option.",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[700],
+                            fontStyle: FontStyle.italic,
+                          ),
+                          maxLines: _isExpanded ? null : 2, // No limit when expanded
+                          overflow: _isExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
                         ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
@@ -531,26 +511,5 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> {
         ),
       ],
     );
-  }
-
-  String _getDefaultReason(
-      FoodSuggestion suggestion, bool isCompletedMilestone) {
-    if (isCompletedMilestone) {
-      return "Ultra-low calorie option that won't impact your daily goals.";
-    }
-
-    if (suggestion.protein > 20) {
-      return "High in protein to support muscle recovery and growth.";
-    }
-
-    if (suggestion.carbs > 40) {
-      return "Rich in carbs to provide energy for your activities.";
-    }
-
-    if (suggestion.fat > 15) {
-      return "Contains healthy fats to keep you satisfied longer.";
-    }
-
-    return "Balanced nutrition to support your fitness goals.";
   }
 }
