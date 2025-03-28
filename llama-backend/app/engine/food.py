@@ -464,7 +464,7 @@ FOOD OPTIONS:
 INSTRUCTIONS:
 1. {selection_instruction}
 2. Select EXACTLY 4 options from the available foods:{selection_format}
-3. For each selection, provide a short personalized explanation of why it's beneficial.
+3. For each selection, provide a very short personalized explanation of why it's beneficial.
 4. Return your selections in valid JSON format as shown below:
 
 ```json
@@ -480,7 +480,7 @@ INSTRUCTIONS:
     }},
     {{
       "food_id": "9",
-      "explanation": "Zero-calorie option to keep you hydrated."
+      "explanation": "low calorie option to keep you within your calorie budget."
     }},
     {{
       "food_id": "12",
@@ -490,7 +490,7 @@ INSTRUCTIONS:
 }}
 ```
 
-Respond ONLY with valid JSON in the exact format shown above.
+Respond ONLY with valid JSON in the exact format shown above. change the explanation to match the food you selected. Do not include any other text or explanations outside of the JSON response.
 """
 
             # Call LLama model
