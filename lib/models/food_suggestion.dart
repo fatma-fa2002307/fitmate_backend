@@ -62,11 +62,12 @@ class FoodSuggestion {
   final double carbs;
   final double fat;
   
-  // New fields from Spoonacular
+  // Additional fields
   final String? sourceUrl;
   final int? readyInMinutes;
   final int? servings;
-  final String? explanation;  // LLaMA-generated explanation
+  final String? explanation;
+  final bool isSimpleIngredient;  // Flag to distinguish between recipes and simple ingredients
   
   FoodSuggestion({
     required this.id,
@@ -80,6 +81,7 @@ class FoodSuggestion {
     this.readyInMinutes,
     this.servings,
     this.explanation,
+    this.isSimpleIngredient = false,
   });
   
   /// Create a FoodSuggestion from a map (API or Firestore)
@@ -96,6 +98,7 @@ class FoodSuggestion {
       readyInMinutes: map['readyInMinutes'],
       servings: map['servings'],
       explanation: map['explanation'],
+      isSimpleIngredient: map['isSimpleIngredient'] ?? false,
     );
   }
   
@@ -113,6 +116,7 @@ class FoodSuggestion {
       'readyInMinutes': readyInMinutes,
       'servings': servings,
       'explanation': explanation,
+      'isSimpleIngredient': isSimpleIngredient,
     };
   }
 }

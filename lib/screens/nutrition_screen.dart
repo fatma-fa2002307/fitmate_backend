@@ -10,6 +10,8 @@ import 'package:fitmate/widgets/food_suggestion_card.dart';
 import 'package:fitmate/screens/logFoodManually.dart';
 import 'animated_macro_wheel.dart'; // Import the macro wheel widget
 import 'advanced_circular_indicator.dart'; // Import the advanced circular indicator
+import 'package:fitmate/models/food_suggestion.dart';
+
 
 class NutritionPage extends StatefulWidget {
   const NutritionPage({Key? key}) : super(key: key);
@@ -291,17 +293,25 @@ class _NutritionPageState extends State<NutritionPage>
     );
   }
 
-Widget _buildFoodSuggestions(NutritionViewModel viewModel) {
+  Widget _buildFoodSuggestions(NutritionViewModel viewModel) {
     return Container(
       margin: const EdgeInsets.only(top: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header
           Row(
             children: [
               const Icon(Icons.restaurant_menu, color: Color(0xFFD2EB50)),
@@ -314,11 +324,21 @@ Widget _buildFoodSuggestions(NutritionViewModel viewModel) {
                 ),
               ),
               const Spacer(),
+              if (!viewModel.suggestionsLoading && viewModel.suggestions.isNotEmpty)
+                Text(
+                  viewModel.currentMilestone.displayName,
+                  style: GoogleFonts.montserrat(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: _getMilestoneColor(viewModel.currentMilestone),
+                  ),
+                ),
             ],
           ),
-          const SizedBox(height: 8),
+          
+          const SizedBox(height: 12),
 
-          // Suggestion content
+          // Suggestion content - Loading state
           if (viewModel.suggestionsLoading)
             const Center(
               child: Padding(
@@ -328,6 +348,8 @@ Widget _buildFoodSuggestions(NutritionViewModel viewModel) {
                 ),
               ),
             )
+          
+          // Suggestion content - Error state
           else if (viewModel.suggestionsError.isNotEmpty)
             Center(
               child: Padding(
@@ -337,6 +359,7 @@ Widget _buildFoodSuggestions(NutritionViewModel viewModel) {
                     Text(
                       viewModel.suggestionsError,
                       style: TextStyle(color: Colors.grey[600]),
+                      textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton.icon(
@@ -365,36 +388,74 @@ Widget _buildFoodSuggestions(NutritionViewModel viewModel) {
                 ),
               ),
             )
+          
+          // Suggestion content - Empty state
           else if (viewModel.suggestions.isEmpty)
             Center(
               child: Padding(
                 padding: const EdgeInsets.all(24.0),
-                child: Text(
-                  'No suggestions available',
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                  ),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.no_food,
+                      size: 48,
+                      color: Colors.grey[300],
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No suggestions available',
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      onPressed: () => viewModel.retryLoadFoodSuggestions(),
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Get Suggestions'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFD2EB50),
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             )
+          
+          // Suggestion content - Suggestions available
           else
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8.0),
-              child: FoodSuggestionCard(
-                suggestions: viewModel.suggestions,
-                onLike: () => viewModel.handleFoodPreference(true),
-                onDislike: () => viewModel.handleFoodPreference(false),
-                onPageChanged: (index) {
-                  viewModel.setState(() {
-                    // This will be handled in the ViewModel
-                  });
-                },
-                initialIndex: viewModel.currentSuggestionIndex,
-              ),
+            FoodSuggestionCard(
+              suggestions: viewModel.suggestions,
+              onLike: () => viewModel.handleFoodPreference(true),
+              onDislike: () => viewModel.handleFoodPreference(false),
+              onPageChanged: (index) => viewModel.handleFoodPreference(false),
+              initialIndex: viewModel.currentSuggestionIndex,
+              milestone: viewModel.currentMilestone,
             ),
         ],
       ),
     );
+  }
+
+  // Helper method to get color based on milestone
+  Color _getMilestoneColor(SuggestionMilestone milestone) {
+    switch (milestone) {
+      case SuggestionMilestone.START:
+        return Colors.orange[700]!;
+      case SuggestionMilestone.QUARTER:
+        return Colors.amber[700]!;
+      case SuggestionMilestone.HALF:
+        return Colors.green[700]!;
+      case SuggestionMilestone.THREE_QUARTERS:
+        return Colors.blue[700]!;
+      case SuggestionMilestone.ALMOST_COMPLETE:
+        return Colors.indigo[700]!;
+      case SuggestionMilestone.COMPLETED:
+        return Colors.green[700]!;
+      default:
+        return Colors.black87;
+    }
   }
 
   Widget _buildFoodHeader() {

@@ -14,7 +14,7 @@ class NutritionViewModel with ChangeNotifier {
 
   // State
   bool _isLoading = true;
-  bool _isRetrying = false;  // New state for retry operation
+  bool _isRetrying = false;
   List<Map<String, dynamic>> _todaysFoodLogs = [];
   DateTime _selectedDate = DateTime.now();
   double _totalCalories = 0;
@@ -33,7 +33,7 @@ class NutritionViewModel with ChangeNotifier {
 
   // Getters
   bool get isLoading => _isLoading;
-  bool get isRetrying => _isRetrying;  // New getter for retry state
+  bool get isRetrying => _isRetrying;
   List<Map<String, dynamic>> get todaysFoodLogs => _todaysFoodLogs;
   DateTime get selectedDate => _selectedDate;
   double get totalCalories => _totalCalories;
@@ -76,9 +76,18 @@ class NutritionViewModel with ChangeNotifier {
 
   // Initialize ViewModel
   Future<void> init() async {
+    _isLoading = true;
+    notifyListeners();
+    
     await _loadUserData();
     await _loadFoodLogs();
-    _loadFoodSuggestions();
+    
+    if (isToday) {
+      await _loadFoodSuggestions();
+    } else {
+      _suggestionsLoading = false;
+      _suggestions = [];
+    }
 
     _isLoading = false;
     notifyListeners();
@@ -196,7 +205,6 @@ class NutritionViewModel with ChangeNotifier {
   // TDEE calculation helper method
   double _calculateTDEE(double bmr, int workoutDays, String goal) {
     double multiplier;
-    double cal = 0;
     if (workoutDays == 1) {
       multiplier = 1.2;
     } else if (workoutDays >= 2 && workoutDays <= 3) {
@@ -208,11 +216,10 @@ class NutritionViewModel with ChangeNotifier {
     }
 
     if (goal == 'Weight Loss') {
-      cal = (bmr * multiplier) - 300;
+      return (bmr * multiplier) - 300;
     } else {
-      cal = bmr * multiplier;
+      return bmr * multiplier;
     }
-    return cal;
   }
 
   // Macronutrients calculation helper method
@@ -308,35 +315,30 @@ class NutritionViewModel with ChangeNotifier {
         _totalProtein += food['protein'] ?? 0;
         _totalFat += food['fat'] ?? 0;
       }
-
-      notifyListeners();
     }
   }
 
   // Load food suggestions with retry functionality
   Future<void> _loadFoodSuggestions() async {
-    setState(() {
-      _suggestionsLoading = true;
-      _suggestionsError = '';
-    });
+    _suggestionsLoading = true;
+    _suggestionsError = '';
+    notifyListeners();
 
     try {
       // Calculate current milestone
       final percentage = _totalCalories / (_dailyMacros['calories'] ?? 2000);
-      _currentMilestone =
-          SuggestionMilestoneExtension.fromPercentage(percentage);
+      _currentMilestone = SuggestionMilestoneExtension.fromPercentage(percentage);
 
       // Get suggestions from the enhanced service
-      final suggestions =
-          await _foodSuggestionService.getSuggestionsForCurrentMilestone(
+      final suggestions = await _foodSuggestionService.getSuggestionsForCurrentMilestone(
         totalCalories: _dailyMacros['calories'] ?? 2000,
         consumedCalories: _totalCalories,
         goal: _userGoal,
       );
 
       _suggestions = suggestions;
-      _suggestionsLoading = false;
       _currentSuggestionIndex = 0;
+      _suggestionsLoading = false;
       notifyListeners();
     } catch (e) {
       _suggestionsError = 'Unable to load suggestions. Tap to retry.';
@@ -348,21 +350,20 @@ class NutritionViewModel with ChangeNotifier {
 
   // Retry loading food suggestions
   Future<void> retryLoadFoodSuggestions() async {
-    setState(() {
-      _isRetrying = true;
-      _suggestionsLoading = true;
-      _suggestionsError = '';
-    });
+    if (!isToday) return;
+    
+    _isRetrying = true;
+    _suggestionsLoading = true;
+    _suggestionsError = '';
+    notifyListeners();
 
     try {
       // Calculate current milestone
       final percentage = _totalCalories / (_dailyMacros['calories'] ?? 2000);
-      _currentMilestone =
-          SuggestionMilestoneExtension.fromPercentage(percentage);
+      _currentMilestone = SuggestionMilestoneExtension.fromPercentage(percentage);
 
       // Get suggestions from the enhanced service
-      final suggestions =
-          await _foodSuggestionService.getSuggestionsForCurrentMilestone(
+      final suggestions = await _foodSuggestionService.getSuggestionsForCurrentMilestone(
         totalCalories: _dailyMacros['calories'] ?? 2000,
         consumedCalories: _totalCalories,
         goal: _userGoal,
@@ -375,10 +376,9 @@ class NutritionViewModel with ChangeNotifier {
       _suggestionsError = 'Unable to load suggestions. Tap to retry.';
       print('Error retrying food suggestions: $e');
     } finally {
-      setState(() {
-        _suggestionsLoading = false;
-        _isRetrying = false;
-      });
+      _suggestionsLoading = false;
+      _isRetrying = false;
+      notifyListeners();
     }
   }
 
@@ -394,8 +394,7 @@ class NutritionViewModel with ChangeNotifier {
 
     // Move to next suggestion if available
     if (_suggestions.length > 1) {
-      _currentSuggestionIndex =
-          (_currentSuggestionIndex + 1) % _suggestions.length;
+      _currentSuggestionIndex = (_currentSuggestionIndex + 1) % _suggestions.length;
       notifyListeners();
     }
   }
@@ -404,6 +403,16 @@ class NutritionViewModel with ChangeNotifier {
   void selectDate(DateTime date) {
     _selectedDate = date;
     _loadFoodLogs();
+    
+    // Only load suggestions for the current day
+    if (isToday) {
+      _loadFoodSuggestions();
+    } else {
+      _suggestions = [];
+      _suggestionsLoading = false;
+    }
+    
+    notifyListeners();
   }
 
   // Navigate to previous day
@@ -431,15 +440,16 @@ class NutritionViewModel with ChangeNotifier {
             .delete();
 
         await _loadFoodLogs();
+        
+        // Reload suggestions if we're on today
+        if (isToday) {
+          await _loadFoodSuggestions();
+        }
+        
+        notifyListeners();
       }
     } catch (e) {
       print('Error deleting food: $e');
     }
-  }
-
-  // Helper method for setState with notifyListeners
-  void setState(Function function) {
-    function();
-    notifyListeners();
   }
 }

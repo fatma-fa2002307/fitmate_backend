@@ -6,7 +6,6 @@ import os
 from datetime import datetime
 from app.models.schemas import WorkoutRequest, FoodSuggestionRequest, FoodSuggestionResponse, FoodParameterRequest, FoodParameterResponse
 from app.engine.workout import WorkoutEngine
-#from app.engine.food import FoodSuggestionEngine
 from app.engine.food_paramteres import FoodParameterEngine
 
 app = FastAPI()
@@ -29,7 +28,6 @@ food_images_dir = os.path.join(base_dir, "data", "food-images")
 
 # Initialize engines
 workout_engine = WorkoutEngine()
-#food_engine = FoodSuggestionEngine()
 food_parameter_engine = FoodParameterEngine()
 
 # Print directories for debugging
@@ -75,6 +73,24 @@ async def generate_food_parameters(data: FoodParameterRequest) -> FoodParameterR
     except Exception as e:
         print(f"Error generating food parameters: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Food parameter generation failed: {str(e)}")
+
+
+@app.post("/generate_food_suggestions/")
+async def generate_food_suggestions(data: FoodSuggestionRequest):
+    try:
+        print(f"Received request for food suggestions: {data}")
+        
+        # Use the food parameter engine to generate food suggestions
+        # We'll modify the existing engine to handle both types of requests
+        response = food_parameter_engine.generate_food_suggestions(data)
+        
+        print(f"Generated food suggestions: {response}")
+        return response
+        
+    except Exception as e:
+        print(f"Error generating food suggestions: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Food suggestion generation failed: {str(e)}")
+
 
 @app.get("/food-images/{image_name}")
 async def get_food_image(image_name: str):
@@ -195,17 +211,3 @@ async def log_requests(request: Request, call_next):
         print(f"Image requested: {request.url.path}")
     response = await call_next(request)
     return response
-
-# Verify directories exist and create them if necessary
-for directory in [workout_images_dir, icons_dir, cardio_images_dir, food_images_dir]:
-    if not os.path.exists(directory):
-        print(f"Creating directory: {directory}")
-        os.makedirs(directory, exist_ok=True)
-    else:
-        print(f"Directory exists: {directory}")
-        # List files in directory for debug
-        try:
-            files = os.listdir(directory)
-            print(f"Files in {directory}: {files[:10]}...")
-        except Exception as e:
-            print(f"Error listing directory: {e}")
