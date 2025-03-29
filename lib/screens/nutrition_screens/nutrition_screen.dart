@@ -9,6 +9,7 @@ import 'package:fitmate/widgets/food_suggestion_card.dart';
 import 'package:fitmate/screens/nutrition_screens/logFoodManually.dart';
 import 'advanced_circular_indicator.dart';
 import 'animated_macro_wheel.dart';
+import 'sleek_food_loading.dart'; // Import the sleek professional loading widget
 
 class NutritionPage extends StatefulWidget {
   const NutritionPage({Key? key}) : super(key: key);
@@ -59,8 +60,10 @@ class _NutritionPageState extends State<NutritionPage>
 
   Future<void> _initializeData() async {
     setState(() => _isAnimating = false);
+    
+    // First load all essential data (macros, logs)
     await _viewModel.init();
-
+    
     // Reset and start animation after data is loaded
     _animationController.reset();
     setState(() => _isAnimating = true);
@@ -90,20 +93,19 @@ class _NutritionPageState extends State<NutritionPage>
               elevation: 0,
               automaticallyImplyLeading: false,
             ),
-            body: viewModel.isLoading
-                ? const Center(
-              child: CircularProgressIndicator(
-                valueColor:
-                AlwaysStoppedAnimation<Color>(Color(0xFFD2EB50)),
-              ),
-            )
-                : RefreshIndicator(
-              onRefresh: _initializeData,
-              color: const Color(0xFFD2EB50),
-              child: _buildMainContent(viewModel),
-            ),
+            body: RefreshIndicator(
+                    onRefresh: _initializeData,
+                    color: const Color(0xFFD2EB50),
+                    child: viewModel.isLoading 
+                      ? Center(
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFD2EB50)),
+                          ),
+                        )
+                      : _buildMainContent(viewModel),
+                  ),
             floatingActionButton:
-            viewModel.isToday ? _buildFloatingActionButton(context) : null,
+                viewModel.isToday ? _buildFloatingActionButton(context) : null,
             bottomNavigationBar: BottomNavBar(
               currentIndex: _selectedIndex,
               onTap: _onItemTapped,
@@ -316,20 +318,13 @@ class _NutritionPageState extends State<NutritionPage>
           ),
           const SizedBox(height: 8),
 
-          // Suggestion content
+          // Suggestion content with improved loading
           if (viewModel.suggestionsLoading)
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.all(24.0),
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFD2EB50)),
-                ),
-              ),
-            )
+            const SleekFoodLoading()
           else if (viewModel.suggestionsError.isNotEmpty)
             Center(
               child: Padding(
-                padding: const EdgeInsets.all(24.0),
+                padding: const EdgeInsets.symmetric(vertical: 16.0),
                 child: Column(
                   children: [
                     Text(
@@ -343,14 +338,14 @@ class _NutritionPageState extends State<NutritionPage>
                           : () => viewModel.retryLoadFoodSuggestions(),
                       icon: viewModel.isRetrying
                           ? Container(
-                        width: 20,
-                        height: 20,
-                        padding: const EdgeInsets.all(2.0),
-                        child: const CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
+                              width: 20,
+                              height: 20,
+                              padding: const EdgeInsets.all(2.0),
+                              child: const CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
                           : const Icon(Icons.refresh),
                       label: Text(viewModel.isRetrying ? 'Retrying...' : 'Retry'),
                       style: ElevatedButton.styleFrom(
@@ -366,7 +361,7 @@ class _NutritionPageState extends State<NutritionPage>
           else if (viewModel.suggestions.isEmpty)
               Center(
                 child: Padding(
-                  padding: const EdgeInsets.all(24.0),
+                  padding: const EdgeInsets.symmetric(vertical: 16.0),
                   child: Text(
                     'No suggestions available',
                     style: TextStyle(
@@ -386,6 +381,186 @@ class _NutritionPageState extends State<NutritionPage>
                   milestone: viewModel.currentMilestone,
                 ),
               ),
+        ],
+      ),
+    );
+  }
+
+  // New method to create a shimmer loading effect for the food suggestion card
+  Widget _buildShimmerLoadingCard() {
+    return Container(
+      height: 220,
+      child: Column(
+        children: [
+          // Main card with shimmer effect
+          Container(
+            height: 180,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                // Top content
+                Padding(
+                  padding: const EdgeInsets.all(14.0),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Shimmer for image
+                      Container(
+                        width: 75,
+                        height: 75,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          color: Colors.grey[200],
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      
+                      // Shimmer for content
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Title shimmer
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Container(
+                                    height: 18,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(4),
+                                      color: Colors.grey[200],
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                // Type badge shimmer
+                                Container(
+                                  width: 60,
+                                  height: 18,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(12),
+                                    color: Colors.grey[200],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            
+                            const SizedBox(height: 8),
+                            
+                            // Explanation shimmer lines
+                            Container(
+                              height: 14,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(4),
+                                color: Colors.grey[200],
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Container(
+                              height: 14,
+                              width: 260,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(4),
+                                color: Colors.grey[200],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // Divider
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  child: Divider(color: Colors.grey[200], height: 1),
+                ),
+                
+                // Bottom section shimmer
+                Padding(
+                  padding: const EdgeInsets.all(14.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Calories shimmer
+                      Container(
+                        width: 70,
+                        height: 16,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(4),
+                          color: Colors.grey[200],
+                        ),
+                      ),
+                      
+                      // Macros shimmer
+                      Container(
+                        width: 120,
+                        height: 14,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(4),
+                          color: Colors.grey[200],
+                        ),
+                      ),
+                      
+                      // Action buttons shimmer
+                      Row(
+                        children: [
+                          Container(
+                            width: 24,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.grey[200],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            width: 24,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.grey[200],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Shimmer for indicator dots
+          Padding(
+            padding: const EdgeInsets.only(top: 12.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                3,
+                (index) => Container(
+                  width: index == 0 ? 10 : 8,
+                  height: index == 0 ? 10 : 8,
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: index == 0 ? const Color(0xFFD2EB50).withOpacity(0.5) : Colors.grey[300],
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -520,10 +695,10 @@ class _NutritionPageState extends State<NutritionPage>
         ),
         trailing: viewModel.isToday
             ? IconButton(
-          icon: const Icon(Icons.delete_outline),
-          color: Colors.grey[600],
-          onPressed: () => viewModel.deleteFood(food['id']),
-        )
+                icon: const Icon(Icons.delete_outline),
+                color: Colors.grey[600],
+                onPressed: () => viewModel.deleteFood(food['id']),
+              )
             : null,
       ),
     );

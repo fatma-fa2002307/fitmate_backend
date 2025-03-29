@@ -79,18 +79,24 @@ class NutritionViewModel with ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     
+    // Load essential data first
     await _loadUserData();
     await _loadFoodLogs();
     
+    // Now that essential data is loaded, set isLoading to false
+    // This allows the main UI to render while food suggestions are still loading
+    _isLoading = false;
+    notifyListeners();
+    
+    // Then start loading food suggestions separately
+    // This will only affect the food suggestions part of the UI
     if (isToday) {
       await _loadFoodSuggestions();
     } else {
       _suggestionsLoading = false;
       _suggestions = [];
+      notifyListeners();
     }
-
-    _isLoading = false;
-    notifyListeners();
   }
 
   // Load user data
