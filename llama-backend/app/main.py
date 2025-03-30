@@ -4,9 +4,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 import os
 from datetime import datetime
-from app.models.schemas import WorkoutRequest, FoodSuggestionRequest, FoodSuggestionResponse
+from app.models.schemas import WorkoutRequest, FoodSuggestionRequest, FoodSuggestionResponse, TipRequest
 from app.engine.workout import WorkoutEngine
 from app.engine.food import EnhancedFoodEngine
+from app.engine.tip import TipEngine
 import logging
 
 app = FastAPI()
@@ -31,6 +32,7 @@ food_images_dir = os.path.join(base_dir, "data", "food-images")
 # Initialize engines
 workout_engine = WorkoutEngine()
 enhanced_food_engine = EnhancedFoodEngine()
+tip_engine = TipEngine()
 
 # Create directories if they don't exist
 for directory in [workout_images_dir, icons_dir, cardio_images_dir, food_images_dir]:
@@ -75,6 +77,30 @@ async def generate_food_suggestions(data: FoodSuggestionRequest) -> FoodSuggesti
     except Exception as e:
         logger.error(f"Error generating food suggestions: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Food suggestion generation failed: {str(e)}")
+
+@app.post("/generate_personalized_tip/")
+async def generate_personalized_tip(data: TipRequest):
+    """
+    Generate a personalized fitness or nutrition tip using LLaMA
+    
+    This endpoint provides contextual and personalized tips based on the
+    user's goals, workout history, and nutrition data.
+    """
+    try:
+        logger.info(f"Received tip request for user {data.userId}")
+        
+        # Convert Pydantic model to dict
+        user_data = data.dict()
+        
+        # Generate tip using the tip engine
+        response = await tip_engine.generate_personalized_tip(user_data)
+        
+        logger.info(f"Generated {response['category']} tip for user")
+        return response
+        
+    except Exception as e:
+        logger.error(f"Error generating tip: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Tip generation failed: {str(e)}")
 
 @app.get("/workout-images/cardio/{image_name}")
 async def get_cardio_image(image_name: str):

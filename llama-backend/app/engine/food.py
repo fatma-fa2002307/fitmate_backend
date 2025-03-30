@@ -704,60 +704,201 @@ Respond ONLY with valid JSON in the exact format shown above. change the explana
             else:
                 return f"Healthy option with {food['calories']} calories."
                 
+######################################################################
     def _generate_fallback_suggestions(self, is_calorie_goal_reached: bool) -> List[FoodSuggestion]:
         """Generate minimal fallback suggestions when no options are available"""
         current_date = datetime.now().timestamp()
         
         if is_calorie_goal_reached:
-            # Ultra-low calorie options
-            return [
-                FoodSuggestion(
-                    id=f"fallback_tea_{current_date}",
-                    title="Green Tea",
-                    image="https://spoonacular.com/cdn/ingredients_250x250/green-tea.jpg",
-                    calories=0,
-                    protein=0,
-                    carbs=0,
-                    fat=0,
-                    explanation="Zero-calorie tea that keeps you hydrated without affecting your calorie intake.",
-                    foodType="drink"
-                ),
-                FoodSuggestion(
-                    id=f"fallback_water_{current_date}",
-                    title="Herbal Tea",
-                    image="https://spoonacular.com/cdn/ingredients_250x250/tea-bags.jpg",
-                    calories=0,
-                    protein=0,
-                    carbs=0,
-                    fat=0,
-                    explanation="Caffeine-free herbal tea with zero calories.",
-                    foodType="drink"
-                ),
-                FoodSuggestion(
-                    id=f"fallback_celery_{current_date}",
-                    title="Celery",
-                    image="https://spoonacular.com/cdn/ingredients_250x250/celery.jpg",
-                    calories=10,
-                    protein=0.4,
-                    carbs=1.9,
-                    fat=0.1,
-                    explanation="Very low calorie vegetable with high water content.",
-                    foodType="ingredient"
-                ),
-                FoodSuggestion(
-                    id=f"fallback_cucumber_{current_date}",
-                    title="Cucumber",
-                    image="https://spoonacular.com/cdn/ingredients_250x250/cucumber.jpg",
-                    calories=8,
-                    protein=0.3,
-                    carbs=1.5,
-                    fat=0.1,
-                    explanation="Hydrating vegetable with minimal calories and refreshing taste.",
-                    foodType="ingredient"
-                )
+            # Create a larger pool of ultra-low calorie options
+            low_cal_options = [
+                # Drinks
+                {
+                    "id": f"fallback_green_tea_{current_date}",
+                    "title": "Green Tea",
+                    "image": "https://spoonacular.com/cdn/ingredients_250x250/tea-bags.jpg",
+                    "calories": 0,
+                    "protein": 0,
+                    "carbs": 0,
+                    "fat": 0,
+                    "explanation": "Zero-calorie tea that keeps you hydrated without affecting your calorie intake.",
+                    "foodType": "drink"
+                },
+                {
+                    "id": f"fallback_herbal_tea_{current_date}",
+                    "title": "Herbal Tea",
+                    "image": "https://spoonacular.com/cdn/ingredients_250x250/tea-bags.jpg",
+                    "calories": 0,
+                    "protein": 0,
+                    "carbs": 0,
+                    "fat": 0,
+                    "explanation": "Caffeine-free herbal tea with zero calories.",
+                    "foodType": "drink"
+                },
+                {
+                    "id": f"fallback_black_coffee_{current_date}",
+                    "title": "Black Coffee",
+                    "image": "https://spoonacular.com/cdn/ingredients_250x250/coffee.jpg",
+                    "calories": 2,
+                    "protein": 0.1,
+                    "carbs": 0,
+                    "fat": 0,
+                    "explanation": "Almost zero-calorie coffee to boost energy without adding calories.",
+                    "foodType": "drink"
+                },
+                {
+                    "id": f"fallback_sparkling_water_{current_date}",
+                    "title": "Sparkling Water",
+                    "image": "https://spoonacular.com/cdn/ingredients_250x250/water-sparkling.jpg",
+                    "calories": 0,
+                    "protein": 0,
+                    "carbs": 0,
+                    "fat": 0,
+                    "explanation": "Zero-calorie refreshing alternative to still water.",
+                    "foodType": "drink"
+                },
+                
+                # Vegetables
+                {
+                    "id": f"fallback_celery_{current_date}",
+                    "title": "Celery",
+                    "image": "https://spoonacular.com/cdn/ingredients_250x250/celery.jpg",
+                    "calories": 10,
+                    "protein": 0.4,
+                    "carbs": 1.9,
+                    "fat": 0.1,
+                    "explanation": "Very low calorie vegetable with high water content.",
+                    "foodType": "ingredient"
+                },
+                {
+                    "id": f"fallback_cucumber_{current_date}",
+                    "title": "Cucumber",
+                    "image": "https://spoonacular.com/cdn/ingredients_250x250/cucumber.jpg",
+                    "calories": 8,
+                    "protein": 0.3,
+                    "carbs": 1.5,
+                    "fat": 0.1,
+                    "explanation": "Hydrating vegetable with minimal calories and refreshing taste.",
+                    "foodType": "ingredient"
+                },
+                {
+                    "id": f"fallback_lettuce_{current_date}",
+                    "title": "Lettuce",
+                    "image": "https://spoonacular.com/cdn/ingredients_250x250/iceberg-lettuce.jpg",
+                    "calories": 5,
+                    "protein": 0.5,
+                    "carbs": 1.0,
+                    "fat": 0.1,
+                    "explanation": "Crisp lettuce with very few calories for a satisfying crunch.",
+                    "foodType": "ingredient"
+                },
+                {
+                    "id": f"fallback_tomato_{current_date}",
+                    "title": "Cherry Tomatoes",
+                    "image": "https://spoonacular.com/cdn/ingredients_250x250/cherry-tomatoes.jpg",
+                    "calories": 20,
+                    "protein": 1.0,
+                    "carbs": 4.0,
+                    "fat": 0.2,
+                    "explanation": "Sweet cherry tomatoes with minimal calories and lots of flavor.",
+                    "foodType": "ingredient"
+                },
+                {
+                    "id": f"fallback_mushrooms_{current_date}",
+                    "title": "Mushrooms",
+                    "image": "https://spoonacular.com/cdn/ingredients_250x250/mushrooms.jpg",
+                    "calories": 15,
+                    "protein": 2.0,
+                    "carbs": 2.0,
+                    "fat": 0.2,
+                    "explanation": "Low-calorie mushrooms with a satisfying umami flavor.",
+                    "foodType": "ingredient"
+                },
+                {
+                    "id": f"fallback_broccoli_{current_date}",
+                    "title": "Steamed Broccoli",
+                    "image": "https://spoonacular.com/cdn/ingredients_250x250/broccoli.jpg",
+                    "calories": 30,
+                    "protein": 2.5,
+                    "carbs": 6.0,
+                    "fat": 0.3,
+                    "explanation": "Nutrient-dense broccoli with few calories and high fiber content.",
+                    "foodType": "ingredient"
+                },
+                {
+                    "id": f"fallback_spinach_{current_date}",
+                    "title": "Fresh Spinach",
+                    "image": "https://spoonacular.com/cdn/ingredients_250x250/spinach.jpg",
+                    "calories": 7,
+                    "protein": 0.9,
+                    "carbs": 1.1,
+                    "fat": 0.1,
+                    "explanation": "Leafy spinach that's extremely low in calories but rich in nutrients.",
+                    "foodType": "ingredient"
+                },
+                {
+                    "id": f"fallback_radish_{current_date}",
+                    "title": "Radishes",
+                    "image": "https://spoonacular.com/cdn/ingredients_250x250/radishes.jpg",
+                    "calories": 12,
+                    "protein": 0.6,
+                    "carbs": 2.0,
+                    "fat": 0.1,
+                    "explanation": "Crunchy radishes with a peppery flavor and minimal calories.",
+                    "foodType": "ingredient"
+                },
+                {
+                    "id": f"fallback_zucchini_{current_date}",
+                    "title": "Zucchini",
+                    "image": "https://spoonacular.com/cdn/ingredients_250x250/zucchini.jpg",
+                    "calories": 17,
+                    "protein": 1.2,
+                    "carbs": 3.0,
+                    "fat": 0.3,
+                    "explanation": "Versatile zucchini with very few calories and a mild flavor.",
+                    "foodType": "ingredient"
+                },
+
+                {
+                    "id": f"fallback_cauliflower_{current_date}",
+                    "title": "Cauliflower",
+                    "image": "https://spoonacular.com/cdn/ingredients_250x250/cauliflower.jpg",
+                    "calories": 25,
+                    "protein": 2.0,
+                    "carbs": 5.0,
+                    "fat": 0.3,
+                    "explanation": "Versatile cauliflower with minimal calories - a great rice or potato substitute.",
+                    "foodType": "ingredient"
+                }
             ]
+            
+            # Randomly select 4 different options from our pool
+            # Ensure we get at least one drink and the rest are ingredients
+            drink_options = [opt for opt in low_cal_options if opt["foodType"] == "drink"]
+            ingredient_options = [opt for opt in low_cal_options if opt["foodType"] == "ingredient"]
+            
+            # Select at least one drink
+            selected_drinks = random.sample(drink_options, min(1, len(drink_options)))
+            # Fill the rest with ingredients
+            remaining_slots = 4 - len(selected_drinks)
+            selected_ingredients = random.sample(ingredient_options, min(remaining_slots, len(ingredient_options)))
+            
+            # Combine selections
+            selections = selected_drinks + selected_ingredients
+            
+            # If we still don't have 4 options (unlikely with our large pool), 
+            # fill with random duplicates
+            while len(selections) < 4:
+                additional = random.choice(low_cal_options)
+                # Make the ID unique by adding a random suffix
+                additional = additional.copy()
+                additional["id"] = f"{additional['id']}_{random.randint(1000, 9999)}"
+                selections.append(additional)
+            
+            # Convert to FoodSuggestion objects
+            return [FoodSuggestion(**option) for option in selections]
         else:
-            # Basic balanced options
+            # Basic balanced options for normal milestones
             return [
                 FoodSuggestion(
                     id=f"fallback_oatmeal_{current_date}",

@@ -37,7 +37,7 @@ class WorkoutOptionsResponse(BaseModel):
     options: List[List[Dict[str, Any]]]  # List of workout option lists
     category: str
 
-# Food-related schemas (new)
+# Food-related schemas (existing)
 class MilestoneType(str, Enum):
     START = "START"              # 0% milestone
     QUARTER = "QUARTER"          # 25% milestone
@@ -93,3 +93,14 @@ class FoodParameterResponse(BaseModel):
     explanations: List[str]  # Personalized nutritional explanations
     dietaryFocus: str  # e.g., "high-protein, low-carb"
     timestamp: datetime = datetime.now()
+
+# Tip-related schemas (new)
+class TipRequest(BaseModel):
+    userId: str
+    goal: str
+    gender: Optional[str] = "Unspecified"
+    fitnessLevel: Optional[str] = "Intermediate"
+    workoutDays: Optional[int] = 3
+    recentWorkouts: Optional[List[Dict[str, Any]]] = []
+    foodLogs: Optional[List[Dict[str, Any]]] = []
+    caloriePercentage: Optional[float] = 0.0

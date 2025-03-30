@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fitmate/screens/login_screens/edit_profile.dart';
+import 'package:fitmate/widgets/personalized_tip_box.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -65,6 +66,15 @@ class _HomePageState extends State<HomePage> {
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
+    });
+  }
+
+  // Refresh function to pass to the tip box
+  Future<void> _refreshTip() async {
+    // This function will be passed to the PersonalizedTipBox
+    // and will be called when the user taps on the tip box
+    setState(() {
+      // Trigger a UI refresh - the tip box will handle its own refresh internally
     });
   }
 
@@ -157,6 +167,16 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
               const SizedBox(height: 24),
+              
+              // Personalized tip box - NEW ADDITION
+              PersonalizedTipBox(
+                onRefresh: _refreshTip,
+                elevation: 2.0,
+                showAnimation: true,
+              ),
+              
+              const SizedBox(height: 16),
+              
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -179,24 +199,6 @@ class _HomePageState extends State<HomePage> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      //shrifa
-                      //    SizedBox(height: 12),  // Add spacing before the button
-                      //     ElevatedButton(
-                      //       onPressed: () {
-                      //         Navigator.push(
-                      //           context,
-                      //           MaterialPageRoute(builder: (context) => FoodRecognitionScreen()),
-                      //         );
-                      //       },
-                      //       child: Text("Go to Food Recognition"),
-                      //       style: ElevatedButton.styleFrom(
-                      //         padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      //         backgroundColor: Color(0xFFD2EB50),
-                      //         textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                      //       ),
-
-
-                      // ),
                     ],
                   ),
                 ),
@@ -258,39 +260,90 @@ class _HomePageState extends State<HomePage> {
                   ],
                 ),
               ),
+              
+              // Calories summary card - NEW ADDITION
               const SizedBox(height: 16),
-              Row(
-                // children: [
-                //   const SizedBox(width: 16),
-                //   Expanded(
-                //     child: Container(
-                //       height: 180,
-                //       padding: const EdgeInsets.all(16),
-                //       decoration: BoxDecoration(
-                //         color: Colors.white,
-                //         borderRadius: BorderRadius.circular(12),
-                //       ),
-                //       child: Center(
-                //         child: Column(
-                //           mainAxisAlignment: MainAxisAlignment.center,
-                //           crossAxisAlignment: CrossAxisAlignment.center,
-                //           children: [
-                //             Image.asset(
-                //               'assets/data/images/yoga-pose.png',
-                //               width: 60,
-                //               height: 60,
-                //             ),
-                //             const SizedBox(height: 8),
-                //             const Text(
-                //               "Total Workouts",
-                //               style: TextStyle(color: Colors.grey, fontSize: 14),
-                //             ),
-                //           ],
-                //         ),
-                //       ),
-                //     ),
-                //   )
-                // ],
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.local_fire_department, color: Colors.orange),
+                            SizedBox(width: 8),
+                            Text(
+                              "Today's Calories",
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: _totalCalories <= _dailyCaloriesGoal 
+                                ? Colors.green[100] 
+                                : Colors.orange[100],
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            "${(_totalCalories / _dailyCaloriesGoal * 100).toInt()}%",
+                            style: TextStyle(
+                              color: _totalCalories <= _dailyCaloriesGoal 
+                                  ? Colors.green[700] 
+                                  : Colors.orange[700],
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 16),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: (_totalCalories / _dailyCaloriesGoal).clamp(0.0, 1.0),
+                        backgroundColor: Colors.grey[200],
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          _totalCalories <= _dailyCaloriesGoal 
+                              ? const Color(0xFFD2EB50) 
+                              : Colors.orange
+                        ),
+                        minHeight: 8,
+                      ),
+                    ),
+                    SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "${_totalCalories.toInt()} kcal",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        Text(
+                          "${_dailyCaloriesGoal.toInt()} kcal",
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
