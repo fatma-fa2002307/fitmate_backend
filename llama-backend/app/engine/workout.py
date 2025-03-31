@@ -570,20 +570,22 @@ class WorkoutEngine:
             prompt = f"""Create EXACTLY 3 different {category} workout options for a {data.age}yo {data.gender}, {data.height}cm, {data.weight}kg, {data.fitnessLevel} level, goal: {data.goal}.
 
 INSTRUCTIONS:
-1. OPTION 1: Create a challenging workout with EXACTLY 4 different exercises from this list: {exercise_list}
+
+1. OPTION 1: Create a challenging workout with EXACTLY 4 different exercises from this list ONLY: {exercise_list}
    - This should be the most intense option
-   - Use EXACTLY the same name as the exercises from the list. no extra words or letters
+   - Use EXACTLY the same name as the exercises from the list.
 
 2. OPTION 2: Create a moderate workout with EXACTLY 5 different exercises from this list: {exercise_list}
-   - This should be slightly less intense than Option 1
-   - Include more exercises but with lower intensity
+   - This should be less intense
 
 3. OPTION 3: Create a HOME-FRIENDLY workout with EXACTLY 4 different exercises from this list: {exercise_list}
-   - Select ONLY bodyweight exercises or exercises that can be done with dumbbells
-   - No gym machines or specialized equipment should be included
+   - Select ONLY bodyweight exercises or dumbbell exercises 
+   - No gym machines or barbells or specialized equipment should be included unless there is no other option
 
-For each exercise, be creative with sets and reps:
-- You can use any format: single numbers (e.g. "10"), ranges (e.g. "8-12"), or time-based (e.g. "30s")
+NOTE: ALL OPTIONS MUST BE DIFFERENT in at least 2 exercises and ALL exercises must come from the list!
+
+For each exercise, add appropriate sets and reps:
+- You can use any format: single numbers (e.g. "10"), ranges (e.g. "8-12"), or time-based (e.g. "30s") depending on the exercise
 - Adjust sets and reps based on exercise difficulty and {data.fitnessLevel} level
 - Target different muscles within {category} for a balanced workout
 
@@ -611,7 +613,7 @@ Return ONLY in this exact JSON format:
     ]
   ]
 }}
-IMPORTANT: Make sure to put ALL values in quotes and format exactly as shown above."""
+IMPORTANT: Make sure to put ALL values in quotes and format exactly as shown above.  NO EXPLANATION OTHERWISE RESPONSE IS INVALID!"""
             
             logger.info("Requesting strength workout from LLM...")
             
@@ -625,7 +627,7 @@ IMPORTANT: Make sure to put ALL values in quotes and format exactly as shown abo
                     },
                     {"role": "user", "content": prompt}
                 ],
-                options={"temperature": 0.5}  # Very low temperature for consistent formatting
+                options={"temperature": 0.5}  
             )
             
             # Extract the content

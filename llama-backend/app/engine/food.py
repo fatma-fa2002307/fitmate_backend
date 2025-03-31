@@ -484,7 +484,7 @@ INSTRUCTIONS:
     }},
     {{
       "food_id": "12",
-      "explanation": "Low-calorie ingredient with fiber to keep you satisfied."
+      "explanation": "Dessert to treat yourself for your hard work!"
     }}
   ]
 }}

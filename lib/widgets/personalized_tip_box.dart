@@ -108,13 +108,13 @@ class _PersonalizedTipBoxState extends State<PersonalizedTipBox>
       setState(() {
         _tipData = tipData;
         _isLoading = false;
+        _isRefreshing = false;
       });
       
       // Play fade-in animation when tip loads
-      if (!_isRefreshing) {
+      if (widget.showAnimation) {
         _animationController.forward(from: 0.3);
       }
-      _isRefreshing = false;
     } catch (e) {
       print('Error loading tip: $e');
       setState(() {
@@ -129,24 +129,23 @@ class _PersonalizedTipBoxState extends State<PersonalizedTipBox>
   Future<void> _refreshTip() async {
     if (_isLoading || _isRefreshing) return;
     
+    // Immediately show loading state and start refresh animation
     setState(() {
       _isRefreshing = true;
+      _isLoading = true;
     });
     
     // Play the refresh animation
     _animationController.reset();
-    _animationController.forward();
+    _animationController.repeat();
     
     // Call parent's refresh handler if provided
     if (widget.onRefresh != null) {
       widget.onRefresh!();
     }
     
-    // Slight delay before loading new tip to allow animation to be visible
-    await Future.delayed(const Duration(milliseconds: 300));
-    
-    // Load a new tip
-    await _loadTip();
+    // Fetch new tip (this happens in background)
+    _loadTip();
   }
 
   // Get the icon for the tip category
@@ -191,7 +190,8 @@ class _PersonalizedTipBoxState extends State<PersonalizedTipBox>
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading && !_isRefreshing) {
+    // If initially loading and not refreshing, show the loading skeleton
+    if (_isLoading && !_isRefreshing && _tipData.isEmpty) {
       return _buildLoadingTip();
     }
 
@@ -247,43 +247,24 @@ class _PersonalizedTipBoxState extends State<PersonalizedTipBox>
                       ),
                       
                       // Refresh button with rotation animation
-                      _isRefreshing 
-                        ? Transform.rotate(
-                            angle: _refreshAnimation.value,
-                            child: Container(
-                              width: 32,
-                              height: 32,
-                              decoration: BoxDecoration(
-                                color: Colors.grey[100],
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: Center(
-                                child: Icon(
-                                  Icons.refresh,
-                                  color: categoryColor,
-                                  size: 18,
-                                ),
-                              ),
-                            ),
-                          )
-                        : GestureDetector(
-                            onTap: _refreshTip,
-                            child: Container(
-                              width: 32,
-                              height: 32,
-                              decoration: BoxDecoration(
-                                color: Colors.grey[100],
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: Center(
-                                child: Icon(
-                                  Icons.refresh,
-                                  color: Colors.grey[400],
-                                  size: 18,
-                                ),
-                              ),
+                      Transform.rotate(
+                        angle: _isRefreshing ? _refreshAnimation.value : 0,
+                        child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[100],
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Center(
+                            child: Icon(
+                              Icons.refresh,
+                              color: _isRefreshing ? categoryColor : Colors.grey[400],
+                              size: 18,
                             ),
                           ),
+                        ),
+                      ),
                     ],
                   ),
                   
@@ -298,34 +279,21 @@ class _PersonalizedTipBoxState extends State<PersonalizedTipBox>
                   
                   const SizedBox(height: 12),
                   
-                  // Tip content with fade animation
-                  Opacity(
-                    opacity: _isRefreshing ? _fadeAnimation.value : 1.0,
-                    child: Text(
-                      tip,
-                      style: GoogleFonts.raleway(
-                        fontSize: 16,
-                        height: 1.4,
-                        color: Colors.black87,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 8),
-                  
-                  // Tap hint with subtle styling
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: Text(
-                      'Tap to refresh',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[400],
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-                  ),
+                  // If refreshing, show animated loading lines, otherwise show content
+                  _isRefreshing
+                      ? _buildContentSkeleton()
+                      : Opacity(
+                          opacity: widget.showAnimation ? _fadeAnimation.value : 1.0,
+                          child: Text(
+                            tip,
+                            style: GoogleFonts.raleway(
+                              fontSize: 16,
+                              height: 1.4,
+                              color: Colors.black87,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
                 ],
               ),
             ),
@@ -335,7 +303,44 @@ class _PersonalizedTipBoxState extends State<PersonalizedTipBox>
     );
   }
 
-  // Build a sleek loading state for the tip
+  // Build skeleton content for when refresh is happening
+  Widget _buildContentSkeleton() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildLoadingLine(width: double.infinity),
+        const SizedBox(height: 10),
+        _buildLoadingLine(width: double.infinity),
+        const SizedBox(height: 10),
+        _buildLoadingLine(width: double.infinity),
+        const SizedBox(height: 10),
+        _buildLoadingLine(width: MediaQuery.of(context).size.width * 0.7),
+      ],
+    );
+  }
+
+  // Build a shimmer loading line with animation
+  Widget _buildLoadingLine({required double width}) {
+    return Container(
+      width: width,
+      height: 16,
+      decoration: BoxDecoration(
+        color: Colors.grey[300],
+        borderRadius: BorderRadius.circular(4),
+        gradient: LinearGradient(
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          colors: [
+            Colors.grey[200]!,
+            Colors.grey[300]!,
+            Colors.grey[200]!,
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Build an enhanced loading state for the tip
   Widget _buildLoadingTip() {
     return Card(
       elevation: widget.elevation,
@@ -352,78 +357,46 @@ class _PersonalizedTipBoxState extends State<PersonalizedTipBox>
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildShimmerContainer(
+                Container(
                   width: 40,
                   height: 40,
-                  borderRadius: 10,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
-                _buildShimmerContainer(
+                Container(
                   width: 32,
                   height: 32,
-                  borderRadius: 16,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                 ),
               ],
             ),
             
             const SizedBox(height: 16),
             
-            // Shimmer line
-            _buildShimmerContainer(
+            // Shimmer decorative line
+            Container(
               width: 40,
               height: 2,
-              borderRadius: 1,
+              color: Colors.grey[300],
             ),
             
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             
-            // Shimmer text lines
-            _buildShimmerContainer(
-              width: double.infinity,
-              height: 16,
-              borderRadius: 4,
-            ),
-            const SizedBox(height: 8),
-            _buildShimmerContainer(
-              width: double.infinity,
-              height: 16,
-              borderRadius: 4,
-            ),
-            const SizedBox(height: 8),
-            _buildShimmerContainer(
-              width: 200,
-              height: 16,
-              borderRadius: 4,
-            ),
-            
-            const SizedBox(height: 8),
-            
-            // Shimmer hint text
-            Align(
-              alignment: Alignment.centerRight,
-              child: _buildShimmerContainer(
-                width: 80,
-                height: 12,
-                borderRadius: 4,
-              ),
-            ),
+            // Shimmer text lines with varied lengths for more natural look
+            _buildLoadingLine(width: double.infinity),
+            const SizedBox(height: 10),
+            _buildLoadingLine(width: double.infinity),
+            const SizedBox(height: 10),
+            _buildLoadingLine(width: double.infinity),
+            const SizedBox(height: 10),
+            _buildLoadingLine(width: 240),
           ],
         ),
-      ),
-    );
-  }
-  
-  // Build a shimmer container for loading state
-  Widget _buildShimmerContainer({
-    required double width,
-    required double height,
-    required double borderRadius,
-  }) {
-    return Container(
-      width: width,
-      height: height,
-      decoration: BoxDecoration(
-        color: Colors.grey[200],
-        borderRadius: BorderRadius.circular(borderRadius),
       ),
     );
   }
