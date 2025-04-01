@@ -6,7 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:fitmate/viewmodels/nutrition_viewmodel.dart';
 import 'package:fitmate/widgets/bottom_nav_bar.dart';
 import 'package:fitmate/widgets/food_suggestion_card.dart';
-import 'package:fitmate/screens/nutrition_screens/logFoodManually.dart';
+import 'package:fitmate/screens/nutrition_screens/log_food_manually.dart';
 import 'advanced_circular_indicator.dart';
 import 'animated_macro_wheel.dart';
 import 'sleek_food_loading.dart'; // Import the sleek professional loading widget
