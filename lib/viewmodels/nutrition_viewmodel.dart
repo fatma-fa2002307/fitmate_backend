@@ -4,13 +4,15 @@ import 'package:fitmate/models/food_suggestion.dart';
 import 'package:fitmate/services/food_suggestion_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 class NutritionViewModel with ChangeNotifier {
   // Services
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final EnhancedFoodSuggestionService _foodSuggestionService =
-  EnhancedFoodSuggestionService();
+      EnhancedFoodSuggestionService();
 
   // State
   bool _isLoading = true;
@@ -30,6 +32,13 @@ class NutritionViewModel with ChangeNotifier {
   String _suggestionsError = '';
   int _currentSuggestionIndex = 0;
   SuggestionMilestone _currentMilestone = SuggestionMilestone.START;
+  
+  // Flag to track if suggestions were loaded in the current session
+  bool _suggestionsLoaded = false;
+  // Timestamp for when suggestions were last loaded
+  DateTime? _suggestionsLoadedTime;
+  // Duration after which suggestions should be considered stale (e.g., 4 hours)
+  final Duration _suggestionStaleDuration = const Duration(hours: 4);
 
   // Getters
   bool get isLoading => _isLoading;
@@ -48,6 +57,9 @@ class NutritionViewModel with ChangeNotifier {
   String get suggestionsError => _suggestionsError;
   int get currentSuggestionIndex => _currentSuggestionIndex;
   SuggestionMilestone get currentMilestone => _currentMilestone;
+  
+  // New getter to check if suggestions are from cache
+  bool get areSuggestionsCached => _suggestionsLoaded && _suggestionsLoadedTime != null;
 
   // Calculated properties
   double get caloriePercentage => (_dailyMacros['calories'] ?? 2000) > 0
@@ -89,10 +101,38 @@ class NutritionViewModel with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
 
-      // Then start loading food suggestions separately
+      // Then start loading food suggestions separately if needed
       // This will only affect the food suggestions part of the UI
       if (isToday) {
-        await _loadFoodSuggestions();
+        // Calculate the new milestone
+        SuggestionMilestone newMilestone = 
+            SuggestionMilestoneExtension.fromPercentage(caloriePercentage);
+        
+        // Determine if we need to load new suggestions
+        bool needsNewSuggestions = false;
+        
+        // Check if we have cached suggestions
+        if (_suggestions.isEmpty || !_suggestionsLoaded) {
+          // We have no suggestions or they weren't loaded this session
+          needsNewSuggestions = true;
+        } else if (newMilestone != _currentMilestone) {
+          // Milestone has changed, load new suggestions
+          needsNewSuggestions = true;
+        } else if (_suggestionsLoadedTime != null) {
+          // Check if suggestions are stale (older than staleDuration)
+          DateTime now = DateTime.now();
+          if (now.difference(_suggestionsLoadedTime!) > _suggestionStaleDuration) {
+            needsNewSuggestions = true;
+          }
+        }
+        
+        if (needsNewSuggestions) {
+          await _loadFoodSuggestions();
+        } else {
+          // Use existing suggestions but update loading state
+          _suggestionsLoading = false;
+          notifyListeners();
+        }
       } else {
         _suggestionsLoading = false;
         _suggestions = [];
@@ -373,15 +413,30 @@ class NutritionViewModel with ChangeNotifier {
       final percentage = _totalCalories / (_dailyMacros['calories'] ?? 2000);
       _currentMilestone = SuggestionMilestoneExtension.fromPercentage(percentage);
 
-      // Get suggestions from the enhanced service
-      final suggestions = await _foodSuggestionService.getSuggestionsForCurrentMilestone(
-        totalCalories: _dailyMacros['calories'] ?? 2000,
-        consumedCalories: _totalCalories,
-        goal: _userGoal,
-      );
+      // First check if we have cached suggestions for this milestone in SharedPreferences
+      bool usedCache = await _loadCachedSuggestions(_currentMilestone);
 
-      _suggestions = suggestions;
+      if (!usedCache) {
+        // Get suggestions from the enhanced service
+        final suggestions = await _foodSuggestionService.getSuggestionsForCurrentMilestone(
+          totalCalories: _dailyMacros['calories'] ?? 2000,
+          consumedCalories: _totalCalories,
+          goal: _userGoal,
+        );
+
+        _suggestions = suggestions;
+        
+        // Cache the suggestions for future use
+        await _cacheSuggestions(suggestions, _currentMilestone);
+      }
+      
+      // Reset current index when loading new suggestions
       _currentSuggestionIndex = 0;
+      
+      // Mark suggestions as loaded in this session
+      _suggestionsLoaded = true;
+      _suggestionsLoadedTime = DateTime.now();
+      
       _suggestionsLoading = false;
       notifyListeners();
     } catch (e) {
@@ -390,6 +445,112 @@ class NutritionViewModel with ChangeNotifier {
       notifyListeners();
       print('Error loading suggestions: $e');
     }
+  }
+
+  // Cache suggestions in SharedPreferences
+  Future<void> _cacheSuggestions(List<FoodSuggestion> suggestions, SuggestionMilestone milestone) async {
+    try {
+      // Get SharedPreferences instance
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Convert suggestions to JSON
+      final suggestionsJson = suggestions.map((s) => {
+        'id': s.id,
+        'title': s.title,
+        'image': s.image,
+        'calories': s.calories,
+        'protein': s.protein,
+        'carbs': s.carbs,
+        'fat': s.fat,
+        'sourceUrl': s.sourceUrl,
+        'readyInMinutes': s.readyInMinutes,
+        'servings': s.servings,
+        'explanation': s.explanation,
+        'foodType': s.foodType,
+      }).toList();
+      
+      // Save to SharedPreferences with milestone and timestamp
+      final cacheData = {
+        'milestone': milestone.toString(),
+        'suggestions': suggestionsJson,
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+      };
+      
+      // Convert to JSON string and save
+      final cacheString = jsonEncode(cacheData);
+      await prefs.setString('cached_food_suggestions', cacheString);
+      
+      print('Cached ${suggestions.length} suggestions for milestone: ${milestone.name}');
+    } catch (e) {
+      print('Error caching suggestions: $e');
+    }
+  }
+  
+  // Load cached suggestions from SharedPreferences
+  Future<bool> _loadCachedSuggestions(SuggestionMilestone currentMilestone) async {
+    try {
+      // Get SharedPreferences instance
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Get cached data
+      final cacheString = prefs.getString('cached_food_suggestions');
+      if (cacheString == null) {
+        return false;
+      }
+      
+      // Parse JSON
+      final cacheData = jsonDecode(cacheString);
+      
+      // Check if milestone matches
+      final cachedMilestone = cacheData['milestone'] as String;
+      if (cachedMilestone != currentMilestone.toString()) {
+        return false;
+      }
+      
+      // Check if cache is stale
+      final timestamp = cacheData['timestamp'] as int;
+      final cacheTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
+      if (DateTime.now().difference(cacheTime) > _suggestionStaleDuration) {
+        return false;
+      }
+      
+      // Convert JSON to suggestions
+      final suggestionsJson = cacheData['suggestions'] as List;
+      _suggestions = suggestionsJson.map((json) {
+        return FoodSuggestion(
+          id: json['id'],
+          title: json['title'],
+          image: json['image'],
+          calories: json['calories'],
+          protein: json['protein'],
+          carbs: json['carbs'],
+          fat: json['fat'],
+          sourceUrl: json['sourceUrl'],
+          readyInMinutes: json['readyInMinutes'],
+          servings: json['servings'],
+          explanation: json['explanation'],
+          foodType: json['foodType'],
+        );
+      }).toList();
+      
+      // Mark as loaded from cache
+      _suggestionsLoaded = true;
+      _suggestionsLoadedTime = cacheTime;
+      
+      print('Loaded ${_suggestions.length} suggestions from cache for milestone: ${currentMilestone.name}');
+      return true;
+    } catch (e) {
+      print('Error loading cached suggestions: $e');
+      return false;
+    }
+  }
+
+  // Force reload food suggestions (for user-initiated refresh)
+  Future<void> forceFoodSuggestionsRefresh() async {
+    if (!isToday) return;
+    
+    _suggestionsLoaded = false;
+    await _loadFoodSuggestions();
   }
 
   // Retry loading food suggestions
@@ -416,6 +577,13 @@ class NutritionViewModel with ChangeNotifier {
       _suggestions = suggestions;
       _suggestionsError = '';
       _currentSuggestionIndex = 0;
+      
+      // Update cache with new suggestions
+      await _cacheSuggestions(suggestions, _currentMilestone);
+      
+      // Mark as loaded
+      _suggestionsLoaded = true;
+      _suggestionsLoadedTime = DateTime.now();
     } catch (e) {
       _suggestionsError = 'Unable to load suggestions. Tap to retry.';
       print('Error retrying food suggestions: $e');
@@ -454,13 +622,22 @@ class NutritionViewModel with ChangeNotifier {
 
     // Only load suggestions for the current day
     if (isToday) {
-      await _loadFoodSuggestions();
+      // Calculate the new milestone
+      SuggestionMilestone newMilestone = 
+          SuggestionMilestoneExtension.fromPercentage(caloriePercentage);
+      
+      // If milestone changed or we don't have suggestions, load new ones
+      if (newMilestone != _currentMilestone || _suggestions.isEmpty || !_suggestionsLoaded) {
+        await _loadFoodSuggestions();
+      } else {
+        // Otherwise, just notify UI update with existing suggestions
+        notifyListeners();
+      }
     } else {
       _suggestions = [];
       _suggestionsLoading = false;
+      notifyListeners();
     }
-
-    notifyListeners();
   }
 
   // Navigate to previous day
@@ -489,12 +666,20 @@ class NutritionViewModel with ChangeNotifier {
 
         await _loadFoodLogs();
 
-        // Reload suggestions if we're on today
+        // Reload suggestions if we're on today and milestone changed
         if (isToday) {
-          await _loadFoodSuggestions();
+          // Calculate the new milestone after food deletion
+          SuggestionMilestone newMilestone = 
+              SuggestionMilestoneExtension.fromPercentage(caloriePercentage);
+          
+          // If milestone changed, reload suggestions
+          if (newMilestone != _currentMilestone) {
+            await _loadFoodSuggestions();
+          } else {
+            // Otherwise just notify UI update
+            notifyListeners();
+          }
         }
-
-        notifyListeners();
       }
     } catch (e) {
       print('Error deleting food: $e');

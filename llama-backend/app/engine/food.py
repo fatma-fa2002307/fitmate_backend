@@ -508,7 +508,7 @@ FOOD OPTIONS:
 
 INSTRUCTIONS:
 1. {selection_instruction}
-2. Select EXACTLY 4 options from the available foods:{selection_format}
+2. Select EXACTLY 4 options from the available foods:{selection_format}, with varied calories between each option.
 3. For each selection, provide a very short personalized explanation of why it's beneficial.
 4. Return your selections in valid JSON format as shown below:
 

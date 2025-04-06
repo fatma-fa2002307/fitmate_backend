@@ -9,7 +9,7 @@ import 'package:fitmate/widgets/food_suggestion_card.dart';
 import 'package:fitmate/screens/nutrition_screens/log_food_manually.dart';
 import 'advanced_circular_indicator.dart';
 import 'animated_macro_wheel.dart';
-import 'sleek_food_loading.dart'; // Import the sleek professional loading widget
+import 'sleek_food_loading.dart';
 
 class NutritionPage extends StatefulWidget {
   const NutritionPage({Key? key}) : super(key: key);
@@ -94,7 +94,11 @@ class _NutritionPageState extends State<NutritionPage>
               automaticallyImplyLeading: false,
             ),
             body: RefreshIndicator(
-                    onRefresh: _initializeData,
+                    onRefresh: () async {
+                      // Force reload food suggestions on pull-to-refresh
+                      await viewModel.forceFoodSuggestionsRefresh();
+                      await _initializeData();
+                    },
                     color: const Color(0xFFD2EB50),
                     child: viewModel.isLoading 
                       ? Center(
@@ -304,16 +308,29 @@ class _NutritionPageState extends State<NutritionPage>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Icon(Icons.restaurant_menu, color: Color(0xFFD2EB50)),
-              const SizedBox(width: 8),
-              Text(
-                'Food Suggestion',
-                style: GoogleFonts.montserrat(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+              Row(
+                children: [
+                  const Icon(Icons.restaurant_menu, color: Color(0xFFD2EB50)),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Food Suggestion',
+                    style: GoogleFonts.montserrat(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
+              // Add a refresh button for suggestions
+              if (viewModel.areSuggestionsCached && !viewModel.suggestionsLoading && viewModel.suggestionsError.isEmpty)
+                IconButton(
+                  icon: const Icon(Icons.refresh, size: 20),
+                  color: Colors.grey[500],
+                  tooltip: 'Get new suggestions',
+                  onPressed: () => viewModel.forceFoodSuggestionsRefresh(),
+                ),
             ],
           ),
           const SizedBox(height: 8),
@@ -373,194 +390,42 @@ class _NutritionPageState extends State<NutritionPage>
             else
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: FoodSuggestionCard(
-                  suggestions: viewModel.suggestions,
-                  onLike: () => viewModel.handleFoodPreference(true),
-                  onDislike: () => viewModel.handleFoodPreference(false),
-                  initialIndex: viewModel.currentSuggestionIndex,
-                  milestone: viewModel.currentMilestone,
-                ),
-              ),
-        ],
-      ),
-    );
-  }
-
-  // New method to create a shimmer loading effect for the food suggestion card
-  Widget _buildShimmerLoadingCard() {
-    return Container(
-      height: 220,
-      child: Column(
-        children: [
-          // Main card with shimmer effect
-          Container(
-            height: 180,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                // Top content
-                Padding(
-                  padding: const EdgeInsets.all(14.0),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Shimmer for image
-                      Container(
-                        width: 75,
-                        height: 75,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(10),
-                          color: Colors.grey[200],
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      
-                      // Shimmer for content
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                child: Column(
+                  children: [
+                    FoodSuggestionCard(
+                      suggestions: viewModel.suggestions,
+                      onLike: () => viewModel.handleFoodPreference(true),
+                      onDislike: () => viewModel.handleFoodPreference(false),
+                      initialIndex: viewModel.currentSuggestionIndex,
+                      milestone: viewModel.currentMilestone,
+                    ),
+                    // Show a subtle indicator if suggestions are cached
+                    if (viewModel.areSuggestionsCached)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            // Title shimmer
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Container(
-                                    height: 18,
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(4),
-                                      color: Colors.grey[200],
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                // Type badge shimmer
-                                Container(
-                                  width: 60,
-                                  height: 18,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(12),
-                                    color: Colors.grey[200],
-                                  ),
-                                ),
-                              ],
+                            Icon(
+                              Icons.info_outline,
+                              size: 12,
+                              color: Colors.grey[500],
                             ),
-                            
-                            const SizedBox(height: 8),
-                            
-                            // Explanation shimmer lines
-                            Container(
-                              height: 14,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(4),
-                                color: Colors.grey[200],
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Container(
-                              height: 14,
-                              width: 260,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(4),
-                                color: Colors.grey[200],
+                            const SizedBox(width: 4),
+                            Text(
+                              'Pull down to refresh suggestions',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[500],
+                                fontStyle: FontStyle.italic,
                               ),
                             ),
                           ],
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                
-                // Divider
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  child: Divider(color: Colors.grey[200], height: 1),
-                ),
-                
-                // Bottom section shimmer
-                Padding(
-                  padding: const EdgeInsets.all(14.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // Calories shimmer
-                      Container(
-                        width: 70,
-                        height: 16,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(4),
-                          color: Colors.grey[200],
-                        ),
-                      ),
-                      
-                      // Macros shimmer
-                      Container(
-                        width: 120,
-                        height: 14,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(4),
-                          color: Colors.grey[200],
-                        ),
-                      ),
-                      
-                      // Action buttons shimmer
-                      Row(
-                        children: [
-                          Container(
-                            width: 24,
-                            height: 24,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.grey[200],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            width: 24,
-                            height: 24,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.grey[200],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          // Shimmer for indicator dots
-          Padding(
-            padding: const EdgeInsets.only(top: 12.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(
-                3,
-                (index) => Container(
-                  width: index == 0 ? 10 : 8,
-                  height: index == 0 ? 10 : 8,
-                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: index == 0 ? const Color(0xFFD2EB50).withOpacity(0.5) : Colors.grey[300],
-                  ),
+                  ],
                 ),
               ),
-            ),
-          ),
         ],
       ),
     );
