@@ -30,6 +30,7 @@ dependencies:
   google_fonts: ^6.1.0
   provider: ^6.0.5
   url_launcher: ^6.1.7
+  flutter_launcher_icons: ^0.14.3
 
 
 
@@ -68,4 +69,3 @@ flutter:
     - assets/data/lottie/4.json
     - assets/data/images/food/
     - assets/data/lottie/5.json
-    
