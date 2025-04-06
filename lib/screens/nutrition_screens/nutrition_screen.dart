@@ -679,7 +679,7 @@ class _NutritionPageState extends State<NutritionPage>
             Row(
               children: [
                 _buildNutrientBadge('${food['calories']?.toInt() ?? 0} cal',
-                    Colors.orange[100]!),
+                    Colors.green[100]!),
                 const SizedBox(width: 8),
                 _buildNutrientBadge(
                     'P: ${food['protein']?.toInt() ?? 0}g', Colors.red[100]!),

@@ -10,7 +10,7 @@ class NutritionViewModel with ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final EnhancedFoodSuggestionService _foodSuggestionService =
-      EnhancedFoodSuggestionService();
+  EnhancedFoodSuggestionService();
 
   // State
   bool _isLoading = true;
@@ -68,8 +68,8 @@ class NutritionViewModel with ChangeNotifier {
 
   bool get isToday =>
       _selectedDate.year == DateTime.now().year &&
-      _selectedDate.month == DateTime.now().month &&
-      _selectedDate.day == DateTime.now().day;
+          _selectedDate.month == DateTime.now().month &&
+          _selectedDate.day == DateTime.now().day;
 
   String get formattedDate =>
       isToday ? 'Today' : DateFormat('EEEE, MMMM d').format(_selectedDate);
@@ -78,54 +78,72 @@ class NutritionViewModel with ChangeNotifier {
   Future<void> init() async {
     _isLoading = true;
     notifyListeners();
-    
-    // Load essential data first
-    await _loadUserData();
-    await _loadFoodLogs();
-    
-    // Now that essential data is loaded, set isLoading to false
-    // This allows the main UI to render while food suggestions are still loading
-    _isLoading = false;
-    notifyListeners();
-    
-    // Then start loading food suggestions separately
-    // This will only affect the food suggestions part of the UI
-    if (isToday) {
-      await _loadFoodSuggestions();
-    } else {
-      _suggestionsLoading = false;
-      _suggestions = [];
+
+    try {
+      // Load essential data first
+      await _loadUserData();
+      await _loadFoodLogs();
+
+      // Now that essential data is loaded, set isLoading to false
+      // This allows the main UI to render while food suggestions are still loading
+      _isLoading = false;
+      notifyListeners();
+
+      // Then start loading food suggestions separately
+      // This will only affect the food suggestions part of the UI
+      if (isToday) {
+        await _loadFoodSuggestions();
+      } else {
+        _suggestionsLoading = false;
+        _suggestions = [];
+        notifyListeners();
+      }
+    } catch (e) {
+      _isLoading = false;
+      print('Error in init: $e');
       notifyListeners();
     }
   }
 
   // Load user data
   Future<void> _loadUserData() async {
-    User? user = _auth.currentUser;
-    if (user != null) {
-      DocumentSnapshot userData =
-          await _firestore.collection('users').doc(user.uid).get();
+    try {
+      User? user = _auth.currentUser;
+      if (user != null) {
+        DocumentSnapshot userData =
+        await _firestore.collection('users').doc(user.uid).get();
 
-      if (userData.exists) {
-        _userGoal = userData['goal'] as String? ?? 'Improve Fitness';
+        if (userData.exists) {
+          Map<String, dynamic> data = userData.data() as Map<String, dynamic>;
+          _userGoal = data['goal'] as String? ?? 'Improve Fitness';
 
-        // Check for user macros in Firebase
-        bool macrosExist = await _checkMacrosExist(user.uid);
+          // Check for user macros in Firebase
+          bool macrosExist = await _checkMacrosExist(user.uid);
 
-        if (macrosExist) {
-          // Load macros from Firebase
-          _dailyMacros = await _getUserMacros(user.uid);
-        } else {
-          // Calculate and save macros
-          _dailyMacros = await _calculateAndSaveMacros(
-              userData['gender'] as String? ?? 'Male',
-              (userData['weight'] as num?)?.toDouble() ?? 70.0,
-              (userData['height'] as num?)?.toDouble() ?? 170.0,
-              userData['age'] as int? ?? 30,
-              _userGoal,
-              userData['workoutDays'] as int? ?? 3);
+          if (macrosExist) {
+            // Load macros from Firebase
+            _dailyMacros = await _getUserMacros(user.uid);
+          } else {
+            // Calculate and save macros
+            _dailyMacros = await _calculateAndSaveMacros(
+                data['gender'] as String? ?? 'Male',
+                (data['weight'] as num?)?.toDouble() ?? 70.0,
+                (data['height'] as num?)?.toDouble() ?? 170.0,
+                data['age'] as int? ?? 30,
+                _userGoal,
+                data['workoutDays'] as int? ?? 3);
+          }
         }
       }
+    } catch (e) {
+      print('Error loading user data: $e');
+      // Set default macros in case of error
+      _dailyMacros = {
+        'calories': 2000.0,
+        'carbs': 225.0,
+        'protein': 150.0,
+        'fat': 65.0,
+      };
     }
   }
 
@@ -186,17 +204,28 @@ class NutritionViewModel with ChangeNotifier {
       int age,
       String goal,
       int workoutDays) async {
-    // Calculate BMR
-    double bmr = _calculateBMR(gender, weight, height, age);
+    try {
+      // Calculate BMR
+      double bmr = _calculateBMR(gender, weight, height, age);
 
-    // Calculate macros based on BMR, goal, and workout days
-    Map<String, double> macros =
-        _calculateMacronutrients(goal, bmr, workoutDays);
+      // Calculate macros based on BMR, goal, and workout days
+      Map<String, double> macros =
+      _calculateMacronutrients(goal, bmr, workoutDays);
 
-    // Save calculated macros to Firestore
-    await _saveMacros(macros);
+      // Save calculated macros to Firestore
+      await _saveMacros(macros);
 
-    return macros;
+      return macros;
+    } catch (e) {
+      print('Error calculating and saving macros: $e');
+      // Return default values if calculation fails
+      return {
+        'calories': 2000.0,
+        'carbs': 225.0,
+        'protein': 150.0,
+        'fat': 65.0,
+      };
+    }
   }
 
   // BMR calculation helper method
@@ -266,61 +295,70 @@ class NutritionViewModel with ChangeNotifier {
 
   // Save macros to Firestore
   Future<void> _saveMacros(Map<String, double> macros) async {
-    User? user = _auth.currentUser;
-    if (user == null) return;
+    try {
+      User? user = _auth.currentUser;
+      if (user == null) return;
 
-    await _firestore
-        .collection('users')
-        .doc(user.uid)
-        .collection('userMacros')
-        .doc('macro')
-        .set({
-      'calories': macros['calories'] ?? 0,
-      'carbs': macros['carbs'] ?? 0,
-      'protein': macros['protein'] ?? 0,
-      'fat': macros['fat'] ?? 0,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
+      await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('userMacros')
+          .doc('macro')
+          .set({
+        'calories': macros['calories'] ?? 0,
+        'carbs': macros['carbs'] ?? 0,
+        'protein': macros['protein'] ?? 0,
+        'fat': macros['fat'] ?? 0,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      print('Error saving macros: $e');
+    }
   }
 
   // Load food logs for selected date
   Future<void> _loadFoodLogs() async {
-    User? user = _auth.currentUser;
-    if (user != null) {
-      // Create date range for selected date
-      DateTime startDate =
-          DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
-      DateTime endDate = startDate.add(const Duration(days: 1));
+    try {
+      User? user = _auth.currentUser;
+      if (user != null) {
+        // Create date range for selected date
+        DateTime startDate =
+        DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+        DateTime endDate = startDate.add(const Duration(days: 1));
 
-      QuerySnapshot foodLogs = await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('foodLogs')
-          .where('date', isGreaterThanOrEqualTo: startDate)
-          .where('date', isLessThan: endDate)
-          .orderBy('date', descending: true)
-          .get();
+        QuerySnapshot foodLogs = await _firestore
+            .collection('users')
+            .doc(user.uid)
+            .collection('foodLogs')
+            .where('date', isGreaterThanOrEqualTo: startDate)
+            .where('date', isLessThan: endDate)
+            .orderBy('date', descending: true)
+            .get();
 
-      _todaysFoodLogs = foodLogs.docs
-          .map((doc) => {
-                ...doc.data() as Map<String, dynamic>,
-                'id': doc.id,
-              })
-          .toList();
+        _todaysFoodLogs = foodLogs.docs
+            .map((doc) => {
+          ...doc.data() as Map<String, dynamic>,
+          'id': doc.id,
+        })
+            .toList();
 
-      // Reset totals
-      _totalCalories = 0;
-      _totalCarbs = 0;
-      _totalProtein = 0;
-      _totalFat = 0;
+        // Reset totals
+        _totalCalories = 0;
+        _totalCarbs = 0;
+        _totalProtein = 0;
+        _totalFat = 0;
 
-      // Calculate totals
-      for (var food in _todaysFoodLogs) {
-        _totalCalories += food['calories'] ?? 0;
-        _totalCarbs += food['carbs'] ?? 0;
-        _totalProtein += food['protein'] ?? 0;
-        _totalFat += food['fat'] ?? 0;
+        // Calculate totals
+        for (var food in _todaysFoodLogs) {
+          _totalCalories += (food['calories'] as num?)?.toDouble() ?? 0;
+          _totalCarbs += (food['carbs'] as num?)?.toDouble() ?? 0;
+          _totalProtein += (food['protein'] as num?)?.toDouble() ?? 0;
+          _totalFat += (food['fat'] as num?)?.toDouble() ?? 0;
+        }
       }
+    } catch (e) {
+      print('Error loading food logs: $e');
+      _todaysFoodLogs = [];
     }
   }
 
@@ -357,7 +395,7 @@ class NutritionViewModel with ChangeNotifier {
   // Retry loading food suggestions
   Future<void> retryLoadFoodSuggestions() async {
     if (!isToday) return;
-    
+
     _isRetrying = true;
     _suggestionsLoading = true;
     _suggestionsError = '';
@@ -390,46 +428,50 @@ class NutritionViewModel with ChangeNotifier {
 
   // Handle like/dislike of food suggestion
   Future<void> handleFoodPreference(bool isLike) async {
-    if (_suggestions.isEmpty) return;
+    try {
+      if (_suggestions.isEmpty) return;
 
-    // Get current suggestion
-    final suggestion = _suggestions[_currentSuggestionIndex];
+      // Get current suggestion
+      final suggestion = _suggestions[_currentSuggestionIndex];
 
-    // Call service to update preference
-    await _foodSuggestionService.rateSuggestion(suggestion.id, isLike);
+      // Call service to update preference
+      await _foodSuggestionService.rateSuggestion(suggestion.id, isLike);
 
-    // Move to next suggestion if available
-    if (_suggestions.length > 1) {
-      _currentSuggestionIndex = (_currentSuggestionIndex + 1) % _suggestions.length;
-      notifyListeners();
+      // Move to next suggestion if available
+      if (_suggestions.length > 1) {
+        _currentSuggestionIndex = (_currentSuggestionIndex + 1) % _suggestions.length;
+        notifyListeners();
+      }
+    } catch (e) {
+      print('Error handling food preference: $e');
     }
   }
 
   // Select different date
-  void selectDate(DateTime date) {
+  Future<void> selectDate(DateTime date) async {
     _selectedDate = date;
-    _loadFoodLogs();
-    
+    await _loadFoodLogs();
+
     // Only load suggestions for the current day
     if (isToday) {
-      _loadFoodSuggestions();
+      await _loadFoodSuggestions();
     } else {
       _suggestions = [];
       _suggestionsLoading = false;
     }
-    
+
     notifyListeners();
   }
 
   // Navigate to previous day
-  void previousDay() {
-    selectDate(_selectedDate.subtract(const Duration(days: 1)));
+  Future<void> previousDay() async {
+    await selectDate(_selectedDate.subtract(const Duration(days: 1)));
   }
 
   // Navigate to next day
-  void nextDay() {
+  Future<void> nextDay() async {
     if (!isToday) {
-      selectDate(_selectedDate.add(const Duration(days: 1)));
+      await selectDate(_selectedDate.add(const Duration(days: 1)));
     }
   }
 
@@ -446,12 +488,12 @@ class NutritionViewModel with ChangeNotifier {
             .delete();
 
         await _loadFoodLogs();
-        
+
         // Reload suggestions if we're on today
         if (isToday) {
           await _loadFoodSuggestions();
         }
-        
+
         notifyListeners();
       }
     } catch (e) {
