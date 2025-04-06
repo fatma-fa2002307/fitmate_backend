@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:fitmate/models/food_suggestion.dart';
 
 class SpoonacularService {
-  static const String apiKey = 'eb79020295ab472b9044cb370bceafd0';
+  static const String apiKey = '7ec65e3bb7msh8c93ac0c5b485c3p1e18b0jsn4d39113bee4b';
   static const String baseUrl = 'https://api.spoonacular.com';
 
   /// Search for recipes that meet specific macronutrient requirements
