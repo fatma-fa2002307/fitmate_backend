@@ -26,7 +26,14 @@ class _LogFoodManuallyScreenState extends State<LogFoodManuallyScreen> {
   final TextEditingController _proteinController = TextEditingController();
   final TextEditingController _dishNameController = TextEditingController();
   final TextEditingController _portionController = TextEditingController(text: "1");
-  
+
+  final FocusNode _dishNameFocus = FocusNode();
+  final FocusNode _portionFocus = FocusNode();
+  final FocusNode _caloriesFocus = FocusNode();
+  final FocusNode _fatFocus = FocusNode();
+  final FocusNode _carbsFocus = FocusNode();
+  final FocusNode _proteinFocus = FocusNode();
+
   File? _image;
   List<Map<String, dynamic>> _searchResults = [];
   bool _isSearching = false;
@@ -37,27 +44,27 @@ class _LogFoodManuallyScreenState extends State<LogFoodManuallyScreen> {
   // Flag to track if we're loading results from the cache
   bool _isLoadingCachedResults = false;
   // Local SQLite caching could be implemented here
-    
+
   @override
   void initState() {
     super.initState();
     _portionController.addListener(_onPortionChanged);
     _loadCachedFoods();
   }
-  
+
   // Load the most recent or common foods from cache
   Future<void> _loadCachedFoods() async {
     setState(() {
       _isLoadingCachedResults = true;
     });
-    
+
     try {
       // This would be a good place to load recently used foods
       // from a local SQLite database to show as suggestions
-      
+
       // For now, we'll just fetch from Firebase history
       final recentFoods = await _fetchRecentFoods();
-      
+
       setState(() {
         _searchResults = recentFoods;
         _isLoadingCachedResults = false;
@@ -69,12 +76,12 @@ class _LogFoodManuallyScreenState extends State<LogFoodManuallyScreen> {
       });
     }
   }
-  
+
   // Fetch recent foods from Firebase
   Future<List<Map<String, dynamic>>> _fetchRecentFoods() async {
     final User? user = FirebaseAuth.instance.currentUser;
     if (user == null) return [];
-    
+
     try {
       final snapshot = await FirebaseFirestore.instance
           .collection('users')
@@ -83,7 +90,7 @@ class _LogFoodManuallyScreenState extends State<LogFoodManuallyScreen> {
           .orderBy('date', descending: true)
           .limit(5)
           .get();
-          
+
       return snapshot.docs.map((doc) {
         final data = doc.data();
         data['source'] = 'history';
@@ -105,6 +112,14 @@ class _LogFoodManuallyScreenState extends State<LogFoodManuallyScreen> {
     _proteinController.dispose();
     _dishNameController.dispose();
     _portionController.dispose();
+
+    _dishNameFocus.dispose();
+    _portionFocus.dispose();
+    _caloriesFocus.dispose();
+    _fatFocus.dispose();
+    _carbsFocus.dispose();
+    _proteinFocus.dispose();
+
     super.dispose();
   }
 
@@ -124,10 +139,29 @@ class _LogFoodManuallyScreenState extends State<LogFoodManuallyScreen> {
         setState(() {
           _portionSize = newPortion;
         });
-        _updateNutritionValues();
+
+        // If we have base values (either from selected food or previously calculated),
+        // update the nutrition values based on the new portion size
+        if (_baseCalories > 0 || _baseCarbs > 0 || _baseProtein > 0 || _baseFat > 0) {
+          _updateNutritionValues();
+        } else if (!_foodSelected && _caloriesController.text.isNotEmpty) {
+          // For manually entered foods without base values yet, calculate and store base values
+          // based on the previous portion size, then update
+          double prevPortionSize = _portionSize == newPortion ? 1.0 : _portionSize;
+
+          // Store base values (per single portion)
+          _baseCalories = (double.tryParse(_caloriesController.text) ?? 0) / prevPortionSize;
+          _baseFat = (double.tryParse(_fatController.text) ?? 0) / prevPortionSize;
+          _baseCarbs = (double.tryParse(_carbsController.text) ?? 0) / prevPortionSize;
+          _baseProtein = (double.tryParse(_proteinController.text) ?? 0) / prevPortionSize;
+
+          // Now update with the new portion size
+          _updateNutritionValues();
+        }
       }
     } catch (e) {
       // Invalid input, ignore
+      print("Error parsing portion size: $e");
     }
   }
 
@@ -145,7 +179,7 @@ class _LogFoodManuallyScreenState extends State<LogFoodManuallyScreen> {
   final fat = (_baseFat * _portionSize).toStringAsFixed(1);
   final carbs = (_baseCarbs * _portionSize).toStringAsFixed(1);
   final protein = (_baseProtein * _portionSize).toStringAsFixed(1);
-  
+
   // Always update the controller values
   _caloriesController.text = calories;
   _fatController.text = fat;
@@ -385,7 +419,6 @@ class _LogFoodManuallyScreenState extends State<LogFoodManuallyScreen> {
         _baseFat = (double.tryParse(_fatController.text) ?? 0) / currentPortionSize;
         _baseCarbs = (double.tryParse(_carbsController.text) ?? 0) / currentPortionSize;
         _baseProtein = (double.tryParse(_proteinController.text) ?? 0) / currentPortionSize;
-        _portionSize = 1.0;
       }
 
         // Basic food data
@@ -470,6 +503,9 @@ class _LogFoodManuallyScreenState extends State<LogFoodManuallyScreen> {
                 // Dish name with integrated search
                 TextField(
                   controller: _dishNameController,
+                  focusNode: _dishNameFocus,
+                  textInputAction: TextInputAction.next,
+                  onEditingComplete: () => FocusScope.of(context).requestFocus(_portionFocus),
                   decoration: InputDecoration(
                     labelText: 'Dish Name (Required)',
                     border: OutlineInputBorder(),
@@ -516,7 +552,7 @@ class _LogFoodManuallyScreenState extends State<LogFoodManuallyScreen> {
                     padding: EdgeInsets.symmetric(vertical: 10.0),
                     child: Center(child: CircularProgressIndicator()),
                   ),
-                if (!_isSearching && !_isLoadingCachedResults && _searchResults.isEmpty && 
+                if (!_isSearching && !_isLoadingCachedResults && _searchResults.isEmpty &&
                     _dishNameController.text.length > 2 && !_foodSelected)
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 10.0),
@@ -645,6 +681,9 @@ class _LogFoodManuallyScreenState extends State<LogFoodManuallyScreen> {
                           Expanded(
                             child: TextField(
                               controller: _portionController,
+                              focusNode: _portionFocus,
+                              textInputAction: TextInputAction.next,
+                              onEditingComplete: () => FocusScope.of(context).requestFocus(_caloriesFocus),
                               decoration: InputDecoration(
                                 labelText: 'Number of portions',
                                 border: OutlineInputBorder(
@@ -739,6 +778,9 @@ class _LogFoodManuallyScreenState extends State<LogFoodManuallyScreen> {
                           Expanded(
                             child: TextField(
                               controller: _caloriesController,
+                              focusNode: _caloriesFocus,
+                              textInputAction: TextInputAction.next,
+                              onEditingComplete: () => FocusScope.of(context).requestFocus(_fatFocus),
                               decoration: InputDecoration(
                                 labelText: 'Calories (Required)',
                                 border: OutlineInputBorder(
@@ -763,6 +805,9 @@ class _LogFoodManuallyScreenState extends State<LogFoodManuallyScreen> {
                           Expanded(
                             child: TextField(
                               controller: _fatController,
+                              focusNode: _fatFocus,
+                              textInputAction: TextInputAction.next,
+                              onEditingComplete: () => FocusScope.of(context).requestFocus(_carbsFocus),
                               decoration: InputDecoration(
                                 labelText: 'Fat (g)',
                                 border: OutlineInputBorder(
@@ -787,6 +832,9 @@ class _LogFoodManuallyScreenState extends State<LogFoodManuallyScreen> {
                           Expanded(
                             child: TextField(
                               controller: _carbsController,
+                              focusNode: _carbsFocus,
+                              textInputAction: TextInputAction.next,
+                              onEditingComplete: () => FocusScope.of(context).requestFocus(_proteinFocus),
                               decoration: InputDecoration(
                                 labelText: 'Carbohydrates (g)',
                                 border: OutlineInputBorder(
@@ -811,6 +859,12 @@ class _LogFoodManuallyScreenState extends State<LogFoodManuallyScreen> {
                           Expanded(
                             child: TextField(
                               controller: _proteinController,
+                              focusNode: _proteinFocus,
+                              textInputAction: TextInputAction.done,
+                              onSubmitted: (_) {
+                                // close keyboard after the last field
+                                FocusScope.of(context).unfocus();
+                              },
                               decoration: InputDecoration(
                                 labelText: 'Protein (g)',
                                 border: OutlineInputBorder(
