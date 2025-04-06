@@ -15,18 +15,22 @@ logging.basicConfig(level=logging.INFO,
 logger = logging.getLogger("enhanced_food_engine")
 
 class SpoonacularService:
-    """Service for interacting with the Spoonacular API"""
+    """Service for interacting with the Spoonacular API via RapidAPI"""
     
-    def __init__(self, api_key="eb79020295ab472b9044cb370bceafd0"):
-        self.api_key = api_key
-        self.base_url = "https://api.spoonacular.com"
+    def __init__(self):
+        # Updated to use RapidAPI credentials
+        self.api_key = "7ec65e3bb7msh8c93ac0c5b485c3p1e18b0jsn4d39113bee4b"
+        self.base_url = "https://spoonacular-recipe-food-nutrition-v1.p.rapidapi.com"
+        self.headers = {
+            "x-rapidapi-host": "spoonacular-recipe-food-nutrition-v1.p.rapidapi.com",
+            "x-rapidapi-key": self.api_key
+        }
     
     async def search_recipes(self, min_calories=0, max_calories=2000, meal_type=None, 
                             diet=None, exclude_ingredients=None, number=10):
         """Search for recipes that match the given criteria"""
         try:
             params = {
-                "apiKey": self.api_key,
                 "number": number,
                 "minCalories": min_calories,
                 "maxCalories": max_calories,
@@ -40,12 +44,18 @@ class SpoonacularService:
             if exclude_ingredients: params["excludeIngredients"] = ",".join(exclude_ingredients)
                 
             async with aiohttp.ClientSession() as session:
-                async with session.get(f"{self.base_url}/recipes/complexSearch", params=params) as response:
+                async with session.get(
+                    f"{self.base_url}/recipes/complexSearch", 
+                    params=params, 
+                    headers=self.headers
+                ) as response:
                     if response.status == 200:
                         data = await response.json()
                         return self._process_recipes(data)
                     else:
                         logger.error(f"Spoonacular API error: {response.status}")
+                        error_text = await response.text()
+                        logger.error(f"Error response: {error_text}")
                         return []
         except Exception as e:
             logger.error(f"Error searching recipes: {str(e)}")
@@ -54,24 +64,31 @@ class SpoonacularService:
     async def search_ingredients(self, min_calories=0, max_calories=500, number=10, query=None):
         """Search for simple food ingredients"""
         try:
+            # The RapidAPI version requires a query parameter
+            query = query or "food"  # Default query if none provided
+            
             params = {
-                "apiKey": self.api_key,
+                "query": query,  # Required parameter
                 "number": number,
                 "minCalories": min_calories,
                 "maxCalories": max_calories,
                 "metaInformation": "true",
                 "sort": "calories",
             }
-            
-            if query: params["query"] = query
                 
             async with aiohttp.ClientSession() as session:
-                async with session.get(f"{self.base_url}/food/ingredients/search", params=params) as response:
+                async with session.get(
+                    f"{self.base_url}/food/ingredients/search", 
+                    params=params, 
+                    headers=self.headers
+                ) as response:
                     if response.status == 200:
                         data = await response.json()
                         return await self._process_ingredients(data, session)
                     else:
                         logger.error(f"Spoonacular API error: {response.status}")
+                        error_text = await response.text()
+                        logger.error(f"Error response: {error_text}")
                         return []
         except Exception as e:
             logger.error(f"Error searching ingredients: {str(e)}")
@@ -83,7 +100,6 @@ class SpoonacularService:
             query = query or "tea OR coffee OR water OR herbal tea"
                 
             params = {
-                "apiKey": self.api_key,
                 "number": number,
                 "maxCalories": max_calories,
                 "type": "drink",
@@ -93,12 +109,18 @@ class SpoonacularService:
             }
             
             async with aiohttp.ClientSession() as session:
-                async with session.get(f"{self.base_url}/recipes/complexSearch", params=params) as response:
+                async with session.get(
+                    f"{self.base_url}/recipes/complexSearch", 
+                    params=params, 
+                    headers=self.headers
+                ) as response:
                     if response.status == 200:
                         data = await response.json()
                         return self._process_recipes(data, food_type="drink")
                     else:
                         logger.error(f"Spoonacular API error: {response.status}")
+                        error_text = await response.text()
+                        logger.error(f"Error response: {error_text}")
                         return []
         except Exception as e:
             logger.error(f"Error searching drinks: {str(e)}")
@@ -190,11 +212,14 @@ class SpoonacularService:
         """Get nutrition information for an ingredient"""
         try:
             params = {
-                "apiKey": self.api_key,
                 "amount": amount,
             }
             
-            async with session.get(f"{self.base_url}/food/ingredients/{ingredient_id}/information", params=params) as response:
+            async with session.get(
+                f"{self.base_url}/food/ingredients/{ingredient_id}/information", 
+                params=params, 
+                headers=self.headers
+            ) as response:
                 if response.status == 200:
                     data = await response.json()
                     nutrition = {}
@@ -213,11 +238,15 @@ class SpoonacularService:
                     
                     return nutrition
                 else:
+                    logger.error(f"Error getting ingredient nutrition: {response.status}")
+                    error_text = await response.text()
+                    logger.error(f"Error response: {error_text}")
                     return {}
         except Exception as e:
             logger.error(f"Error getting ingredient nutrition: {str(e)}")
             return {}
 
+# The rest of the file (EnhancedFoodEngine class) remains unchanged
 class EnhancedFoodEngine:
     """Engine for generating personalized food suggestions using Spoonacular and LLaMA"""
     
@@ -339,6 +368,21 @@ class EnhancedFoodEngine:
             return min(50, adjusted_target)
             
         return adjusted_target
+        
+    def _get_ingredient_query_for_meal(self, meal_type: str) -> str:
+        """Get an appropriate ingredient query based on the meal type"""
+        meal_type = meal_type.lower()
+        
+        if "breakfast" in meal_type:
+            return "oats OR eggs OR yogurt OR fruit OR bread"
+        elif "lunch" in meal_type:
+            return "vegetables OR chicken OR fish OR rice OR pasta OR salad"
+        elif "dinner" in meal_type:
+            return "vegetables OR meat OR fish OR rice OR potato OR pasta"
+        elif "snack" in meal_type:
+            return "fruit OR nuts OR yogurt OR cheese OR vegetables"
+        else:
+            return "food OR ingredient OR vegetable OR fruit OR protein"
             
     async def _gather_food_options(self, target_calories: float, meal_type: str, goal: str, 
                                   disliked_food_ids: List[str], is_calorie_goal_reached: bool) -> List[Dict[str, Any]]:
@@ -368,11 +412,12 @@ class EnhancedFoodEngine:
                     number=10
                 ),
                 
-                # Ingredients
+                # Ingredients - provide appropriate query based on meal type
                 self.spoonacular.search_ingredients(
                     min_calories=min_calories,
                     max_calories=max_calories,
-                    number=10
+                    number=10,
+                    query=self._get_ingredient_query_for_meal(meal_type)
                 )
             ])
         # If user has reached calorie goal, get drinks and low-calorie ingredients
@@ -389,7 +434,7 @@ class EnhancedFoodEngine:
                 self.spoonacular.search_ingredients(
                     max_calories=30,
                     number=10,
-                    query="vegetable OR fruit OR greens"
+                    query="vegetable OR fruit OR greens OR raw"
                 )
             ])
             
@@ -704,7 +749,6 @@ Respond ONLY with valid JSON in the exact format shown above. change the explana
             else:
                 return f"Healthy option with {food['calories']} calories."
                 
-######################################################################
     def _generate_fallback_suggestions(self, is_calorie_goal_reached: bool) -> List[FoodSuggestion]:
         """Generate minimal fallback suggestions when no options are available"""
         current_date = datetime.now().timestamp()
@@ -870,78 +914,4 @@ Respond ONLY with valid JSON in the exact format shown above. change the explana
                     "explanation": "Versatile cauliflower with minimal calories - a great rice or potato substitute.",
                     "foodType": "ingredient"
                 }
-            ]
-            
-            # Randomly select 4 different options from our pool
-            # Ensure we get at least one drink and the rest are ingredients
-            drink_options = [opt for opt in low_cal_options if opt["foodType"] == "drink"]
-            ingredient_options = [opt for opt in low_cal_options if opt["foodType"] == "ingredient"]
-            
-            # Select at least one drink
-            selected_drinks = random.sample(drink_options, min(1, len(drink_options)))
-            # Fill the rest with ingredients
-            remaining_slots = 4 - len(selected_drinks)
-            selected_ingredients = random.sample(ingredient_options, min(remaining_slots, len(ingredient_options)))
-            
-            # Combine selections
-            selections = selected_drinks + selected_ingredients
-            
-            # If we still don't have 4 options (unlikely with our large pool), 
-            # fill with random duplicates
-            while len(selections) < 4:
-                additional = random.choice(low_cal_options)
-                # Make the ID unique by adding a random suffix
-                additional = additional.copy()
-                additional["id"] = f"{additional['id']}_{random.randint(1000, 9999)}"
-                selections.append(additional)
-            
-            # Convert to FoodSuggestion objects
-            return [FoodSuggestion(**option) for option in selections]
-        else:
-            # Basic balanced options for normal milestones
-            return [
-                FoodSuggestion(
-                    id=f"fallback_oatmeal_{current_date}",
-                    title="Oatmeal",
-                    image="https://spoonacular.com/recipeImages/715544-312x231.jpg",
-                    calories=150,
-                    protein=5,
-                    carbs=27,
-                    fat=3,
-                    explanation="Balanced meal with slow-release carbohydrates for sustained energy.",
-                    foodType="recipe"
-                ),
-                FoodSuggestion(
-                    id=f"fallback_eggs_{current_date}",
-                    title="Eggs",
-                    image="https://spoonacular.com/recipeImages/123456-312x231.jpg",
-                    calories=140,
-                    protein=12,
-                    carbs=1,
-                    fat=10,
-                    explanation="High-protein option that supports muscle maintenance and recovery.",
-                    foodType="recipe"
-                ),
-                FoodSuggestion(
-                    id=f"fallback_apple_{current_date}",
-                    title="Apple",
-                    image="https://spoonacular.com/cdn/ingredients_250x250/apple.jpg",
-                    calories=95,
-                    protein=0.5,
-                    carbs=25,
-                    fat=0.3,
-                    explanation="Natural source of fiber and vitamins with moderate calorie content.",
-                    foodType="ingredient"
-                ),
-                FoodSuggestion(
-                    id=f"fallback_nuts_{current_date}",
-                    title="Almonds",
-                    image="https://spoonacular.com/cdn/ingredients_250x250/almonds.jpg",
-                    calories=165,
-                    protein=6,
-                    carbs=6,
-                    fat=14,
-                    explanation="Nutrient-dense source of healthy fats and protein.",
-                    foodType="ingredient"
-                )
             ]

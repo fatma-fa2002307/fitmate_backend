@@ -3,8 +3,13 @@ import 'package:http/http.dart' as http;
 import 'package:fitmate/models/food_suggestion.dart';
 
 class SpoonacularService {
+  // Updated to use RapidAPI credentials
   static const String apiKey = '7ec65e3bb7msh8c93ac0c5b485c3p1e18b0jsn4d39113bee4b';
-  static const String baseUrl = 'https://api.spoonacular.com';
+  static const String baseUrl = 'https://spoonacular-recipe-food-nutrition-v1.p.rapidapi.com';
+  static final Map<String, String> headers = {
+    'x-rapidapi-host': 'spoonacular-recipe-food-nutrition-v1.p.rapidapi.com',
+    'x-rapidapi-key': apiKey
+  };
 
   /// Search for recipes that meet specific macronutrient requirements
   Future<List<Map<String, dynamic>>> searchRecipes({
@@ -22,7 +27,6 @@ class SpoonacularService {
   }) async {
     try {
       final queryParams = {
-        'apiKey': apiKey,
         'minCalories': minCalories.toStringAsFixed(0),
         'maxCalories': maxCalories.toStringAsFixed(0),
         'minProtein': minProtein.toStringAsFixed(0),
@@ -52,7 +56,7 @@ class SpoonacularService {
       
       print('Requesting recipes from: $uri');
       
-      final response = await http.get(uri);
+      final response = await http.get(uri, headers: headers);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final results = data['results'] as List;
@@ -73,12 +77,12 @@ class SpoonacularService {
     try {
       final uri = Uri.parse('$baseUrl/recipes/$recipeId/information').replace(
         queryParameters: {
-          'apiKey': apiKey,
           'includeNutrition': 'true',
         },
       );
       
-      final response = await http.get(uri);
+      final response = await http.get(uri, headers: headers);
+      
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         return _processRecipeData(data);
