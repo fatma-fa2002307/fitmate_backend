@@ -30,20 +30,37 @@ class _WorkoutCompletionScreenState extends State<WorkoutCompletionScreen> {
     _updateWorkoutHistory();
   }
 
+  // Implementation for workout_completion_screen.dart
+
   Future<void> _updateWorkoutHistory() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       final userDoc = FirebaseFirestore.instance.collection('users').doc(user.uid);
-      
+
       // Get current user data
       final userData = await userDoc.get();
       final currentLevel = userData.data()?['fitnessLevel'] ?? 'Beginner';
       final totalWorkouts = userData.data()?['totalWorkouts'] ?? 0;
-      final workoutsUntilNext = userData.data()?['workoutsUntilNextLevel'] ?? 20;
-      
+
+      // Get user progress document
+      final userProgressDoc = userDoc.collection('userProgress').doc('progress');
+      final userProgressData = await userProgressDoc.get();
+
+      // Extract sub-level data or create defaults
+      int currentSubLevel = 1;
+      int workoutsCompleted = 0;
+      int workoutsUntilNextLevel = 20;
+
+      if (userProgressData.exists) {
+        final progressData = userProgressData.data() as Map<String, dynamic>;
+        currentSubLevel = progressData['fitnessSubLevel'] ?? 1;
+        workoutsCompleted = progressData['workoutsCompleted'] ?? 0;
+        workoutsUntilNextLevel = progressData['workoutsUntilNextLevel'] ?? 20;
+      }
+
       // Get current timestamp
       final now = Timestamp.now();
-      
+
       // Create workout entry
       final workoutEntry = {
         'category': widget.category,
@@ -54,20 +71,39 @@ class _WorkoutCompletionScreenState extends State<WorkoutCompletionScreen> {
         'completedExercises': widget.completedExercises,
       };
 
-      // Calculate new fitness level
+      // Calculate new fitness level and sub-level
       String newLevel = currentLevel;
-      int newWorkoutsUntilNext = workoutsUntilNext;
-      
-      if (totalWorkouts + 1 >= workoutsUntilNext) {
-        switch (currentLevel) {
-          case 'Beginner':
-            newLevel = 'Intermediate';
-            newWorkoutsUntilNext = 50; // Need 50 more workouts to reach Advanced
-            break;
-          case 'Intermediate':
-            newLevel = 'Advanced';
-            newWorkoutsUntilNext = 100; // Could keep increasing for Advanced
-            break;
+      int newSubLevel = currentSubLevel;
+      int newWorkoutsCompleted = workoutsCompleted + 1;
+      int newWorkoutsUntilNext = workoutsUntilNextLevel;
+      bool levelUpOccurred = false;
+
+      // Check if sub-level should increase
+      if (newWorkoutsCompleted >= workoutsUntilNextLevel / 3 * currentSubLevel) {
+        if (currentSubLevel < 3) {
+          // Move to next sub-level
+          newSubLevel = currentSubLevel + 1;
+          levelUpOccurred = true;
+        } else {
+          // Move to next main level and reset sub-level
+          switch (currentLevel) {
+            case 'Beginner':
+              newLevel = 'Intermediate';
+              newWorkoutsUntilNext = 50; // 50 workouts for intermediate level
+              newSubLevel = 1; // Reset sub-level
+              levelUpOccurred = true;
+              break;
+            case 'Intermediate':
+              newLevel = 'Advanced';
+              newWorkoutsUntilNext = 100; // 100 workouts for advanced level
+              newSubLevel = 1; // Reset sub-level
+              levelUpOccurred = true;
+              break;
+            case 'Advanced':
+            // Keep at Advanced 3, but continue counting
+            // Could implement a prestige system here
+              break;
+          }
         }
       }
 
@@ -78,20 +114,41 @@ class _WorkoutCompletionScreenState extends State<WorkoutCompletionScreen> {
         'totalWorkouts': FieldValue.increment(1),
         'lastWorkoutCategory': widget.category,
         'fitnessLevel': newLevel,
-        'workoutsUntilNextLevel': newWorkoutsUntilNext,
         // Clear workout options to force a refresh when returning to workout screen
         'workoutOptions': {},
         'nextWorkoutCategory': '',
       });
-      
+
+      // Update the progress sub-document
+      await userProgressDoc.set({
+        'fitnessLevel': newLevel,
+        'fitnessSubLevel': newSubLevel,
+        'workoutsCompleted': newWorkoutsCompleted,
+        'workoutsUntilNextLevel': newWorkoutsUntilNext,
+        'lastUpdated': now,
+      });
+
       // Generate next workout options in the background - silently
       _generateNextWorkoutOptions(userData.data());
-      
+
       // Show level up notification if level changed
-      if (newLevel != currentLevel && mounted) {
-        _showLevelUpNotification(newLevel);
+      if (levelUpOccurred && mounted) {
+        _showLevelUpNotification(newLevel, newSubLevel);
       }
     }
+  }
+
+  void _showLevelUpNotification(String newLevel, int newSubLevel) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Congratulations! You\'ve reached $newLevel $newSubLevel!',
+          style: const TextStyle(color: Colors.white),
+        ),
+        backgroundColor: const Color(0xFFD2EB50),
+        duration: const Duration(seconds: 5),
+      ),
+    );
   }
 
   Future<void> _generateNextWorkoutOptions(Map<String, dynamic>? userData) async {
@@ -115,18 +172,6 @@ class _WorkoutCompletionScreenState extends State<WorkoutCompletionScreen> {
     }
   }
 
-  void _showLevelUpNotification(String newLevel) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Congratulations! You\'ve reached $newLevel level!',
-          style: const TextStyle(color: Colors.white),
-        ),
-        backgroundColor: const Color(0xFFD2EB50),
-        duration: const Duration(seconds: 5),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {

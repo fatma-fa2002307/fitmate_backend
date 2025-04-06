@@ -893,7 +893,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       }
                     },
                     items: <String>[
-                      '1', '2', '3', '4', '5', '6', '7',
+                      '1', '2', '3', '4', '5', '6',
                     ].map<DropdownMenuItem<String>>((String value) {
                       return DropdownMenuItem<String>(
                         value: value,

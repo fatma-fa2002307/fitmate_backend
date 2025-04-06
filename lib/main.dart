@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
 import 'package:fitmate/config/provider_setup.dart';
 import 'package:fitmate/screens/login_screens/login_screen.dart';
@@ -19,11 +20,19 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  enableOfflinePersistence();
+
   // Run the app with MultiProvider
-  runApp(MyApp());
+  runApp(const MyApp());
+}
+
+void enableOfflinePersistence() {
+  FirebaseFirestore.instance.settings = const Settings(persistenceEnabled: true);
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
@@ -31,9 +40,9 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'FitMate',
-        home: AuthCheck(), // Check if user is logged in
+        home: const AuthCheck(), // Check if user is logged in
         routes: {
-          '/login': (context) => LoginPage(),
+          '/login': (context) => const LoginPage(),
           '/forgot-password': (context) => ForgotPasswordPage(),
           '/register': (context) => AgeQuestionPage(age: 0),
           '/home': (context) => HomePage(),
@@ -43,6 +52,8 @@ class MyApp extends StatelessWidget {
   }
 }
 class AuthCheck extends StatelessWidget {
+  const AuthCheck({super.key});
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
