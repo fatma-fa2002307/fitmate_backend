@@ -93,21 +93,13 @@ class _NutritionPageState extends State<NutritionPage>
               elevation: 0,
               automaticallyImplyLeading: false,
             ),
-            body: RefreshIndicator(
-                    onRefresh: () async {
-                      // Force reload food suggestions on pull-to-refresh
-                      await viewModel.forceFoodSuggestionsRefresh();
-                      await _initializeData();
-                    },
-                    color: const Color(0xFFD2EB50),
-                    child: viewModel.isLoading 
-                      ? Center(
-                          child: CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFD2EB50)),
-                          ),
-                        )
-                      : _buildMainContent(viewModel),
-                  ),
+            body: viewModel.isLoading 
+                ? Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFD2EB50)),
+                    ),
+                  )
+                : _buildMainContent(viewModel),
             floatingActionButton:
                 viewModel.isToday ? _buildFloatingActionButton(context) : null,
             bottomNavigationBar: BottomNavBar(
@@ -308,29 +300,16 @@ class _NutritionPageState extends State<NutritionPage>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  const Icon(Icons.restaurant_menu, color: Color(0xFFD2EB50)),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Food Suggestion',
-                    style: GoogleFonts.montserrat(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-              // Add a refresh button for suggestions
-              if (viewModel.areSuggestionsCached && !viewModel.suggestionsLoading && viewModel.suggestionsError.isEmpty)
-                IconButton(
-                  icon: const Icon(Icons.refresh, size: 20),
-                  color: Colors.grey[500],
-                  tooltip: 'Get new suggestions',
-                  onPressed: () => viewModel.forceFoodSuggestionsRefresh(),
+              const Icon(Icons.restaurant_menu, color: Color(0xFFD2EB50)),
+              const SizedBox(width: 8),
+              Text(
+                'Food Suggestion',
+                style: GoogleFonts.montserrat(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
                 ),
+              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -390,40 +369,12 @@ class _NutritionPageState extends State<NutritionPage>
             else
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: Column(
-                  children: [
-                    FoodSuggestionCard(
-                      suggestions: viewModel.suggestions,
-                      onLike: () => viewModel.handleFoodPreference(true),
-                      onDislike: () => viewModel.handleFoodPreference(false),
-                      initialIndex: viewModel.currentSuggestionIndex,
-                      milestone: viewModel.currentMilestone,
-                    ),
-                    // Show a subtle indicator if suggestions are cached
-                    if (viewModel.areSuggestionsCached)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.info_outline,
-                              size: 12,
-                              color: Colors.grey[500],
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Pull down to refresh suggestions',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[500],
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                  ],
+                child: FoodSuggestionCard(
+                  suggestions: viewModel.suggestions,
+                  onLike: () => viewModel.handleFoodPreference(true),
+                  onDislike: () => viewModel.handleFoodPreference(false),
+                  initialIndex: viewModel.currentSuggestionIndex,
+                  milestone: viewModel.currentMilestone,
                 ),
               ),
         ],
