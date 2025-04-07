@@ -508,7 +508,7 @@ FOOD OPTIONS:
 
 INSTRUCTIONS:
 1. {selection_instruction}
-2. Select EXACTLY 4 options from the available foods:{selection_format}
+2. Select EXACTLY 4 options from the available foods:{selection_format}, with varied calories between each option.
 3. For each selection, provide a very short personalized explanation of why it's beneficial.
 4. Return your selections in valid JSON format as shown below:
 
@@ -749,7 +749,6 @@ Respond ONLY with valid JSON in the exact format shown above. change the explana
             else:
                 return f"Healthy option with {food['calories']} calories."
                 
-######################################################################
     def _generate_fallback_suggestions(self, is_calorie_goal_reached: bool) -> List[FoodSuggestion]:
         """Generate minimal fallback suggestions when no options are available"""
         current_date = datetime.now().timestamp()
@@ -915,78 +914,4 @@ Respond ONLY with valid JSON in the exact format shown above. change the explana
                     "explanation": "Versatile cauliflower with minimal calories - a great rice or potato substitute.",
                     "foodType": "ingredient"
                 }
-            ]
-            
-            # Randomly select 4 different options from our pool
-            # Ensure we get at least one drink and the rest are ingredients
-            drink_options = [opt for opt in low_cal_options if opt["foodType"] == "drink"]
-            ingredient_options = [opt for opt in low_cal_options if opt["foodType"] == "ingredient"]
-            
-            # Select at least one drink
-            selected_drinks = random.sample(drink_options, min(1, len(drink_options)))
-            # Fill the rest with ingredients
-            remaining_slots = 4 - len(selected_drinks)
-            selected_ingredients = random.sample(ingredient_options, min(remaining_slots, len(ingredient_options)))
-            
-            # Combine selections
-            selections = selected_drinks + selected_ingredients
-            
-            # If we still don't have 4 options (unlikely with our large pool), 
-            # fill with random duplicates
-            while len(selections) < 4:
-                additional = random.choice(low_cal_options)
-                # Make the ID unique by adding a random suffix
-                additional = additional.copy()
-                additional["id"] = f"{additional['id']}_{random.randint(1000, 9999)}"
-                selections.append(additional)
-            
-            # Convert to FoodSuggestion objects
-            return [FoodSuggestion(**option) for option in selections]
-        else:
-            # Basic balanced options for normal milestones
-            return [
-                FoodSuggestion(
-                    id=f"fallback_oatmeal_{current_date}",
-                    title="Oatmeal",
-                    image="https://spoonacular.com/recipeImages/715544-312x231.jpg",
-                    calories=150,
-                    protein=5,
-                    carbs=27,
-                    fat=3,
-                    explanation="Balanced meal with slow-release carbohydrates for sustained energy.",
-                    foodType="recipe"
-                ),
-                FoodSuggestion(
-                    id=f"fallback_eggs_{current_date}",
-                    title="Eggs",
-                    image="https://spoonacular.com/recipeImages/123456-312x231.jpg",
-                    calories=140,
-                    protein=12,
-                    carbs=1,
-                    fat=10,
-                    explanation="High-protein option that supports muscle maintenance and recovery.",
-                    foodType="recipe"
-                ),
-                FoodSuggestion(
-                    id=f"fallback_apple_{current_date}",
-                    title="Apple",
-                    image="https://spoonacular.com/cdn/ingredients_250x250/apple.jpg",
-                    calories=95,
-                    protein=0.5,
-                    carbs=25,
-                    fat=0.3,
-                    explanation="Natural source of fiber and vitamins with moderate calorie content.",
-                    foodType="ingredient"
-                ),
-                FoodSuggestion(
-                    id=f"fallback_nuts_{current_date}",
-                    title="Almonds",
-                    image="https://spoonacular.com/cdn/ingredients_250x250/almonds.jpg",
-                    calories=165,
-                    protein=6,
-                    carbs=6,
-                    fat=14,
-                    explanation="Nutrient-dense source of healthy fats and protein.",
-                    foodType="ingredient"
-                )
             ]
