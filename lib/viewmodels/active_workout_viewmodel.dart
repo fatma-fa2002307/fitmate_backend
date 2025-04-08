@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:fitmate/models/workout.dart';
 import 'package:fitmate/repositories/workout_repository.dart';
 import 'package:fitmate/viewmodels/base_viewmodel.dart';
+import 'package:fitmate/services/api_service.dart';
+
 
 class ActiveWorkoutViewModel extends BaseViewModel {
   final WorkoutRepository _repository;
@@ -47,7 +49,7 @@ class ActiveWorkoutViewModel extends BaseViewModel {
     });
     notifyListenersSafely();
   }
-  
+
   ///pause workout timer
   void pauseTimer() {
     _isPaused = true;
@@ -72,6 +74,7 @@ class ActiveWorkoutViewModel extends BaseViewModel {
     int remainingSeconds = seconds % 60;
     return '${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
   }
+  
   
   ///toggle for completion state of an exercise
   void toggleExerciseCompletion(int index) {
@@ -103,5 +106,11 @@ class ActiveWorkoutViewModel extends BaseViewModel {
       setError("Failed to record workout: $e");
       return false;
     }
+  }
+  /// Get the full image URL for an exercise
+  String getExerciseImageUrl(WorkoutExercise workout) {
+    return ApiService.getWorkoutImageUrl(
+      '/workout-images/${workout.workout.replaceAll(' ', '-')}.webp'
+    );
   }
 }

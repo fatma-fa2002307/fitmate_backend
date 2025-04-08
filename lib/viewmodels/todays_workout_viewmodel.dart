@@ -232,8 +232,28 @@ class TodaysWorkoutViewModel extends BaseViewModel {
   Future<void> reload() async {
     if (isLoading) return;
     
-    setError('');
+    setLoading(true);
+    setError(''); // Clear errors
+    _isRetrying = false;
     _hasRetriedAfterError = true;
-    await init();
+    _retryCount = 0;
+    _statusMessage = 'Generating new workout...';
+    notifyListenersSafely();
+    
+    try {
+      // Get current user data
+      final user = await _repository.getUserWorkoutData();
+      if (user == null) {
+        setError("Please sign in to view your workouts");
+        setLoading(false);
+        return;
+      }
+      
+      // Force new workout generation regardless of cache status
+      await _generateWorkouts(user);
+    } catch (e) {
+      setError("Failed to generate workout: $e");
+      setLoading(false);
+    }
   }
 }
