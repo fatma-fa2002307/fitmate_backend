@@ -9,7 +9,6 @@ import 'package:fitmate/viewmodels/todays_workout_viewmodel.dart';
 import 'package:fitmate/screens/workout_screens/active_workout_screen.dart';
 import 'package:fitmate/screens/workout_screens/cardio_active_workout_screen.dart';
 import 'package:fitmate/widgets/bottom_nav_bar.dart';
-import 'package:fitmate/widgets/workout_skeleton.dart';
 import 'package:fitmate/widgets/cardio_workout_card.dart';
 import 'package:fitmate/services/workout_image_cache.dart';
 import 'package:fitmate/widgets/workout_card.dart';

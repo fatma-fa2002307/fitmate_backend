@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fitmate/screens/login_screens/home_page.dart';
 import 'package:fitmate/services/workout_service.dart';
-
+import 'package:fitmate/screens/hidden/easter_egg.dart';
 
 class CredentialsPage extends StatefulWidget {
   final int age;
@@ -73,6 +73,9 @@ class _CredentialsPageState extends State<CredentialsPage> {
 
   void _submitForm() async {
     if (_formKey.currentState?.validate() ?? false) {
+      //to check if we should show easter egg after registration
+      bool showEasterEgg = (widget.weight == 111.0 && widget.height == 111.0);
+      
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -157,11 +160,17 @@ class _CredentialsPageState extends State<CredentialsPage> {
           print("Error generating initial workouts: $e");
         }
 
-        // Navigate to HomePage
-        if (mounted) {
+        // Check if we should show easter egg after successful registration
+        if (showEasterEgg && mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const EasterEggPage()),
+            (Route<dynamic> route) => false,
+          );
+        } else if (mounted) {
+          // Normal flow - Navigate to HomePage
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (context) => HomePage()),
-                (Route<dynamic> route) => false,
+            (Route<dynamic> route) => false,
           );
         }
       } on FirebaseAuthException catch (e) {

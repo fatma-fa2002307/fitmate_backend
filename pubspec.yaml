@@ -31,6 +31,7 @@ dependencies:
   provider: ^6.0.5
   url_launcher: ^6.1.7
   flutter_launcher_icons: ^0.14.3
+  audioplayers: ^5.2.1
 
 
 
@@ -50,6 +51,12 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
+    - assets/data/images/easter-eggs/eg1.jpeg
+    - assets/data/images/easter-eggs/eg2.jpeg
+    - assets/data/images/easter-eggs/eg3.jpeg
+    - assets/data/images/easter-eggs/eg4.jpeg
+    - assets/data/images/easter-eggs/eg5.jpeg
+    - assets/data/audio/sad-hamster.mp3
     - assets/data/images/fit_robot.png
     - assets/data/images/strawberry.png
     - assets/data/images/workouts/image 2.png
