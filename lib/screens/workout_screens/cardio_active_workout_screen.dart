@@ -1,3 +1,4 @@
+// Updated CardioActiveWorkoutScreen
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -5,7 +6,6 @@ import 'package:fitmate/models/workout.dart';
 import 'package:fitmate/repositories/workout_repository.dart';
 import 'package:fitmate/viewmodels/cardio_workout_viewmodel.dart';
 import 'package:fitmate/screens/workout_screens/workout_completion_screen.dart';
-import 'package:fitmate/services/api_service.dart';
 import 'package:fitmate/services/workout_image_cache.dart';
 
 class CardioActiveWorkoutScreen extends StatelessWidget {
@@ -41,12 +41,21 @@ class CardioActiveWorkoutScreen extends StatelessWidget {
         workout: workoutExercise,
         category: category,
       )..init(),
-      child: _CardioActiveWorkoutScreenContent(),
+      child: _CardioActiveWorkoutScreenContent(
+        originalWorkout: workout,
+      ),
     );
   }
 }
 
 class _CardioActiveWorkoutScreenContent extends StatefulWidget {
+  final Map<String, dynamic> originalWorkout;
+  
+  const _CardioActiveWorkoutScreenContent({
+    Key? key,
+    required this.originalWorkout,
+  }) : super(key: key);
+  
   @override
   _CardioActiveWorkoutScreenContentState createState() => _CardioActiveWorkoutScreenContentState();
 }
@@ -54,27 +63,14 @@ class _CardioActiveWorkoutScreenContent extends StatefulWidget {
 class _CardioActiveWorkoutScreenContentState extends State<_CardioActiveWorkoutScreenContent> {
   // Get the image cache instance
   final _imageCache = WorkoutImageCache();
-  late ImageProvider _imageProvider;
-  bool _isImageLoaded = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _loadImage();
-  }
-
-  void _loadImage() {
+    
+    // Preload the image right away
     final viewModel = Provider.of<CardioWorkoutViewModel>(context, listen: false);
-    
-    // Get the shared image provider that was already loaded in the CardioWorkoutCard
-    _imageProvider = _imageCache.getImageProvider(ApiService.baseUrl, {
-      'image': viewModel.workout.image,
-      'workout': viewModel.workout.workout,
-    });
-    
-    setState(() {
-      _isImageLoaded = true;
-    });
+    _imageCache.preloadCardioImage(context, widget.originalWorkout);
   }
 
   @override
@@ -113,7 +109,7 @@ class _CardioActiveWorkoutScreenContentState extends State<_CardioActiveWorkoutS
                   ),
                 ),
                 
-                // Cardio Exercise Image - Using the shared image provider
+                // Cardio Exercise Image - Using the shared image cache service
                 Expanded(
                   flex: 3,
                   child: Container(
@@ -123,33 +119,12 @@ class _CardioActiveWorkoutScreenContentState extends State<_CardioActiveWorkoutS
                       borderRadius: BorderRadius.circular(16),
                       color: Colors.grey[900],
                     ),
-                    child: _isImageLoaded ? ClipRRect(
+                    child: ClipRRect(
                       borderRadius: BorderRadius.circular(16),
-                      child: Image(
-                        image: _imageProvider,
+                      child: _imageCache.getCardioImageWidget(
+                        workout: widget.originalWorkout,
                         fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.directions_run,
-                                  size: 80,
-                                  color: Colors.grey[600],
-                                ),
-                                Text(
-                                  'Image not available',
-                                  style: TextStyle(color: Colors.grey[500]),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                    ) : Center(
-                      child: CircularProgressIndicator(
-                        color: Color(0xFFD2EB50),
+                        width: double.infinity,
                       ),
                     ),
                   ),

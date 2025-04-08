@@ -9,6 +9,7 @@ class ApiService {
 
   // Cache keys
   static const String WORKOUT_CACHE_KEY = 'cached_workout_data';
+  static const String WORKOUT_IMAGES_CACHE_PREFIX = 'workout_image_';
 
   // Generate workout plan
   static Future<Map<String, dynamic>> generateWorkout({
@@ -103,46 +104,147 @@ class ApiService {
     }
   }
 
-  // Helper method to get the full URL for workout images
+  // Helper method to get the full URL for workout images with consistent formatting
   static String getWorkoutImageUrl(String imagePath) {
     // Handle both absolute and relative paths
     if (imagePath.startsWith('http')) {
       return imagePath;
     }
-    // Ensure path starts with a slash
-    if (!imagePath.startsWith('/')) {
-      imagePath = '/$imagePath';
+    
+    // Format the image path properly
+    String formattedPath = imagePath;
+    
+    // Check if the path already contains the workout-images prefix
+    bool hasWorkoutImagesPrefix = formattedPath.contains('workout-images');
+    bool hasCardioPrefix = formattedPath.contains('cardio');
+    
+    // Remove any double slashes
+    while (formattedPath.contains('//')) {
+      formattedPath = formattedPath.replaceAll('//', '/');
     }
-    return '$baseUrl$imagePath';
+    
+    // Ensure path starts with a slash
+    if (!formattedPath.startsWith('/')) {
+      formattedPath = '/$formattedPath';
+    }
+    
+    // Add the proper prefix for workout images if not present
+    if (!hasWorkoutImagesPrefix && !hasCardioPrefix && !formattedPath.startsWith('/workout-icons')) {
+      formattedPath = '/workout-images$formattedPath';
+    }
+    
+    // Return the full URL
+    return '$baseUrl$formattedPath';
   }
 
-  // Helper method specifically for cardio images
+  // Helper method specifically for cardio images with consistent formatting
   static String getCardioImageUrl(String filename) {
+    // Handle if the filename already has the full path
+    if (filename.contains('workout-images/cardio')) {
+      // It already has the correct path format, just normalize it
+      String normalizedPath = filename;
+      
+      // Remove any double slashes
+      while (normalizedPath.contains('//')) {
+        normalizedPath = normalizedPath.replaceAll('//', '/');
+      }
+      
+      // Ensure path starts with a slash
+      if (!normalizedPath.startsWith('/')) {
+        normalizedPath = '/$normalizedPath';
+      }
+      
+      return '$baseUrl$normalizedPath';
+    }
+
+    // Clean the filename and ensure proper formatting
+    String cleanFilename = filename.trim();
+    
+    // If the filename doesn't have an extension, add .webp
+    if (!cleanFilename.contains('.')) {
+      cleanFilename = '$cleanFilename.webp';
+    }
+    
     // Ensure we're using the correct path format for cardio images
-    return '$baseUrl/workout-images/cardio/$filename';
+    return '$baseUrl/workout-images/cardio/$cleanFilename';
   }
 
-  // Helper method to get the full URL for workout icons
+  // Helper method to get the full URL for workout icons with consistent formatting
   static String getWorkoutIconUrl(String iconPath) {
     // Handle both absolute and relative paths
     if (iconPath.startsWith('http')) {
       return iconPath;
     }
-    // Ensure path starts with a slash
-    if (!iconPath.startsWith('/')) {
-      iconPath = '/$iconPath';
+    
+    // Check if the path already has the workout-icons prefix
+    bool hasIconsPrefix = iconPath.contains('workout-icons');
+    
+    // Format the icon path properly
+    String formattedPath = iconPath;
+    
+    // Remove any double slashes
+    while (formattedPath.contains('//')) {
+      formattedPath = formattedPath.replaceAll('//', '/');
     }
-    return '$baseUrl$iconPath';
+    
+    // Ensure path starts with a slash
+    if (!formattedPath.startsWith('/')) {
+      formattedPath = '/$formattedPath';
+    }
+    
+    // Add the proper prefix for icons if not present
+    if (!hasIconsPrefix) {
+      formattedPath = '/workout-icons$formattedPath';
+    }
+    
+    return '$baseUrl$formattedPath';
   }
   
-  // Check if an image exists on the server
+  // Check if an image exists on the server and cache the result
   static Future<bool> checkImageExists(String url) async {
     try {
+      // First check SharedPreferences for a cached result to avoid network request
+      final prefs = await SharedPreferences.getInstance();
+      final cacheKey = '${WORKOUT_IMAGES_CACHE_PREFIX}${url.hashCode}';
+      
+      // Check if we have a cached result for this URL
+      if (prefs.containsKey(cacheKey)) {
+        return prefs.getBool(cacheKey) ?? false;
+      }
+      
+      // If not cached, make a HEAD request to check if the image exists
       final response = await http.head(Uri.parse(url));
-      return response.statusCode == 200;
+      final exists = response.statusCode == 200;
+      
+      // Cache the result for future checks
+      await prefs.setBool(cacheKey, exists);
+      
+      return exists;
     } catch (e) {
       print('Error checking image: $e');
       return false;
+    }
+  }
+  
+  // Clear the image existence cache - useful when refreshing data
+  static Future<void> clearImageExistenceCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Get all keys
+      final keys = prefs.getKeys();
+      
+      // Filter for image cache keys
+      final imageCacheKeys = keys.where(
+        (key) => key.startsWith(WORKOUT_IMAGES_CACHE_PREFIX)
+      ).toList();
+      
+      // Remove each key
+      for (final key in imageCacheKeys) {
+        await prefs.remove(key);
+      }
+    } catch (e) {
+      print('Error clearing image cache: $e');
     }
   }
 }

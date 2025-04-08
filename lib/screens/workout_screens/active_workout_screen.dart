@@ -1,12 +1,12 @@
+// Updated ActiveWorkoutScreen
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fitmate/models/workout.dart';
 import 'package:fitmate/repositories/workout_repository.dart';
 import 'package:fitmate/viewmodels/active_workout_viewmodel.dart';
 import 'package:fitmate/screens/workout_screens/workout_completion_screen.dart';
-import 'package:fitmate/services/api_service.dart';
+import 'package:fitmate/services/workout_image_cache.dart';
 
 class ActiveWorkoutScreen extends StatelessWidget {
   final List<Map<String, dynamic>> workouts;
@@ -48,6 +48,25 @@ class _ActiveWorkoutScreenContent extends StatefulWidget {
 }
 
 class _ActiveWorkoutScreenContentState extends State<_ActiveWorkoutScreenContent> {
+  // Get the image cache instance
+  final _imageCache = WorkoutImageCache();
+  
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    
+    // Preload all workout images when screen is created
+    final viewModel = Provider.of<ActiveWorkoutViewModel>(context, listen: false);
+    _preloadWorkoutImages(viewModel.workouts);
+  }
+  
+  Future<void> _preloadWorkoutImages(List<WorkoutExercise> workouts) async {
+    // Preload all images in the background
+    for (final workout in workouts) {
+      await _imageCache.preloadWorkoutImage(context, workout);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<ActiveWorkoutViewModel>(
@@ -181,27 +200,16 @@ class _ActiveWorkoutScreenContentState extends State<_ActiveWorkoutScreenContent
     int index
   ) {
     return ListTile(
-      leading: CachedNetworkImage(
-        imageUrl: ApiService.baseUrl + workout.image,
-        width: 40,
-        height: 40,
-        placeholder: (context, url) => Container(
-          color: Colors.grey[800],
+      leading: ClipRRect(
+        borderRadius: BorderRadius.circular(4),
+        child: SizedBox(
           width: 40,
           height: 40,
-          child: const Center(
-            child: SizedBox(
-              width: 15,
-              height: 15,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Color(0xFFD2EB50),
-              ),
-            ),
+          child: _imageCache.getWorkoutImageWidget(
+            workout: workout,
+            fit: BoxFit.cover,
           ),
         ),
-        errorWidget: (context, url, error) => 
-            const Icon(Icons.fitness_center, color: Colors.white),
       ),
       title: Text(
         workout.workout,
@@ -281,25 +289,71 @@ class _ActiveWorkoutScreenContentState extends State<_ActiveWorkoutScreenContent
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 20),
-                CachedNetworkImage(
-                  imageUrl: viewModel.getExerciseImageUrl(workout),
-                  height: 200,
-                  fit: BoxFit.contain,
-                  placeholder: (context, url) => Container(
-                    color: Colors.grey[800],
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: _imageCache.getWorkoutImageWidget(
+                    workout: workout,
                     height: 200,
-                    child: const Center(
-                      child: CircularProgressIndicator(
-                        color: Color(0xFFD2EB50),
+                    width: double.infinity,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.fitness_center, size: 16, color: Colors.white70),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${workout.sets} sets × ${workout.reps} reps',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 16,
+                        color: Colors.white,
                       ),
                     ),
-                  ),
-                  errorWidget: (context, url, error) {
-                    print("Error loading image for workout: ${workout.workout} - Error: $error");
-                    return const Icon(Icons.fitness_center, size: 100, color: Colors.white);
-                  },
+                  ],
                 ),
-                // ... rest of the dialog content remains the same
+                const SizedBox(height: 16),
+                if (workout.instruction != null && workout.instruction!.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.black26,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      workout.instruction!,
+                      style: GoogleFonts.dmSans(
+                        fontSize: 14,
+                        color: Colors.white70,
+                        height: 1.4,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.white30),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      ),
+                      child: Text(
+                        'CLOSE',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 14,
+                          color: Colors.white70,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),

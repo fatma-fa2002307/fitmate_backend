@@ -1,13 +1,18 @@
+// Updated TodaysWorkoutViewModel with Image Preloading
 import 'dart:async';
+import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fitmate/models/workout.dart';
 import 'package:fitmate/repositories/workout_repository.dart';
 import 'package:fitmate/services/workout_service.dart';
+import 'package:fitmate/services/workout_image_cache.dart';
 import 'package:fitmate/viewmodels/base_viewmodel.dart';
 
 class TodaysWorkoutViewModel extends BaseViewModel {
   final WorkoutRepository _repository;
   final WorkoutService _workoutService;
+  final WorkoutImageCache _imageCache = WorkoutImageCache();
+  BuildContext? _context;
   
   // State
   WorkoutOptions? _workoutOptions;
@@ -17,6 +22,7 @@ class TodaysWorkoutViewModel extends BaseViewModel {
   String _workoutCategory = '';
   bool _isCardioWorkout = false;
   final int _maxRetries = 5;
+  bool _imagesPreloaded = false;
   
   // Timer for cycling through loading messages
   Timer? _messageTimer;
@@ -41,18 +47,24 @@ class TodaysWorkoutViewModel extends BaseViewModel {
   bool get hasError => errorMessage.isNotEmpty;
   String get workoutCategory => _workoutCategory;
   bool get isCardioWorkout => _isCardioWorkout;
+  bool get imagesPreloaded => _imagesPreloaded;
   
   List<List<WorkoutExercise>> get workoutOptionsList {
     if (_workoutOptions == null) return [];
     return _workoutOptions!.options;
   }
   
-  //constructor with dependency injection
+  // Constructor with dependency injection
   TodaysWorkoutViewModel({
     required WorkoutRepository repository,
     required WorkoutService workoutService,
   }) : _repository = repository,
        _workoutService = workoutService;
+  
+  // Set context for image preloading
+  void setContext(BuildContext context) {
+    _context = context;
+  }
   
   @override
   Future<void> init() async {
@@ -60,6 +72,7 @@ class TodaysWorkoutViewModel extends BaseViewModel {
     setError(''); // Clear any previous errors
     _statusMessage = _loadingMessages[0];
     _currentPage = 0;
+    _imagesPreloaded = false;
     
     // Start cycling messages
     _startMessageCycle();
@@ -106,8 +119,7 @@ class TodaysWorkoutViewModel extends BaseViewModel {
     super.dispose();
   }
     
-  
-  ///load workout options from repository
+  /// Load workout options from repository
   Future<void> _loadWorkoutOptions() async {
     try {
       // Get current user data
@@ -119,7 +131,7 @@ class TodaysWorkoutViewModel extends BaseViewModel {
         return;
       }
       
-      //check if workout generation is already in progress
+      // Check if workout generation is already in progress
       Timestamp? lastGenerated = user['workoutsLastGenerated'] as Timestamp?;
       bool recentlyGenerated = false;
       
@@ -128,7 +140,7 @@ class TodaysWorkoutViewModel extends BaseViewModel {
         DateTime now = DateTime.now();
         Duration difference = now.difference(lastGeneratedTime);
         
-        //if workout was generated < 20 seconds ago, consider it "in progress"
+        // If workout was generated < 20 seconds ago, consider it "in progress"
         if (difference.inSeconds < 20) {
           recentlyGenerated = true;
           await _retryLoadingWorkout(user);
@@ -136,14 +148,14 @@ class TodaysWorkoutViewModel extends BaseViewModel {
         }
       }
       
-      //get workout options
+      // Get workout options
       final workoutOptionsMap = await _repository.getWorkoutOptions();
       final nextCategory = await _repository.getNextWorkoutCategory();
       
       if (workoutOptionsMap.isNotEmpty && nextCategory != null) {
         _processWorkoutData(workoutOptionsMap, nextCategory);
       } else {
-        //no workout options found, generate new ones
+        // No workout options found, generate new ones
         await _generateWorkouts(user);
       }
     } catch (e) {
@@ -211,6 +223,34 @@ class TodaysWorkoutViewModel extends BaseViewModel {
     // Stop the message cycling now that we have data
     _stopMessageCycle();
     setLoading(false);
+    
+    // Preload images in the background
+    _preloadWorkoutImages();
+    
+    notifyListenersSafely();
+  }
+  
+  /// Preload all workout images in the background
+  Future<void> _preloadWorkoutImages() async {
+    if (_context == null || _workoutOptions == null || _imagesPreloaded) {
+      return;
+    }
+    
+    // Add a small delay to allow UI to render first
+    await Future.delayed(Duration(milliseconds: 100));
+    
+    for (var workoutList in _workoutOptions!.options) {
+      for (var workout in workoutList) {
+        try {
+          await _imageCache.preloadWorkoutImage(_context!, workout);
+        } catch (e) {
+          print("Error preloading workout image: $e");
+          // Continue preloading other images even if one fails
+        }
+      }
+    }
+    
+    _imagesPreloaded = true;
     notifyListenersSafely();
   }
   
@@ -271,7 +311,7 @@ class TodaysWorkoutViewModel extends BaseViewModel {
     return _workoutOptions!.options[_currentPage];
   }
   
-  ///start over and reload workout options
+  /// Start over and reload workout options
   Future<void> reload() async {
     if (isLoading) return;
     
@@ -279,11 +319,13 @@ class TodaysWorkoutViewModel extends BaseViewModel {
     setError(''); // Clear errors
     _isRetrying = false;
     _retryCount = 0;
+    _imagesPreloaded = false;
     _startMessageCycle(); // Restart the message cycle
     
     // Don't await here to ensure UI updates immediately
     _reloadWorkouts();
   }
+  
   /// Helper method to reload workouts
   Future<void> _reloadWorkouts() async {
     try {

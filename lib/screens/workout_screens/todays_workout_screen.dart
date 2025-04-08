@@ -1,6 +1,6 @@
+// Updated TodaysWorkoutScreen with image preloading
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:fitmate/models/workout.dart';
 import 'package:fitmate/repositories/workout_repository.dart';
@@ -11,202 +11,10 @@ import 'package:fitmate/screens/workout_screens/cardio_active_workout_screen.dar
 import 'package:fitmate/widgets/bottom_nav_bar.dart';
 import 'package:fitmate/widgets/workout_skeleton.dart';
 import 'package:fitmate/widgets/cardio_workout_card.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:fitmate/services/api_service.dart';
+import 'package:fitmate/services/workout_image_cache.dart';
+import 'package:fitmate/widgets/workout_card.dart';
 
-class WorkoutCard extends StatelessWidget {
-  final WorkoutExercise workout;
-  
-  const WorkoutCard({Key? key, required this.workout}) : super(key: key);
 
-  void _showInstructionDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15.0),
-          ),
-          child: Container(
-            width: MediaQuery.of(context).size.width * 0.85,
-            clipBehavior: Clip.antiAlias,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(15.0),
-              color: Colors.white,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Title of the exercise
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-                  child: Text(
-                    workout.workout,
-                    style: GoogleFonts.montserrat(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-                
-                // Sets and reps information
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-                  child: Text(
-                    "${workout.sets} sets × ${workout.reps} reps",
-                    style: GoogleFonts.dmSans(
-                      fontSize: 18,
-                      color: Colors.black54,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-                
-                // Image of the exercise
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
-                  child: CachedNetworkImage(
-                    imageUrl: ApiService.baseUrl + '/workout-images/' + 
-                      '${workout.workout.replaceAll(' ', '-')}.webp',
-                    height: 260,
-                    fit: BoxFit.contain,
-                    placeholder: (context, url) => Container(
-                      color: Colors.white,
-                      height: 260,
-                      child: const Center(
-                        child: CircularProgressIndicator(
-                          color: Color(0xFFD2EB50),
-                        ),
-                      ),
-                    ),
-                    errorWidget: (context, url, error) {
-                      print("Error loading image for workout: ${workout.workout} - Error: $error");
-                      return Container(
-                        height: 260,
-                        color: Colors.white,
-                        child: Icon(Icons.fitness_center, size: 80, color: Colors.grey[400]),
-                      );
-                    },
-                  ),
-                ),
-                
-                // Simple "Got it" button
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFD2EB50),
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8.0),
-                      ),
-                      padding: EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    child: Text(
-                      'Got it',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: InkWell(
-        onTap: () => _showInstructionDialog(context),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  width: 60,
-                  height: 60,
-                  color: Colors.grey[100],
-                  child: CachedNetworkImage(
-                    imageUrl: ApiService.baseUrl + workout.image,
-                    fit: BoxFit.contain,
-                    placeholder: (context, url) => Container(
-                      color: Colors.grey[200],
-                      child: const Center(
-                        child: SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Color(0xFFD2EB50),
-                          ),
-                        ),
-                      ),
-                    ),
-                    errorWidget: (context, url, error) {
-                      print("Error loading image: $error");
-                      return Icon(Icons.fitness_center, size: 30, color: Colors.grey[700]);
-                    },
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      workout.workout,
-                      style: GoogleFonts.montserrat(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${workout.sets} sets × ${workout.reps} reps',
-                      style: GoogleFonts.dmSans(
-                        color: Colors.grey[600],
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              IconButton(
-                icon: const Icon(
-                  Icons.info_outline,
-                  color: Color(0xFFD2EB50),
-                ),
-                onPressed: () => _showInstructionDialog(context),
-                tooltip: 'View exercise details',
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 class FreshTodaysWorkoutScreen extends StatelessWidget {
   @override
@@ -233,6 +41,15 @@ class _TodaysWorkoutScreenContentState extends State<_TodaysWorkoutScreenContent
   int _selectedIndex = 1;
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    
+    // Set context in the ViewModel for image preloading
+    final viewModel = Provider.of<TodaysWorkoutViewModel>(context, listen: false);
+    viewModel.setContext(context);
+  }
+
+  @override
   void dispose() {
     _pageController.dispose();
     super.dispose();
@@ -245,53 +62,53 @@ class _TodaysWorkoutScreenContentState extends State<_TodaysWorkoutScreenContent
   }
 
   @override
-    Widget build(BuildContext context) {
-      return Consumer<TodaysWorkoutViewModel>(
-        builder: (context, viewModel, child) {
-          return Scaffold(
-            appBar: AppBar(
-              title: Text(
-                viewModel.workoutCategory.isNotEmpty 
-                    ? viewModel.workoutCategory.toUpperCase() 
-                    : 'TODAY\'S WORKOUT',
-                style: GoogleFonts.bebasNeue(color: Colors.black),
-              ),
-              centerTitle: true,
-              backgroundColor: Colors.white,
-              elevation: 0,
-              actions: [
-                if (viewModel.hasError && !viewModel.isLoading)
-                  IconButton(
-                    icon: const Icon(Icons.refresh, color: Colors.black54),
-                    onPressed: viewModel.reload,
-                    tooltip: 'Refresh',
-                  ),
-              ],
+  Widget build(BuildContext context) {
+    return Consumer<TodaysWorkoutViewModel>(
+      builder: (context, viewModel, child) {
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(
+              viewModel.workoutCategory.isNotEmpty 
+                  ? viewModel.workoutCategory.toUpperCase() 
+                  : 'TODAY\'S WORKOUT',
+              style: GoogleFonts.bebasNeue(color: Colors.black),
             ),
-            body: Column(
-              children: [
-                Expanded(
-                  child: viewModel.isLoading 
-                    ? _buildLoadingView(viewModel)
-                    : viewModel.hasError
-                      ? _buildErrorView(viewModel)
-                      : viewModel.workoutOptionsList.isEmpty 
-                        ? _buildEmptyView()
-                        : _buildWorkoutView(viewModel),
+            centerTitle: true,
+            backgroundColor: Colors.white,
+            elevation: 0,
+            actions: [
+              if (viewModel.hasError && !viewModel.isLoading)
+                IconButton(
+                  icon: const Icon(Icons.refresh, color: Colors.black54),
+                  onPressed: viewModel.reload,
+                  tooltip: 'Refresh',
                 ),
-                // Fixed bottom button
-                if (!viewModel.isLoading && !viewModel.hasError && viewModel.workoutOptionsList.isNotEmpty)
-                  _buildBottomStartButton(viewModel),
-              ],
-            ),
-            bottomNavigationBar: BottomNavBar(
-              currentIndex: _selectedIndex,
-              onTap: _onItemTapped,
-            ),
-          );
-        },
-      );
-    }
+            ],
+          ),
+          body: Column(
+            children: [
+              Expanded(
+                child: viewModel.isLoading 
+                  ? _buildLoadingView(viewModel)
+                  : viewModel.hasError
+                    ? _buildErrorView(viewModel)
+                    : viewModel.workoutOptionsList.isEmpty 
+                      ? _buildEmptyView()
+                      : _buildWorkoutView(viewModel),
+              ),
+              // Fixed bottom button
+              if (!viewModel.isLoading && !viewModel.hasError && viewModel.workoutOptionsList.isNotEmpty)
+                _buildBottomStartButton(viewModel),
+            ],
+          ),
+          bottomNavigationBar: BottomNavBar(
+            currentIndex: _selectedIndex,
+            onTap: _onItemTapped,
+          ),
+        );
+      },
+    );
+  }
 
   Widget _buildLoadingView(TodaysWorkoutViewModel viewModel) {
     return Center(
