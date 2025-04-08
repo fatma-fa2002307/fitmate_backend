@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
-import 'dart:async';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import 'package:fitmate/models/workout.dart';
+import 'package:fitmate/repositories/workout_repository.dart';
+import 'package:fitmate/viewmodels/cardio_workout_viewmodel.dart';
 import 'package:fitmate/screens/workout_screens/workout_completion_screen.dart';
 import 'package:fitmate/services/api_service.dart';
-
-// Import the shared image cache service
 import 'package:fitmate/services/workout_image_cache.dart';
 
-class CardioActiveWorkoutScreen extends StatefulWidget {
+class CardioActiveWorkoutScreen extends StatelessWidget {
   final Map<String, dynamic> workout;
   final String category;
 
@@ -18,339 +19,327 @@ class CardioActiveWorkoutScreen extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  _CardioActiveWorkoutScreenState createState() => _CardioActiveWorkoutScreenState();
+  Widget build(BuildContext context) {
+    // Convert map to WorkoutExercise
+    final workoutExercise = WorkoutExercise(
+      workout: workout['workout'] ?? '',
+      image: workout['image'] ?? '',
+      sets: '1',
+      reps: '1',
+      isCardio: true,
+      duration: workout['duration'] ?? '30 min',
+      intensity: workout['intensity'] ?? 'Moderate',
+      format: workout['format'] ?? 'Steady-state',
+      calories: workout['calories'] ?? '300-350',
+      description: workout['description'] ?? 'Perform at a comfortable pace.',
+    );
+    
+    // Create the ViewModel with dependency injection
+    return ChangeNotifierProvider(
+      create: (context) => CardioWorkoutViewModel(
+        repository: context.read<WorkoutRepository>(),
+        workout: workoutExercise,
+        category: category,
+      )..init(),
+      child: _CardioActiveWorkoutScreenContent(),
+    );
+  }
 }
 
-class _CardioActiveWorkoutScreenState extends State<CardioActiveWorkoutScreen> {
-  int _elapsedSeconds = 0;
-  late Timer _timer;
-  bool _isCompleted = false;
-  bool _isPaused = false;
-  String _targetDuration = "30 min";  // Default
-  int _targetSeconds = 1800;  // Default (30 min * 60)
-  double _progress = 0.0;
-  
+class _CardioActiveWorkoutScreenContent extends StatefulWidget {
+  @override
+  _CardioActiveWorkoutScreenContentState createState() => _CardioActiveWorkoutScreenContentState();
+}
+
+class _CardioActiveWorkoutScreenContentState extends State<_CardioActiveWorkoutScreenContent> {
   // Get the image cache instance
   final _imageCache = WorkoutImageCache();
   late ImageProvider _imageProvider;
+  bool _isImageLoaded = false;
 
   @override
-  void initState() {
-    super.initState();
-    _parseDuration();
-    _startTimer();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _loadImage();
+  }
+
+  void _loadImage() {
+    final viewModel = Provider.of<CardioWorkoutViewModel>(context, listen: false);
     
     // Get the shared image provider that was already loaded in the CardioWorkoutCard
-    _imageProvider = _imageCache.getImageProvider(ApiService.baseUrl, widget.workout);
-  }
-
-  void _parseDuration() {
-    // Parse duration from the workout (e.g., "30 min" to seconds)
-    String duration = widget.workout['duration'] ?? "30 min";
-    duration = duration.replaceAll(' ', '').toLowerCase();
-    
-    if (duration.contains('min')) {
-      String minValue = duration.replaceAll('min', '');
-      try {
-        if (minValue.contains('-')) {
-          // Handle range like "20-30 min"
-          minValue = minValue.split('-').last;
-        }
-        int minutes = int.parse(minValue);
-        _targetSeconds = minutes * 60;
-        _targetDuration = "$minutes min";
-      } catch (e) {
-        // Use default if parsing fails
-        _targetSeconds = 1800;
-        _targetDuration = "30 min";
-      }
-    }
-  }
-
-  void _startTimer() {
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!_isPaused && mounted) {
-        setState(() {
-          _elapsedSeconds++;
-          _progress = _elapsedSeconds / _targetSeconds;
-          
-          // Cap progress at 100%
-          if (_progress > 1.0) {
-            _progress = 1.0;
-          }
-        });
-      }
+    _imageProvider = _imageCache.getImageProvider(ApiService.baseUrl, {
+      'image': viewModel.workout.image,
+      'workout': viewModel.workout.workout,
     });
-  }
-
-  String formatTime(int seconds) {
-    int minutes = seconds ~/ 60;
-    int remainingSeconds = seconds % 60;
-    return '${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
-  }
-
-  @override
-  void dispose() {
-    _timer.cancel();
-    super.dispose();
+    
+    setState(() {
+      _isImageLoaded = true;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    String formattedTime = formatTime(_elapsedSeconds);
-    int remainingSeconds = _targetSeconds - _elapsedSeconds;
-    String remainingTime = remainingSeconds > 0 ? formatTime(remainingSeconds) : "00:00";
+    return Consumer<CardioWorkoutViewModel>(
+      builder: (context, viewModel, child) {
+        final String formattedTime = viewModel.formatTime(viewModel.elapsedSeconds);
+        final String remainingTime = viewModel.formatTime(viewModel.remainingSeconds);
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Header with back button and cancel
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text(
-                      'CANCEL',
-                      style: GoogleFonts.bebasNeue(
-                        color: Colors.white,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            
-            // Cardio Exercise Image - Using the shared image provider
-            Expanded(
-              flex: 3,
-              child: Container(
-                width: double.infinity,
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  color: Colors.grey[900],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: Image(
-                    image: _imageProvider,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.directions_run,
-                              size: 80,
-                              color: Colors.grey[600],
-                            ),
-                            Text(
-                              'Image not available',
-                              style: TextStyle(color: Colors.grey[500]),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ),
-            ),
-            
-            // Exercise Title
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Text(
-                widget.workout['workout'].toUpperCase(),
-                style: GoogleFonts.bebasNeue(
-                  fontSize: 28,
-                  color: Colors.white,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-            
-            // Timer Display
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+        return Scaffold(
+          backgroundColor: Colors.black,
+          body: SafeArea(
+            child: Column(
               children: [
-                Column(
-                  children: [
-                    Text(
-                      'ELAPSED',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 14,
-                        color: Colors.white60,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      formattedTime,
-                      style: GoogleFonts.albertSans(
-                        fontSize: 36,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 20),
-                  height: 50,
-                  width: 1,
-                  color: Colors.white24,
-                ),
-                Column(
-                  children: [
-                    Text(
-                      'REMAINING',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 14,
-                        color: Colors.white60,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      remainingTime,
-                      style: GoogleFonts.albertSans(
-                        fontSize: 36,
-                        fontWeight: FontWeight.bold,
-                        color: remainingSeconds > 0 ? Colors.white : const Color(0xFFD2EB50),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-              
-            // Progress bar
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+                // Header with back button and cancel
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'TARGET: $_targetDuration',
-                        style: GoogleFonts.dmSans(
-                          color: Colors.white60,
-                          fontSize: 14,
-                        ),
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                        onPressed: () => Navigator.pop(context),
                       ),
-                      Text(
-                        '${(_progress * 100).toInt()}%',
-                        style: GoogleFonts.dmSans(
-                          color: Colors.white60,
-                          fontSize: 14,
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: Text(
+                          'CANCEL',
+                          style: GoogleFonts.bebasNeue(
+                            color: Colors.white,
+                            fontSize: 16,
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  LinearProgressIndicator(
-                    value: _progress,
-                    backgroundColor: Colors.white10,
-                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFD2EB50)),
-                    minHeight: 10,
-                    borderRadius: BorderRadius.circular(5),
-                  ),
-                ],
-              ),
-            ),
-            
-            // Pause/Resume and Complete buttons
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      _isPaused = !_isPaused;
-                    });
-                  },
-                  style: ElevatedButton.styleFrom(
-                    shape: const CircleBorder(),
-                    padding: const EdgeInsets.all(16),
-                    backgroundColor: Colors.white24,
-                  ),
-                  child: Icon(
-                    _isPaused ? Icons.play_arrow : Icons.pause,
-                    color: Colors.white,
-                    size: 36,
+                ),
+                
+                // Cardio Exercise Image - Using the shared image provider
+                Expanded(
+                  flex: 3,
+                  child: Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      color: Colors.grey[900],
+                    ),
+                    child: _isImageLoaded ? ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Image(
+                        image: _imageProvider,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.directions_run,
+                                  size: 80,
+                                  color: Colors.grey[600],
+                                ),
+                                Text(
+                                  'Image not available',
+                                  style: TextStyle(color: Colors.grey[500]),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ) : Center(
+                      child: CircularProgressIndicator(
+                        color: Color(0xFFD2EB50),
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(width: 20),
-                ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      _isCompleted = true;
-                    });
-                    
-                    _timer.cancel();
-                    
-                    // Navigate to completion screen
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => WorkoutCompletionScreen(
-                          completedExercises: 1,
-                          totalExercises: 1,
-                          duration: formatTime(_elapsedSeconds),
-                          category: widget.category,
-                        ),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFD2EB50),
-                    minimumSize: const Size(120, 50),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(25),
-                    ),
-                  ),
+                
+                // Exercise Title
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
                   child: Text(
-                    'COMPLETE',
+                    viewModel.workout.workout.toUpperCase(),
                     style: GoogleFonts.bebasNeue(
-                      fontSize: 18,
+                      fontSize: 28,
                       color: Colors.white,
                     ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                
+                // Timer Display
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Column(
+                      children: [
+                        Text(
+                          'ELAPSED',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 14,
+                            color: Colors.white60,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          formattedTime,
+                          style: GoogleFonts.albertSans(
+                            fontSize: 36,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 20),
+                      height: 50,
+                      width: 1,
+                      color: Colors.white24,
+                    ),
+                    Column(
+                      children: [
+                        Text(
+                          'REMAINING',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 14,
+                            color: Colors.white60,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          remainingTime,
+                          style: GoogleFonts.albertSans(
+                            fontSize: 36,
+                            fontWeight: FontWeight.bold,
+                            color: viewModel.remainingSeconds > 0 
+                                ? Colors.white 
+                                : const Color(0xFFD2EB50),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                  
+                // Progress bar
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'TARGET: ${viewModel.targetDuration}',
+                            style: GoogleFonts.dmSans(
+                              color: Colors.white60,
+                              fontSize: 14,
+                            ),
+                          ),
+                          Text(
+                            '${(viewModel.progress * 100).toInt()}%',
+                            style: GoogleFonts.dmSans(
+                              color: Colors.white60,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      LinearProgressIndicator(
+                        value: viewModel.progress,
+                        backgroundColor: Colors.white10,
+                        valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFD2EB50)),
+                        minHeight: 10,
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // Pause/Resume and Complete buttons
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ElevatedButton(
+                      onPressed: () {
+                        viewModel.togglePause();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        shape: const CircleBorder(),
+                        padding: const EdgeInsets.all(16),
+                        backgroundColor: Colors.white24,
+                      ),
+                      child: Icon(
+                        viewModel.isPaused ? Icons.play_arrow : Icons.pause,
+                        color: Colors.white,
+                        size: 36,
+                      ),
+                    ),
+                    const SizedBox(width: 20),
+                    ElevatedButton(
+                      onPressed: () async {
+                        final success = await viewModel.completeWorkout();
+                        if (success && context.mounted) {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => WorkoutCompletionScreen(
+                                completedExercises: 1,
+                                totalExercises: 1,
+                                duration: formattedTime,
+                                category: viewModel.category,
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFD2EB50),
+                        minimumSize: const Size(120, 50),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(25),
+                        ),
+                      ),
+                      child: Text(
+                        'COMPLETE',
+                        style: GoogleFonts.bebasNeue(
+                          fontSize: 18,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                
+                const SizedBox(height: 20),
+                
+                // Workout details in a horizontal scrollable
+                Expanded(
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    children: [
+                      _buildDetailItem(Icons.whatshot, 'Intensity', viewModel.workout.intensity ?? 'Moderate'),
+                      const SizedBox(width: 24),
+                      _buildDetailItem(Icons.loop, 'Format', viewModel.workout.format ?? 'Steady-state'),
+                      const SizedBox(width: 24),
+                      _buildDetailItem(
+                        Icons.local_fire_department, 
+                        'Calories', 
+                        viewModel.workout.calories ?? '300-350'
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-            
-            const SizedBox(height: 20),
-            
-            // Workout details in a horizontal scrollable
-            Expanded(
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                children: [
-                  _buildDetailItem(Icons.whatshot, 'Intensity', widget.workout['intensity'] ?? 'Moderate'),
-                  const SizedBox(width: 24),
-                  _buildDetailItem(Icons.loop, 'Format', widget.workout['format'] ?? 'Steady-state'),
-                  const SizedBox(width: 24),
-                  _buildDetailItem(Icons.local_fire_department, 'Calories', widget.workout['calories'] ?? '300-350'),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
   

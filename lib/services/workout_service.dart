@@ -1,4 +1,3 @@
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fitmate/services/api_service.dart';
@@ -54,7 +53,7 @@ class WorkoutService {
         goal: goal,
         workoutDays: workoutDays,
         fitnessLevel: fitnessLevel,
-        lastWorkoutCategory: lastWorkoutCategory,
+        lastWorkoutCategory: lastWorkoutCategory ?? '',
       );
       
       // Get the category and options

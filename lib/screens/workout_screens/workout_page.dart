@@ -1,61 +1,37 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:fitmate/screens/check_form_screens/form_list.dart';
+import 'package:fitmate/models/workout.dart';
+import 'package:fitmate/repositories/workout_repository.dart';
 import 'package:fitmate/screens/workout_screens/todays_workout_screen.dart';
+import 'package:fitmate/services/workout_service.dart';
+import 'package:fitmate/viewmodels/workout_viewmodel.dart';
 import 'package:fitmate/widgets/bottom_nav_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 
-class WorkoutPage extends StatefulWidget {
+class WorkoutPage extends StatelessWidget {
   const WorkoutPage({Key? key}) : super(key: key);
 
   @override
-  State<WorkoutPage> createState() => _WorkoutPageState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (context) => WorkoutViewModel(
+        repository: context.read<WorkoutRepository>(),
+        workoutService: context.read<WorkoutService>(),
+      )..init(),
+      child: const _WorkoutPageContent(),
+    );
+  }
 }
 
-class _WorkoutPageState extends State<WorkoutPage> {
-  int _selectedIndex = 1;
-  Map<String, dynamic>? _lastWorkout;
-  List<Map<String, dynamic>> _workoutHistory = [];
-  bool _isLoading = true;
+class _WorkoutPageContent extends StatefulWidget {
+  const _WorkoutPageContent({Key? key}) : super(key: key);
 
   @override
-  void initState() {
-    super.initState();
-    _loadWorkoutData();
-  }
+  State<_WorkoutPageContent> createState() => _WorkoutPageContentState();
+}
 
-  Future<void> _loadWorkoutData() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        final userData = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get();
-
-        if (userData.exists) {
-          setState(() {
-            _lastWorkout = userData.data()?['lastWorkout'] as Map<String, dynamic>?;
-            _workoutHistory = List<Map<String, dynamic>>.from(
-                userData.data()?['workoutHistory'] ?? []);
-          });
-        }
-      }
-      setState(() {
-        _isLoading = false;
-      });
-    } catch (e) {
-      print("Error loading workout data: $e");
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
+class _WorkoutPageContentState extends State<_WorkoutPageContent> {
+  int _selectedIndex = 1;
 
   void _onItemTapped(int index) {
     setState(() {
@@ -65,12 +41,8 @@ class _WorkoutPageState extends State<WorkoutPage> {
 
   @override
   Widget build(BuildContext context) {
-    double completionRatio = _lastWorkout != null 
-        ? (_lastWorkout!['completedExercises'] ?? 0).toDouble() / (_lastWorkout!['totalExercises'] ?? 1).toDouble()
-        : 0.0;
-    completionRatio = completionRatio.clamp(0.0, 1.0);
-    String duration = _lastWorkout?['duration']?.toString() ?? "00:00";
-
+    final viewModel = Provider.of<WorkoutViewModel>(context);
+    
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -82,249 +54,315 @@ class _WorkoutPageState extends State<WorkoutPage> {
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
         automaticallyImplyLeading: false,
+        actions: [
+          if (viewModel.hasError)
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: () => viewModel.init(),
+              tooltip: 'Refresh',
+            ),
+        ],
       ),
-      body: _isLoading
+      body: viewModel.isLoading
           ? Center(
               child: CircularProgressIndicator(
                 valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFD2EB50)),
               ),
             )
-          : Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Last Workout',
-                          style: GoogleFonts.montserrat(
-                            fontSize: 18,
-                            color: Colors.black,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: SizedBox(
-                            height: 150,
-                            child: Card(
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              elevation: 4,
-                              child: Padding(
-                                padding: const EdgeInsets.all(16.0),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      'Completion',
-                                      style: GoogleFonts.dmSans(
-                                        fontSize: 14,
-                                        color: Colors.black54,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      _lastWorkout != null
-                                        ? '${(_lastWorkout!['completedExercises'] ?? 0).toString()}/${(_lastWorkout!['totalExercises'] ?? 0).toString()}'
-                                        : '0/0',
-                                      style: GoogleFonts.albertSans(
-                                        fontSize: 24,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Stack(
-                                      children: [
-                                        Container(
-                                          height: 8,
-                                          width: double.infinity,
-                                          decoration: BoxDecoration(
-                                            color: Colors.grey[300],
-                                            borderRadius: BorderRadius.circular(8),
-                                          ),
-                                        ),
-                                        if (completionRatio > 0) // Only show if there's progress
-                                          FractionallySizedBox(
-                                            widthFactor: completionRatio,
-                                            child: Container(
-                                              height: 8,
-                                              decoration: BoxDecoration(
-                                                color: const Color(0xFFE7FC00),
-                                                borderRadius: BorderRadius.circular(8),
-                                              ),
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: SizedBox(
-                            height: 150,
-                            child: Card(
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              elevation: 4,
-                              child: Padding(
-                                padding: const EdgeInsets.all(16.0),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      'Duration',
-                                      style: GoogleFonts.dmSans(
-                                        fontSize: 14,
-                                        color: Colors.black54,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      duration,
-                                      style: GoogleFonts.albertSans(
-                                        fontSize: 24,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Icon(
-                                      Icons.timer,
-                                      color: Colors.grey[600],
-                                      size: 24,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => FreshTodaysWorkoutScreen()),
-                        );
-                      },
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.grey.withOpacity(0.2),
-                              spreadRadius: 2,
-                              blurRadius: 5,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          : viewModel.hasError
+              ? _buildErrorView(viewModel)
+              : _buildMainContent(viewModel),
+      bottomNavigationBar: BottomNavBar(
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+      ),
+    );
+  }
+  
+  Widget _buildErrorView(WorkoutViewModel viewModel) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(30.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.refresh_rounded, size: 40, color: Colors.grey),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              viewModel.errorMessage,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.dmSans(
+                fontSize: 18,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 30),
+            ElevatedButton(
+              onPressed: () => viewModel.init(),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFD2EB50),
+                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Text(
+                'Try Again',
+                style: GoogleFonts.dmSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMainContent(WorkoutViewModel viewModel) {
+    final completionRatio = viewModel.completionRatio;
+    final duration = viewModel.duration;
+    final lastWorkout = viewModel.lastWorkout;
+    
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Last Workout',
+                  style: GoogleFonts.montserrat(
+                    fontSize: 18,
+                    color: Colors.black,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 150,
+                    child: Card(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 4,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            const Icon(
-                              Icons.fitness_center,
-                              color: Colors.lightGreen,
-                              size: 20,
-                            ),
                             Text(
-                              "View Suggested Workout",
-                              style: GoogleFonts.montserrat(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
+                              'Completion',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 14,
+                                color: Colors.black54,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              lastWorkout != null
+                                ? '${lastWorkout.completedExercises}/${lastWorkout.totalExercises}'
+                                : '0/0',
+                              style: GoogleFonts.albertSans(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
                                 color: Colors.black,
                               ),
                             ),
-                            const Icon(Icons.arrow_forward, color: Colors.black),
+                            const SizedBox(height: 8),
+                            Stack(
+                              children: [
+                                Container(
+                                  height: 8,
+                                  width: double.infinity,
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[300],
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                if (completionRatio > 0) // Only show if there's progress
+                                  FractionallySizedBox(
+                                    widthFactor: completionRatio,
+                                    child: Container(
+                                      height: 8,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFE7FC00),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
                           ],
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => FormListPage()),
-                        );
-                      },
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.grey.withOpacity(0.2),
-                              spreadRadius: 2,
-                              blurRadius: 5,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: SizedBox(
+                    height: 150,
+                    child: Card(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 4,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            const Icon(
-                              Icons.auto_awesome,
-                              color: Colors.lightGreen,
-                              size: 20,
-                            ),
-                            RichText(
-                              text: TextSpan(
-                                children: [
-                                  TextSpan(
-                                    text: "FitMate ",
-                                    style: GoogleFonts.montserrat(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w500,
-                                      color: Colors.black,
-                                    ),
-                                  ),
-                                  TextSpan(
-                                    text: "AI",
-                                    style: GoogleFonts.montserrat(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w500,
-                                      color: Colors.lightGreen,
-                                    ),
-                                  ),
-                                ],
+                            Text(
+                              'Duration',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 14,
+                                color: Colors.black54,
                               ),
                             ),
-                            const Icon(Icons.arrow_forward, color: Colors.black),
+                            const SizedBox(height: 12),
+                            Text(
+                              duration,
+                              style: GoogleFonts.albertSans(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Icon(
+                              Icons.timer,
+                              color: Colors.grey[600],
+                              size: 24,
+                            ),
                           ],
                         ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildWorkoutButton(
+              viewModel,
+              context,
+              icon: Icons.fitness_center,
+              text: "View Suggested Workout",
+              onTap: () async {
+                final readyForWorkout = await viewModel.navigateToTodaysWorkout();
+                if (readyForWorkout && context.mounted) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => FreshTodaysWorkoutScreen()),
+                  );
+                }
+              },
+            ),
+            const SizedBox(height: 16),
+            _buildWorkoutButton(
+              viewModel, 
+              context,
+              icon: Icons.auto_awesome,
+              text: "FitMate AI",
+              isRichText: true,
+              onTap: () {
+                // Future implementation
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildWorkoutButton(
+    WorkoutViewModel viewModel, 
+    BuildContext context, {
+    required IconData icon,
+    required String text,
+    required VoidCallback onTap,
+    bool isRichText = false,
+  }) {
+    return GestureDetector(
+      onTap: viewModel.isLoading ? null : onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.2),
+              spreadRadius: 2,
+              blurRadius: 5,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Icon(
+              icon,
+              color: Colors.lightGreen,
+              size: 20,
+            ),
+            if (isRichText)
+              RichText(
+                text: TextSpan(
+                  children: [
+                    TextSpan(
+                      text: text.split(' ')[0] + ' ',
+                      style: GoogleFonts.montserrat(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black,
+                      ),
+                    ),
+                    TextSpan(
+                      text: text.split(' ')[1],
+                      style: GoogleFonts.montserrat(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.lightGreen,
                       ),
                     ),
                   ],
                 ),
+              )
+            else
+              Text(
+                text,
+                style: GoogleFonts.montserrat(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.black,
+                ),
               ),
-            ),
-      bottomNavigationBar: BottomNavBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
+            const Icon(Icons.arrow_forward, color: Colors.black),
+          ],
+        ),
       ),
     );
   }
