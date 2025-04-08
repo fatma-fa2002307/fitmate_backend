@@ -269,14 +269,15 @@ class _WorkoutPageContentState extends State<_WorkoutPageContent> {
               context,
               icon: Icons.fitness_center,
               text: "View Suggested Workout",
-              onTap: () async {
-                final readyForWorkout = await viewModel.navigateToTodaysWorkout();
-                if (readyForWorkout && context.mounted) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => FreshTodaysWorkoutScreen()),
-                  );
-                }
+              onTap: () {
+                // Changed: Navigate directly to TodaysWorkoutScreen without waiting
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => FreshTodaysWorkoutScreen()),
+                );
+                
+                // The async preparation will happen inside TodaysWorkoutScreen's view model
+                // so we don't need to await anything here
               },
             ),
             const SizedBox(height: 16),
@@ -295,7 +296,6 @@ class _WorkoutPageContentState extends State<_WorkoutPageContent> {
       ),
     );
   }
-  
   Widget _buildWorkoutButton(
     WorkoutViewModel viewModel, 
     BuildContext context, {

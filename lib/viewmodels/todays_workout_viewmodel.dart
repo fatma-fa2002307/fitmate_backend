@@ -13,11 +13,14 @@ class TodaysWorkoutViewModel extends BaseViewModel {
   WorkoutOptions? _workoutOptions;
   int _currentPage = 0;
   bool _isRetrying = false;
-  bool _hasRetriedAfterError = false;
   int _retryCount = 0;
   String _workoutCategory = '';
   bool _isCardioWorkout = false;
   final int _maxRetries = 5;
+  
+  // Timer for cycling through loading messages
+  Timer? _messageTimer;
+  int _currentMessageIndex = 0;
   
   // Loading messages for better UX
   final List<String> _loadingMessages = [
@@ -55,17 +58,54 @@ class TodaysWorkoutViewModel extends BaseViewModel {
   Future<void> init() async {
     setLoading(true);
     setError(''); // Clear any previous errors
-    _statusMessage = 'Getting your workout ready...';
+    _statusMessage = _loadingMessages[0];
     _currentPage = 0;
     
-    try {
-      await _loadWorkoutOptions();
-    } catch (e) {
-      // We still want to set loading to false here even on error
+    // Start cycling messages
+    _startMessageCycle();
+    
+    // Call loadWorkoutOptions without awaiting
+    _loadWorkoutOptionsWithoutBlocking();
+  }
+
+  // Fire and forget workout loading
+  void _loadWorkoutOptionsWithoutBlocking() {
+    _loadWorkoutOptions().catchError((e) {
+      _stopMessageCycle();
       setError("Failed to load workout options: $e");
       setLoading(false);
-    }
+    });
   }
+
+  /// Start cycling through loading messages
+  void _startMessageCycle() {
+    _currentMessageIndex = 0;
+    _statusMessage = _loadingMessages[_currentMessageIndex];
+    notifyListenersSafely(); // Show first message immediately
+    
+    // Cancel any existing timer
+    _messageTimer?.cancel();
+    
+    // Create a new timer that changes the message every 3 seconds
+    _messageTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      _currentMessageIndex = (_currentMessageIndex + 1) % _loadingMessages.length;
+      _statusMessage = _loadingMessages[_currentMessageIndex];
+      notifyListenersSafely();
+    });
+  }
+
+  /// Stop cycling through loading messages
+  void _stopMessageCycle() {
+    _messageTimer?.cancel();
+    _messageTimer = null;
+  }
+
+  @override
+  void dispose() {
+    _stopMessageCycle();
+    super.dispose();
+  }
+    
   
   ///load workout options from repository
   Future<void> _loadWorkoutOptions() async {
@@ -73,6 +113,7 @@ class TodaysWorkoutViewModel extends BaseViewModel {
       // Get current user data
       final user = await _repository.getUserWorkoutData();
       if (user == null) {
+        _stopMessageCycle();
         setError("Please sign in to view your workouts");
         setLoading(false);
         return;
@@ -106,20 +147,17 @@ class TodaysWorkoutViewModel extends BaseViewModel {
         await _generateWorkouts(user);
       }
     } catch (e) {
+      _stopMessageCycle();
       throw Exception("Error loading workout options: $e");
     }
   }
   
-  ///retry loading workout with progressive delay
+  /// Retry loading workout with progressive delay
   Future<void> _retryLoadingWorkout(Map<String, dynamic> userData) async {
     _isRetrying = true;
     notifyListenersSafely();
     
     for (_retryCount = 0; _retryCount < _maxRetries; _retryCount++) {
-      // Update loading message
-      _statusMessage = _loadingMessages[_retryCount % _loadingMessages.length];
-      notifyListenersSafely();
-      
       // Wait with increasing delay between attempts
       await Future.delayed(Duration(seconds: _retryCount + 1));
       
@@ -141,12 +179,13 @@ class TodaysWorkoutViewModel extends BaseViewModel {
     }
     
     // If we get here, all retries failed
+    _stopMessageCycle();
     _isRetrying = false;
-    setError("We're having trouble creating your workout. Please try again");
+    setError("We're having trouble loading your workout. Please try again");
     setLoading(false);
   }
   
-  ///process workout data w properly typed format
+  /// Process workout data w properly typed format
   void _processWorkoutData(Map<String, List<Map<String, dynamic>>> workoutOptionsMap, String nextCategory) {
     List<List<WorkoutExercise>> optionsList = [];
     
@@ -169,14 +208,16 @@ class TodaysWorkoutViewModel extends BaseViewModel {
     _isCardioWorkout = nextCategory.toLowerCase() == 'cardio';
     _currentPage = 0;
     
+    // Stop the message cycling now that we have data
+    _stopMessageCycle();
     setLoading(false);
     notifyListenersSafely();
   }
   
-  ///gen new workout options
+  /// Generate new workout options
   Future<void> _generateWorkouts(Map<String, dynamic> userData) async {
     try {
-      _statusMessage = 'Creating a new workout just for you...';
+      // Keep message cycling running during generation
       notifyListenersSafely();
       
       final int age = userData['age'] is int ? userData['age'] : 30;
@@ -199,14 +240,16 @@ class TodaysWorkoutViewModel extends BaseViewModel {
         lastWorkoutCategory: lastWorkoutCategory,
       );
       
-      //after generating workouts, retry loading with the new data
+      // After generating workouts, retry loading with the new data
       await _retryLoadingWorkout(userData);
     } catch (e) {
-      throw Exception("Unable to create your workout. Please try again: $e");
+      _stopMessageCycle();
+      setError("Unable to create your workout. Please try again: $e");
+      setLoading(false);
     }
   }
   
-  ///update curr workout page
+  /// Update curr workout page
   void setCurrentPage(int page) {
     if (_currentPage != page) {
       _currentPage = page;
@@ -214,7 +257,7 @@ class TodaysWorkoutViewModel extends BaseViewModel {
     }
   }
   
-  ///check if valid workout to start
+  /// Check if valid workout to start
   bool canStartWorkout() {
     return !isLoading && 
            !hasError && 
@@ -222,7 +265,7 @@ class TodaysWorkoutViewModel extends BaseViewModel {
            _currentPage < _workoutOptions!.options.length;
   }
   
-  ///get exercises for current selected workout
+  /// Get exercises for current selected workout
   List<WorkoutExercise> getCurrentWorkoutExercises() {
     if (!canStartWorkout()) return [];
     return _workoutOptions!.options[_currentPage];
@@ -235,15 +278,19 @@ class TodaysWorkoutViewModel extends BaseViewModel {
     setLoading(true);
     setError(''); // Clear errors
     _isRetrying = false;
-    _hasRetriedAfterError = true;
     _retryCount = 0;
-    _statusMessage = 'Generating new workout...';
-    notifyListenersSafely();
+    _startMessageCycle(); // Restart the message cycle
     
+    // Don't await here to ensure UI updates immediately
+    _reloadWorkouts();
+  }
+  /// Helper method to reload workouts
+  Future<void> _reloadWorkouts() async {
     try {
       // Get current user data
       final user = await _repository.getUserWorkoutData();
       if (user == null) {
+        _stopMessageCycle();
         setError("Please sign in to view your workouts");
         setLoading(false);
         return;
@@ -252,6 +299,7 @@ class TodaysWorkoutViewModel extends BaseViewModel {
       // Force new workout generation regardless of cache status
       await _generateWorkouts(user);
     } catch (e) {
+      _stopMessageCycle();
       setError("Failed to generate workout: $e");
       setLoading(false);
     }

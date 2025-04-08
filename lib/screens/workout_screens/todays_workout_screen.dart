@@ -294,113 +294,165 @@ class _TodaysWorkoutScreenContentState extends State<_TodaysWorkoutScreenContent
     }
 
   Widget _buildLoadingView(TodaysWorkoutViewModel viewModel) {
-      return Center(
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Animated icon
+          Container(
+            width: 120,
+            height: 120,
+            decoration: BoxDecoration(
+              color: Color(0xFFD2EB50).withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: Color(0xFFD2EB50).withOpacity(0.3),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Icon(
+                    Icons.fitness_center,
+                    color: Color(0xFFD2EB50),
+                    size: 40,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          
+          const SizedBox(height: 40),
+          
+          // Status message (simple, no animation needed)
+          Text(
+            viewModel.statusMessage,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.montserrat(
+              fontSize: 20,
+              fontWeight: FontWeight.w500,
+              color: Colors.black87,
+            ),
+          ),
+          
+          const SizedBox(height: 30),
+          
+          // Progress indicator
+          SizedBox(
+            width: 200,
+            child: LinearProgressIndicator(
+              backgroundColor: Colors.grey[200],
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFD2EB50)),
+              minHeight: 6,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorView(TodaysWorkoutViewModel viewModel) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 30.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
+            // Error illustration
             Container(
-              width: 80,
-              height: 80,
+              width: 120,
+              height: 120,
               decoration: BoxDecoration(
-                color: Color(0xFFD2EB50).withOpacity(0.2),
+                color: Colors.red.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
               child: Center(
                 child: Container(
-                  width: 60,
-                  height: 60,
+                  width: 80,
+                  height: 80,
                   decoration: BoxDecoration(
-                    color: Color(0xFFD2EB50).withOpacity(0.3),
+                    color: Colors.red.withOpacity(0.2),
                     shape: BoxShape.circle,
                   ),
                   child: Center(
-                    child: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: Color(0xFFD2EB50),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.fitness_center,
-                        color: Colors.white,
-                        size: 24,
-                      ),
+                    child: Icon(
+                      Icons.signal_wifi_statusbar_connected_no_internet_4,
+                      size: 40, 
+                      color: Colors.red[400],
                     ),
                   ),
                 ),
               ),
             ),
-            SizedBox(height: 30),
-            Text(
-              viewModel.statusMessage,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.dmSans(
-                fontSize: 18,
-                color: Colors.black87,
-              ),
-            ),
-            if (viewModel.isRetrying) ...[
-              SizedBox(height: 20),
-              Container(
-                width: 200,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(3),
-                ),
-                child: LinearProgressIndicator(
-                  backgroundColor: Colors.grey[200],
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFD2EB50)),
-                ),
-              ),
-            ],
-          ],
-        ),
-      );
-    }
-
-  Widget _buildErrorView(TodaysWorkoutViewModel viewModel) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(30.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                shape: BoxShape.circle,
-              ),
-              child: Icon(Icons.refresh_rounded, size: 40, color: Colors.grey),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              viewModel.errorMessage,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.dmSans(
-                fontSize: 18,
-                color: Colors.black87,
-              ),
-            ),
+            
             const SizedBox(height: 30),
-            ElevatedButton(
-              onPressed: viewModel.reload,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFD2EB50),
-                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-                shape: RoundedRectangleBorder(
+            
+            Text(
+              "Connection Error",
+              style: GoogleFonts.montserrat(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            
+            const SizedBox(height: 16),
+            
+            Text(
+              "We couldn't connect to our fitness servers. This might be due to a poor internet connection.",
+              textAlign: TextAlign.center,
+              style: GoogleFonts.dmSans(
+                fontSize: 16,
+                height: 1.4,
+                color: Colors.grey[700],
+              ),
+            ),
+            
+            const SizedBox(height: 12),
+            
+            // Technical error details (collapsible)
+            if (viewModel.errorMessage.isNotEmpty)
+              Container(
+                margin: const EdgeInsets.only(top: 8, bottom: 24),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
                   borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey[300]!),
+                ),
+                child: Text(
+                  viewModel.errorMessage,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.dmSans(
+                    fontSize: 14,
+                    color: Colors.grey[700],
+                  ),
                 ),
               ),
-              child: Text(
+            
+            const SizedBox(height: 8),
+            
+            // Retry button
+            ElevatedButton.icon(
+              onPressed: viewModel.reload,
+              icon: const Icon(Icons.refresh_rounded, color: Colors.white),
+              label: Text(
                 'Try Again',
                 style: GoogleFonts.dmSans(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFD2EB50),
+                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
             ),
