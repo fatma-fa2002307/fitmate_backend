@@ -54,13 +54,16 @@ class TodaysWorkoutViewModel extends BaseViewModel {
   @override
   Future<void> init() async {
     setLoading(true);
+    setError(''); // Clear any previous errors
     _statusMessage = 'Getting your workout ready...';
     _currentPage = 0;
     
     try {
       await _loadWorkoutOptions();
     } catch (e) {
+      // We still want to set loading to false here even on error
       setError("Failed to load workout options: $e");
+      setLoading(false);
     }
   }
   
@@ -84,7 +87,7 @@ class TodaysWorkoutViewModel extends BaseViewModel {
         DateTime now = DateTime.now();
         Duration difference = now.difference(lastGeneratedTime);
         
-        //if workout was generated > 20 seconds ago, consider it "in progress"
+        //if workout was generated < 20 seconds ago, consider it "in progress"
         if (difference.inSeconds < 20) {
           recentlyGenerated = true;
           await _retryLoadingWorkout(user);
@@ -99,19 +102,18 @@ class TodaysWorkoutViewModel extends BaseViewModel {
       if (workoutOptionsMap.isNotEmpty && nextCategory != null) {
         _processWorkoutData(workoutOptionsMap, nextCategory);
       } else {
-        //n0 workout options found, generate new ones
+        //no workout options found, generate new ones
         await _generateWorkouts(user);
       }
     } catch (e) {
-      setError("Error loading workout options: $e");
-      setLoading(false);
+      throw Exception("Error loading workout options: $e");
     }
   }
   
   ///retry loading workout with progressive delay
   Future<void> _retryLoadingWorkout(Map<String, dynamic> userData) async {
     _isRetrying = true;
-    final String userId = userData['uid'] ?? '';
+    notifyListenersSafely();
     
     for (_retryCount = 0; _retryCount < _maxRetries; _retryCount++) {
       // Update loading message
@@ -200,8 +202,7 @@ class TodaysWorkoutViewModel extends BaseViewModel {
       //after generating workouts, retry loading with the new data
       await _retryLoadingWorkout(userData);
     } catch (e) {
-      setError("Unable to create your workout. Please try again");
-      setLoading(false);
+      throw Exception("Unable to create your workout. Please try again: $e");
     }
   }
   

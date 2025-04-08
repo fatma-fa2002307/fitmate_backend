@@ -245,120 +245,120 @@ class _TodaysWorkoutScreenContentState extends State<_TodaysWorkoutScreenContent
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Consumer<TodaysWorkoutViewModel>(
-      builder: (context, viewModel, child) {
-        return Scaffold(
-          appBar: AppBar(
-            title: Text(
-              viewModel.workoutCategory.isNotEmpty 
-                  ? viewModel.workoutCategory.toUpperCase() 
-                  : 'TODAY\'S WORKOUT',
-              style: GoogleFonts.bebasNeue(color: Colors.black),
-            ),
-            centerTitle: true,
-            backgroundColor: Colors.white,
-            elevation: 0,
-            actions: [
-              if (viewModel.hasError)
-                IconButton(
-                  icon: const Icon(Icons.refresh, color: Colors.black54),
-                  onPressed: viewModel.reload,
-                  tooltip: 'Refresh',
-                ),
-            ],
-          ),
-          body: Column(
-            children: [
-              Expanded(
-                child: viewModel.isLoading 
-                  ? _buildLoadingView(viewModel)
-                  : viewModel.hasError
-                    ? _buildErrorView(viewModel)
-                    : viewModel.workoutOptionsList.isEmpty 
-                      ? _buildEmptyView()
-                      : _buildWorkoutView(viewModel),
+    Widget build(BuildContext context) {
+      return Consumer<TodaysWorkoutViewModel>(
+        builder: (context, viewModel, child) {
+          return Scaffold(
+            appBar: AppBar(
+              title: Text(
+                viewModel.workoutCategory.isNotEmpty 
+                    ? viewModel.workoutCategory.toUpperCase() 
+                    : 'TODAY\'S WORKOUT',
+                style: GoogleFonts.bebasNeue(color: Colors.black),
               ),
-              // Fixed bottom button
-              if (!viewModel.isLoading && !viewModel.hasError && viewModel.workoutOptionsList.isNotEmpty)
-                _buildBottomStartButton(viewModel),
-            ],
-          ),
-          bottomNavigationBar: BottomNavBar(
-            currentIndex: _selectedIndex,
-            onTap: _onItemTapped,
-          ),
-        );
-      },
-    );
-  }
+              centerTitle: true,
+              backgroundColor: Colors.white,
+              elevation: 0,
+              actions: [
+                if (viewModel.hasError && !viewModel.isLoading)
+                  IconButton(
+                    icon: const Icon(Icons.refresh, color: Colors.black54),
+                    onPressed: viewModel.reload,
+                    tooltip: 'Refresh',
+                  ),
+              ],
+            ),
+            body: Column(
+              children: [
+                Expanded(
+                  child: viewModel.isLoading 
+                    ? _buildLoadingView(viewModel)
+                    : viewModel.hasError
+                      ? _buildErrorView(viewModel)
+                      : viewModel.workoutOptionsList.isEmpty 
+                        ? _buildEmptyView()
+                        : _buildWorkoutView(viewModel),
+                ),
+                // Fixed bottom button
+                if (!viewModel.isLoading && !viewModel.hasError && viewModel.workoutOptionsList.isNotEmpty)
+                  _buildBottomStartButton(viewModel),
+              ],
+            ),
+            bottomNavigationBar: BottomNavBar(
+              currentIndex: _selectedIndex,
+              onTap: _onItemTapped,
+            ),
+          );
+        },
+      );
+    }
 
   Widget _buildLoadingView(TodaysWorkoutViewModel viewModel) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: Color(0xFFD2EB50).withOpacity(0.2),
-              shape: BoxShape.circle,
-            ),
-            child: Center(
-              child: Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  color: Color(0xFFD2EB50).withOpacity(0.3),
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: Color(0xFFD2EB50),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.fitness_center,
-                      color: Colors.white,
-                      size: 24,
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: Color(0xFFD2EB50).withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: Color(0xFFD2EB50).withOpacity(0.3),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Color(0xFFD2EB50),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.fitness_center,
+                        color: Colors.white,
+                        size: 24,
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
-          SizedBox(height: 30),
-          Text(
-            viewModel.statusMessage,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.dmSans(
-              fontSize: 18,
-              color: Colors.black87,
-            ),
-          ),
-          if (viewModel.isRetrying) ...[
-            SizedBox(height: 20),
-            Container(
-              width: 200,
-              height: 6,
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                borderRadius: BorderRadius.circular(3),
-              ),
-              child: LinearProgressIndicator(
-                backgroundColor: Colors.grey[200],
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFD2EB50)),
+            SizedBox(height: 30),
+            Text(
+              viewModel.statusMessage,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.dmSans(
+                fontSize: 18,
+                color: Colors.black87,
               ),
             ),
+            if (viewModel.isRetrying) ...[
+              SizedBox(height: 20),
+              Container(
+                width: 200,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(3),
+                ),
+                child: LinearProgressIndicator(
+                  backgroundColor: Colors.grey[200],
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFD2EB50)),
+                ),
+              ),
+            ],
           ],
-        ],
-      ),
-    );
-  }
+        ),
+      );
+    }
 
   Widget _buildErrorView(TodaysWorkoutViewModel viewModel) {
     return Center(
