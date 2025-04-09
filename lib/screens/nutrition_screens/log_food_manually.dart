@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'dart:async';
-import 'package:fitmate/screens/nutrition_screens/nutrition_screen.dart';
 import 'package:fitmate/widgets/bottom_nav_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -926,17 +925,9 @@ class _LogFoodManuallyScreenState extends State<LogFoodManuallyScreen> {
                   width: double.infinity,
                   height: 60,
                   child: ElevatedButton(
-                    onPressed: () async {
-                      bool success = await saveFood();
-                      if (success && mounted) {
-                        Navigator.of(context).pushAndRemoveUntil(
-                          MaterialPageRoute(builder: (context) => const NutritionPage()),
-                              (Route<dynamic> route) => false, // remove all previous routes
-                        );
-                      }
+                    onPressed: () {
+                      saveFood().then((_) => Navigator.pop(context));
                     },
-
-
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFD2EB50),
                       minimumSize: const Size(double.infinity, 60),
