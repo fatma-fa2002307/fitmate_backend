@@ -12,7 +12,7 @@ class WorkoutHistoryWidget extends StatelessWidget {
   const WorkoutHistoryWidget({
     Key? key,
     this.initialVisibleCount = 3, // Show only 3 items initially
-    this.showViewAllButton = false, // Hide view all button by default now
+    this.showViewAllButton = true, // Hide view all button by default now
   }) : super(key: key);
 
   @override
