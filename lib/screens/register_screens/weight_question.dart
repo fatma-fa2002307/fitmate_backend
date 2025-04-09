@@ -1,26 +1,39 @@
-import 'package:fitmate/screens/register_screens/height_question.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import 'package:fitmate/viewmodels/onboarding_viewmodel.dart';
+import 'package:fitmate/screens/register_screens/height_question.dart';
 
-class WeightQuestionPage extends StatefulWidget {
-  final int age;
+class WeightQuestionPage extends StatelessWidget {
+  final OnboardingViewModel viewModel;
 
-  const WeightQuestionPage({Key? key, required this.age}) : super(key: key);
+  const WeightQuestionPage({
+    Key? key, 
+    required this.viewModel
+  }) : super(key: key);
 
   @override
-  _WeightQuestionPageState createState() => _WeightQuestionPageState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider.value(
+      value: viewModel,
+      child: _WeightQuestionContent(),
+    );
+  }
 }
 
-class _WeightQuestionPageState extends State<WeightQuestionPage> {
-  double _weight = 60.0; // Default weight in kg
-  bool isKg = true; // Default unit is kg
+class _WeightQuestionContent extends StatefulWidget {
+  @override
+  _WeightQuestionContentState createState() => _WeightQuestionContentState();
+}
+
+class _WeightQuestionContentState extends State<_WeightQuestionContent> {
   late TextEditingController _weightController;
 
   @override
   void initState() {
     super.initState();
-    _weightController = TextEditingController(text: _weight.toStringAsFixed(0));
+    final viewModel = Provider.of<OnboardingViewModel>(context, listen: false);
+    _weightController = TextEditingController(text: viewModel.weight.toStringAsFixed(0));
   }
 
   @override
@@ -29,131 +42,114 @@ class _WeightQuestionPageState extends State<WeightQuestionPage> {
     super.dispose();
   }
 
-  // Save weight and unit preference to SharedPreferences
-  void _saveUserPreferences() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setDouble('weight', _weight);
-    await prefs.setBool('isKg', isKg);
-  }
-
-  void toggleUnit(bool isKgSelected) {
-    if (isKg == isKgSelected) return;
-
-    setState(() {
-      isKg = isKgSelected;
-      if (isKg) {
-        _weight = (_weight / 2.20462).roundToDouble(); // Convert lbs to kg
-      } else {
-        _weight = (_weight * 2.20462).roundToDouble(); // Convert kg to lbs
-      }
-      _weightController.text = _weight.toStringAsFixed(0);
-      _saveUserPreferences(); // Save the updated weight and unit preference
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0e0f16),
-      body: SingleChildScrollView(
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 50.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
-                onPressed: () => Navigator.pop(context),
-              ),
-              Text(
-                'Step 2 of 6',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontFamily: GoogleFonts.montserrat().fontFamily,
-                  fontSize: 16,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                'What is your weight?',
-                style: GoogleFonts.bebasNeue(
-                  color: Colors.white,
-                  fontSize: 36,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 40),
-              // Unit selection buttons
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+    return Consumer<OnboardingViewModel>(
+      builder: (context, viewModel, _) {
+        return Scaffold(
+          backgroundColor: const Color(0xFF0e0f16),
+          body: SingleChildScrollView(
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 50.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _unitButton('LBS', !isKg, () => toggleUnit(false)),
-                  _unitButton('KG', isKg, () => toggleUnit(true)),
-                ],
-              ),
-              const SizedBox(height: 40),
-              // Weight Input
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _weightController,
-                      onChanged: (value) {
-                        double? newWeight = double.tryParse(value);
-                        if (newWeight != null) {
-                          setState(() => _weight = newWeight);
-                          _saveUserPreferences(); // Save the updated weight
-                        }
-                      },
-                      style: const TextStyle(
-                        color: Color(0xFFFFFFFF),
-                        fontSize: 48,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                      keyboardType: TextInputType.number,
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  Text(
+                    'Step 2 of 6',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontFamily: GoogleFonts.montserrat().fontFamily,
+                      fontSize: 16,
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 40),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => HeightQuestionPage(
-                          age: widget.age,
-                          weight: isKg ? _weight : _weight / 2.20462, // Ensure weight is in kg
+                  const SizedBox(height: 10),
+                  Text(
+                    'What is your weight?',
+                    style: GoogleFonts.bebasNeue(
+                      color: Colors.white,
+                      fontSize: 36,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+                  // Unit selection buttons
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _unitButton('LBS', !viewModel.isKg, () => _toggleUnit(viewModel, false)),
+                      _unitButton('KG', viewModel.isKg, () => _toggleUnit(viewModel, true)),
+                    ],
+                  ),
+                  const SizedBox(height: 40),
+                  // Weight Input
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _weightController,
+                          onChanged: (value) {
+                            double? newWeight = double.tryParse(value);
+                            if (newWeight != null) {
+                              viewModel.setWeight(newWeight);
+                            }
+                          },
+                          style: const TextStyle(
+                            color: Color(0xFFFFFFFF),
+                            fontSize: 48,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                          keyboardType: TextInputType.number,
                         ),
                       ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFD2EB50),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(5.0),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 15.0),
+                    ],
                   ),
-                  child: Text(
-                    'Next',
-                    style: GoogleFonts.bebasNeue(
-                      color: Colors.black,
-                      fontSize: 22,
+                  const SizedBox(height: 40),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => HeightQuestionPage(viewModel: viewModel),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFD2EB50),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(5.0),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 15.0),
+                      ),
+                      child: Text(
+                        'Next',
+                        style: GoogleFonts.bebasNeue(
+                          color: Colors.black,
+                          fontSize: 22,
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
+  }
+  
+  void _toggleUnit(OnboardingViewModel viewModel, bool isKg) {
+    viewModel.toggleWeightUnit(isKg);
+    _weightController.text = viewModel.weight.toStringAsFixed(0);
   }
 
   Widget _unitButton(String label, bool isSelected, VoidCallback onTap) {

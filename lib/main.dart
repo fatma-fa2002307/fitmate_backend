@@ -43,8 +43,8 @@ class MyApp extends StatelessWidget {
         home: const AuthCheck(), // Check if user is logged in
         routes: {
           '/login': (context) => const LoginPage(),
-          '/forgot-password': (context) => ForgotPasswordPage(),
-          '/register': (context) => AgeQuestionPage(age: 0),
+          '/forgot-password': (context) => const ForgotPasswordPage(),
+          '/register': (context) => const AgeQuestionPage(),
           '/home': (context) => HomePage(),
         },
       ),
