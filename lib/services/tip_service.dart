@@ -7,7 +7,7 @@ import 'package:fitmate/services/api_service.dart';
 
 class TipService {
   static const String TIPS_CACHE_KEY = 'cached_tip_data';
-  static const Duration CACHE_DURATION = Duration(hours: 4); // Cache tip for 4 hours
+  static const Duration CACHE_DURATION = Duration(hours: 4); //cache tip for 4 hours
   
   // Get a personalized tip for the user
   static Future<Map<String, dynamic>> getPersonalizedTip({

@@ -42,3 +42,4 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 config.yaml
+llama-backend/data/models/resnet50model.pth
