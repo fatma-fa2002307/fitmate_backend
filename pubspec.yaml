@@ -64,12 +64,20 @@ flutter:
     - assets/data/images/workouts/image 4.png
     - assets/data/images/workouts/image 5.png
     - assets/data/images/yoga-pose.png
-    - assets/data/images/avatar/1.jpg
-    - assets/data/images/avatar/2.jpg
-    - assets/data/images/avatar/3.jpg
-    - assets/data/images/avatar/4.jpg
-    - assets/data/images/avatar/5.jpg
-    - assets/data/images/avatar/6.jpg
+    - assets/data/images/avatar/av1.png
+    - assets/data/images/avatar/av2.png
+    - assets/data/images/avatar/av3.png
+    - assets/data/images/avatar/av4.png
+    - assets/data/images/avatar/av5.png
+    - assets/data/images/avatar/av6.png
+    - assets/data/images/avatar/av7.png
+    - assets/data/images/avatar/av8.png
+    - assets/data/images/avatar/av9.png
+    - assets/data/images/avatar/av10.png
+    - assets/data/images/avatar/av11.png
+    - assets/data/images/avatar/av12.png
+    - assets/data/images/avatar/av13.png
+    - assets/data/images/avatar/av14.png
     - assets/data/lottie/1.json
     - assets/data/lottie/2.json
     - assets/data/lottie/3.json

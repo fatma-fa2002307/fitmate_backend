@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fitmate/screens/login_screens/edit_profile.dart';
@@ -11,7 +13,6 @@ import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fitmate/widgets/bottom_nav_bar.dart';
 
-// Main HomePage widget with significantly reduced code
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -25,12 +26,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   String _userGoal = "Loading...";
   double _totalCalories = 0;
   double _dailyCaloriesGoal = 2500;
-  String _fitnessLevel = "Beginner";
-  int _fitnessSubLevel = 1;
-  int _workoutsCompleted = 0;
-  int _workoutsUntilNextLevel = 20;
-  List<bool> _workoutDays = List.generate(8, (index) => false);
-  int _currentStreak = 0;
   late AnimationController _levelAnimationController;
 
   @override
@@ -38,7 +33,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     super.initState();
     _loadUserData();
     _loadFoodLogs();
-    _loadWorkoutStreak();
     _loadUserDailyCalories();
     _levelAnimationController = AnimationController(
       vsync: this,
@@ -56,11 +50,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       try {
-        // Load user data
         DocumentSnapshot userData =
         await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
 
-        // Load user progress document
         DocumentSnapshot userProgress = await FirebaseFirestore.instance
             .collection('users')
             .doc(user.uid)
@@ -69,7 +61,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             .get();
 
         if (!userProgress.exists) {
-          // Create progress document if it doesn't exist
           await FirebaseFirestore.instance
               .collection('users')
               .doc(user.uid)
@@ -82,7 +73,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             'workoutsUntilNextLevel': 20,
           });
 
-          // Fetch the newly created document
           userProgress = await FirebaseFirestore.instance
               .collection('users')
               .doc(user.uid)
@@ -91,38 +81,17 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               .get();
         }
 
-        // Process data outside of setState
         String fullName = userData['fullName'] ?? 'User';
         String goal = userData['goal'] ?? 'No goal set';
 
-        String fitnessLevel = 'Beginner';
-        int fitnessSubLevel = 1;
-        int workoutsCompleted = 0;
-        int workoutsUntilNextLevel = 20;
-
-        if (userProgress.exists) {
-          final progressData = userProgress.data() as Map<String, dynamic>?;
-          fitnessLevel = progressData?['fitnessLevel'] ?? 'Beginner';
-          fitnessSubLevel = progressData?['fitnessSubLevel'] ?? 1;
-          workoutsCompleted = progressData?['workoutsCompleted'] ?? 0;
-          workoutsUntilNextLevel = progressData?['workoutsUntilNextLevel'] ?? 20;
-        }
-
-        // Update state after all async operations are complete
         setState(() {
           _userFullName = fullName;
           _userGoal = goal;
-          _fitnessLevel = fitnessLevel;
-          _fitnessSubLevel = fitnessSubLevel;
-          _workoutsCompleted = workoutsCompleted;
-          _workoutsUntilNextLevel = workoutsUntilNextLevel;
         });
 
-        // Trigger animation after data loads
         _levelAnimationController.forward();
       } catch (e) {
         print('Error loading user data: $e');
-        // Set default values in case of error
         setState(() {
           _userFullName = 'User';
           _userGoal = 'No goal set';
@@ -167,87 +136,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           .doc('macro')
           .get();
 
-      _dailyCaloriesGoal = macrosSnapshot.data()?['calories']?.toDouble() ?? 2500;
+      setState(() {
+        _dailyCaloriesGoal = macrosSnapshot.data()?['calories']?.toDouble() ?? 2500;
+      });
     } catch (e) {
       print('Error loading daily calories: $e');
-      // Keep default value if there's an error
-    }
-  }
-
-  Future<void> _loadWorkoutStreak() async {
-    User? user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      try {
-        // Get user document with workoutHistory array
-        DocumentSnapshot userData = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get();
-
-        // Check if workoutHistory exists
-        if (userData.exists && userData.data() is Map<String, dynamic>) {
-          Map<String, dynamic> data = userData.data() as Map<String, dynamic>;
-
-          if (data.containsKey('workoutHistory') && data['workoutHistory'] is List) {
-            List<dynamic> workoutHistory = data['workoutHistory'];
-
-            // Get current date
-            DateTime now = DateTime.now();
-            DateTime thirtyDaysAgo = now.subtract(const Duration(days: 30));
-
-            // Reset workout days array
-            List<bool> workoutDays = List.generate(30, (index) => false);
-
-            // Process each workout entry
-            for (var workoutEntry in workoutHistory) {
-              if (workoutEntry is Map<String, dynamic> && workoutEntry.containsKey('date')) {
-                DateTime workoutDate = (workoutEntry['date'] as Timestamp).toDate();
-
-                // Only consider workouts in last 30 days
-                if (workoutDate.isAfter(thirtyDaysAgo)) {
-                  int daysAgo = now.difference(workoutDate).inDays;
-                  if (daysAgo < 30) {
-                    // Mark this day as having a workout
-                    workoutDays[29 - daysAgo] = true;
-                  }
-                }
-              }
-            }
-
-            // Calculate current streak
-            int streak = 0;
-
-            // First check if today has a workout
-            if (workoutDays[29]) {
-              streak = 1;
-              // Then count consecutive days going backwards
-              for (int i = 28; i >= 0; i--) {
-                if (workoutDays[i]) {
-                  streak++;
-                } else {
-                  break; // Break on first day without workout
-                }
-              }
-            } else {
-              // If no workout today, check for streak from yesterday and back
-              for (int i = 28; i >= 0; i--) {
-                if (workoutDays[i]) {
-                  streak++;
-                } else {
-                  break; // Break on first day without workout
-                }
-              }
-            }
-
-            setState(() {
-              _workoutDays = workoutDays;
-              _currentStreak = streak;
-            });
-          }
-        }
-      } catch (e) {
-        print('Error loading workout streak: $e');
-      }
     }
   }
 
@@ -258,9 +151,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   Future<void> _refreshTip() async {
-    setState(() {
-      // Trigger UI refresh - tip box handles refresh internally
-    });
+    setState(() {});
   }
 
   @override
@@ -272,21 +163,19 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header with welcome text and profile avatar
               HeaderWidget(
                 userName: _userFullName,
                 userGoal: _userGoal,
                 onProfileTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => EditProfilePage()),
+                    MaterialPageRoute(builder: (context) => const EditProfilePage()),
                   );
                 },
               ),
 
               const SizedBox(height: 24),
 
-              // Personalized tip box - already a widget
               PersonalizedTipBox(
                 onRefresh: _refreshTip,
                 elevation: 2.0,
@@ -295,9 +184,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
               const SizedBox(height: 16),
 
-              // User level widget - now imported
-              UserLevelWidget(),
+              const UserLevelWidget(),
+
               const SizedBox(height: 16),
+
               CaloriesSummaryWidget(
                 totalCalories: _totalCalories,
                 dailyCaloriesGoal: _dailyCaloriesGoal,
@@ -305,10 +195,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
               const SizedBox(height: 16),
 
-              // Workout streak widget - now imported
-              WorkoutStreakWidget(),
-              // Water intake tracker - already a widget
+              const WorkoutStreakWidget(),
+
               const SizedBox(height: 16),
+
               const WaterIntakeGlassWidget(),
             ],
           ),
@@ -316,15 +206,12 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       ),
       bottomNavigationBar: BottomNavBar(
         currentIndex: _selectedIndex,
-        onTap: (index) {
-          _onItemTapped(index);
-        },
+        onTap: _onItemTapped,
       ),
     );
   }
 }
 
-// Header widget with welcome message, goal, and profile avatar
 class HeaderWidget extends StatelessWidget {
   final String userName;
   final String userGoal;
@@ -368,56 +255,184 @@ class HeaderWidget extends StatelessWidget {
                   .get(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const CircleAvatar(
-                    radius: 24,
-                    backgroundColor: Colors.grey,
-                  );
-                }
-                if (snapshot.hasError || !snapshot.hasData || !snapshot.data!.exists) {
-                  return GestureDetector(
-                    onTap: onProfileTap,
-                    child: const CircleAvatar(
-                      radius: 24,
-                      backgroundColor: Color(0xFFD2EB50),
-                      child: Icon(
-                        Icons.person_2,
-                        color: Colors.white,
-                        size: 28,
-                      ),
+                  return CircleAvatar(
+                    radius: 35,
+                    backgroundColor: const Color(0xFFD2EB50).withOpacity(0.7),
+                    child: const CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFD2EB50)),
+                      strokeWidth: 2,
                     ),
                   );
                 }
-                String? imageLocation =
-                (snapshot.data!.data() as Map<String, dynamic>)['profileImage'];
 
-                if (imageLocation != null && imageLocation.isNotEmpty) {
-                  return GestureDetector(
-                    onTap: onProfileTap,
-                    child: CircleAvatar(
-                      radius: 24,
-                      backgroundImage: AssetImage(imageLocation),
-                    ),
-                  );
-                } else {
-                  return GestureDetector(
-                    onTap: onProfileTap,
-                    child: const CircleAvatar(
-                      radius: 24,
-                      backgroundColor: Color(0xFFD2EB50),
-                      child: Icon(
-                        Icons.person_2,
-                        color: Colors.white,
-                        size: 28,
-                      ),
-                    ),
-                  );
+                String? imageLocation;
+                if (snapshot.hasData && snapshot.data!.exists) {
+                  imageLocation = (snapshot.data!.data() as Map<String, dynamic>)['profileImage'];
                 }
+
+                return GestureDetector(
+                  onTap: onProfileTap,
+                  child: Hero(
+                    tag: 'profileImage',
+                    child: TweenAnimationBuilder(
+                      tween: Tween<double>(begin: 0.0, end: 1.0),
+                      duration: const Duration(milliseconds: 1500),
+                      curve: Curves.elasticOut,
+                      builder: (context, double value, child) {
+                        return Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            // Pulsating outer glow
+                            TweenAnimationBuilder(
+                              tween: Tween<double>(begin: 0.9, end: 1.1),
+                              duration: const Duration(milliseconds: 1200),
+                              curve: Curves.easeInOut,
+                              builder: (context, double pulseValue, _) {
+                                return Transform.scale(
+                                  scale: pulseValue,
+                                  child: Container(
+                                    width: 80 * value,
+                                    height: 80 * value,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      gradient: RadialGradient(
+                                        colors: [
+                                          const Color(0xFFD2EB50).withOpacity(0.7),
+                                          const Color(0xFFD2EB50).withOpacity(0.0),
+                                        ],
+                                        stops: const [0.6, 1.0],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+
+                            // Rotating accent circles
+                            TweenAnimationBuilder(
+                              tween: Tween<double>(begin: 0, end: 2 * 3.14159),
+                              duration: const Duration(seconds: 8),
+                              curve: Curves.linear,
+                              builder: (context, double rotation, _) {
+                                return Transform.rotate(
+                                  angle: rotation,
+                                  child: Container(
+                                    width: 70 * value,
+                                    height: 70 * value,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: const Color(0xFFD2EB50).withOpacity(0.5),
+                                        width: 2,
+                                        strokeAlign: BorderSide.strokeAlignOutside,
+                                      ),
+                                    ),
+                                    child: Stack(
+                                      children: List.generate(
+                                        4,
+                                            (index) => Positioned(
+                                          left: 35 * value * cos(index * 3.14159 / 2),
+                                          top: 35 * value * sin(index * 3.14159 / 2),
+                                          child: Container(
+                                            width: 8,
+                                            height: 8,
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFD2EB50),
+                                              shape: BoxShape.circle,
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: const Color(0xFFD2EB50).withOpacity(0.6),
+                                                  blurRadius: 4,
+                                                  spreadRadius: 1,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+
+                            // Profile image
+                            AnimatedContainer(
+                              duration: const Duration(milliseconds: 500),
+                              width: 60 * value,
+                              height: 60 * value,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: const Color(0xFFD2EB50),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFFD2EB50).withOpacity(0.5),
+                                    blurRadius: 8,
+                                    spreadRadius: 1,
+                                  ),
+                                ],
+                              ),
+                              child: ClipOval(
+                                child: imageLocation != null && imageLocation.isNotEmpty
+                                    ? Image.asset(
+                                  imageLocation,
+                                  fit: BoxFit.cover,
+                                  width: 60 * value,
+                                  height: 60 * value,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Icon(
+                                      Icons.person,
+                                      color: Colors.black,
+                                      size: 40 * value,
+                                    );
+                                  },
+                                )
+                                    : Icon(
+                                  Icons.person,
+                                  color: Colors.black,
+                                  size: 40 * value,
+                                ),
+                              ),
+                            ),
+
+                            // Shine effect
+                            IgnorePointer(
+                              child: TweenAnimationBuilder(
+                                tween: Tween<double>(begin: -1.0, end: 1.0),
+                                duration: const Duration(seconds: 2),
+                                curve: Curves.easeInOut,
+                                builder: (context, double shimmerValue, _) {
+                                  return Container(
+                                    width: 60 * value,
+                                    height: 60 * value,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      gradient: LinearGradient(
+                                        begin: Alignment(shimmerValue - 0.3, shimmerValue - 0.3),
+                                        end: Alignment(shimmerValue, shimmerValue),
+                                        colors: [
+                                          Colors.white.withOpacity(0.0),
+                                          Colors.white.withOpacity(0.3),
+                                          Colors.white.withOpacity(0.0),
+                                        ],
+                                        stops: const [0.0, 0.5, 1.0],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                );
               },
             ),
           ],
         ),
         const SizedBox(height: 10),
-        // Goal text added directly under header
         Row(
           children: [
             const Icon(Icons.flag_outlined, size: 14, color: Colors.grey),

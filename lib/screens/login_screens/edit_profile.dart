@@ -235,9 +235,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     crossAxisSpacing: 16,
                     mainAxisSpacing: 16,
                   ),
-                  itemCount: 6,
+                  itemCount: 14,
                   itemBuilder: (context, index) {
-                    final imagePath = 'assets/data/images/avatar/${index + 1}.jpg';
+                    final imagePath = 'assets/data/images/avatar/av${index + 1}.png';
                     final isSelected = imagePath == selectedImagePath;
 
                     return GestureDetector(
@@ -439,14 +439,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
             letterSpacing: 1.5,
           ),
         ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
+        automaticallyImplyLeading: false,
       ),
       body: _isLoading
           ? const Center(
@@ -488,16 +485,27 @@ class _EditProfilePageState extends State<EditProfilePage> {
                                     CircleAvatar(
                                       radius: 50,
                                       backgroundColor: const Color(0xFFD2EB50),
-                                      backgroundImage: profileImage != null
-                                          ? AssetImage(profileImage)
-                                          : null,
-                                      child: profileImage == null
-                                          ? const Icon(
+                                      child: profileImage != null
+                                          ? ClipOval(
+                                        child: Image.asset(
+                                          profileImage,
+                                          fit: BoxFit.cover,
+                                          width: 100,
+                                          height: 100,
+                                          errorBuilder: (context, error, stackTrace) {
+                                            return const Icon(
+                                              Icons.person,
+                                              color: Colors.black,
+                                              size: 40,
+                                            );
+                                          },
+                                        ),
+                                      )
+                                          : const Icon(
                                         Icons.person,
                                         color: Colors.black,
                                         size: 40,
-                                      )
-                                          : null,
+                                      ),
                                     ),
                                     Positioned(
                                       bottom: 0,

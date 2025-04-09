@@ -1,4 +1,3 @@
-import 'package:fitmate/models/workout.dart';
 import 'package:fitmate/repositories/workout_repository.dart';
 import 'package:fitmate/screens/workout_screens/todays_workout_screen.dart';
 import 'package:fitmate/services/workout_service.dart';
