@@ -1,4 +1,3 @@
-// lib/screens/register_screens/credentials.dart
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -6,6 +5,7 @@ import 'package:fitmate/viewmodels/onboarding_viewmodel.dart';
 import 'package:fitmate/viewmodels/registration_viewmodel.dart';
 import 'package:fitmate/screens/login_screens/home_page.dart';
 import 'package:fitmate/screens/hidden/easter_egg.dart';
+import 'package:fitmate/widgets/auth_loading_widget.dart';
 
 class CredentialsPage extends StatelessWidget {
   final OnboardingViewModel viewModel;
@@ -75,187 +75,188 @@ class _CredentialsPageContentState extends State<_CredentialsPageContent> {
   Widget build(BuildContext context) {
     return Consumer2<OnboardingViewModel, RegistrationViewModel>(
       builder: (context, onboardingViewModel, registrationViewModel, _) {
-        return Scaffold(
-          backgroundColor: const Color(0xFF0e0f16),
-          body: SingleChildScrollView(
-            child: Center(
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 50.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFFFFFFFF)),
-                      onPressed: () {
-                        Navigator.pop(context); // Navigate back to the previous page
-                      },
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'CREATE YOUR ACCOUNT',
-                      style: GoogleFonts.bebasNeue(
-                        color: const Color(0xFFFFFFFF),
-                        fontSize: 36,
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    const Text(
-                      'Please enter your credentials to proceed',
-                      style: TextStyle(color: Color(0xFFB0B0B0), fontSize: 16),
-                    ),
-                    const SizedBox(height: 40),
-                    Form(
-                      key: _formKey,
-                      child: Column(
-                        children: [
-                          TextFormField(
-                            controller: _fullNameController,
-                            decoration: InputDecoration(
-                              hintText: 'John Doe',
-                              hintStyle: const TextStyle(color: Color(0xFFB0B0B0)),
-                              filled: true,
-                              fillColor: const Color(0xFF0D0E11),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10.0),
-                                borderSide: const BorderSide(color: Color(0xFFB0B0B0)),
-                              ),
-                              labelText: 'Full Name',
-                              labelStyle: const TextStyle(color: Color(0xFFB0B0B0)),
-                            ),
-                            style: const TextStyle(color: Color(0xFFFFFFFF)),
-                            validator: _validateFullName,
+        return Stack(
+          children: [
+            Scaffold(
+              backgroundColor: const Color(0xFF0e0f16),
+              body: SingleChildScrollView(
+                child: Center(
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 50.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFFFFFFFF)),
+                          onPressed: () {
+                            Navigator.pop(context); // Navigate back to the previous page
+                          },
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          'CREATE YOUR ACCOUNT',
+                          style: GoogleFonts.bebasNeue(
+                            color: const Color(0xFFFFFFFF),
+                            fontSize: 36,
                           ),
-                          const SizedBox(height: 20),
-                          TextFormField(
-                            controller: _emailController,
-                            keyboardType: TextInputType.emailAddress,
-                            decoration: InputDecoration(
-                              hintText: 'example@email.com',
-                              hintStyle: const TextStyle(color: Color(0xFFB0B0B0)),
-                              filled: true,
-                              fillColor: const Color(0xFF0D0E11),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10.0),
-                                borderSide: const BorderSide(color: Color(0xFFB0B0B0)),
-                              ),
-                              labelText: 'Email',
-                              labelStyle: const TextStyle(color: Color(0xFFB0B0B0)),
-                            ),
-                            style: const TextStyle(color: Color(0xFFFFFFFF)),
-                            validator: _validateEmail,
-                          ),
-                          const SizedBox(height: 20),
-                          TextFormField(
-                            controller: _passwordController,
-                            obscureText: !registrationViewModel.isPasswordVisible,
-                            decoration: InputDecoration(
-                              hintText: 'Password',
-                              hintStyle: const TextStyle(color: Color(0xFFB0B0B0)),
-                              filled: true,
-                              fillColor: const Color(0xFF0D0E11),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10.0),
-                                borderSide: const BorderSide(color: Color(0xFFB0B0B0)),
-                              ),
-                              labelText: 'Password',
-                              labelStyle: const TextStyle(color: Color(0xFFB0B0B0)),
-                              suffixIcon: IconButton(
-                                icon: Icon(
-                                  registrationViewModel.isPasswordVisible ? Icons.visibility_off : Icons.visibility,
-                                  color: const Color(0xFFFFFFFF),
+                        ),
+                        const SizedBox(height: 5),
+                        const Text(
+                          'Please enter your credentials to proceed',
+                          style: TextStyle(color: Color(0xFFB0B0B0), fontSize: 16),
+                        ),
+                        const SizedBox(height: 40),
+                        Form(
+                          key: _formKey,
+                          child: Column(
+                            children: [
+                              TextFormField(
+                                controller: _fullNameController,
+                                decoration: InputDecoration(
+                                  hintText: 'John Doe',
+                                  hintStyle: const TextStyle(color: Color(0xFFB0B0B0)),
+                                  filled: true,
+                                  fillColor: const Color(0xFF0D0E11),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10.0),
+                                    borderSide: const BorderSide(color: Color(0xFFB0B0B0)),
+                                  ),
+                                  labelText: 'Full Name',
+                                  labelStyle: const TextStyle(color: Color(0xFFB0B0B0)),
                                 ),
-                                onPressed: () {
-                                  registrationViewModel.togglePasswordVisibility();
-                                },
+                                style: const TextStyle(color: Color(0xFFFFFFFF)),
+                                validator: _validateFullName,
                               ),
-                            ),
-                            style: const TextStyle(color: Color(0xFFFFFFFF)),
-                            validator: _validatePassword,
-                          ),
-                          
-                          // Show error message if any
-                          if (registrationViewModel.hasError)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 16.0),
-                              child: Text(
-                                registrationViewModel.errorMessage,
-                                style: const TextStyle(color: Colors.red),
-                              ),
-                            ),
-                          
-                          const SizedBox(height: 20),
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: registrationViewModel.isLoading 
-                                ? null 
-                                : () async {
-                                    if (_formKey.currentState!.validate()) {
-                                      // First, set the user data from onboarding viewModel in the registration viewModel
-                                      registrationViewModel.setAge(onboardingViewModel.age);
-                                      registrationViewModel.setWeight(onboardingViewModel.weight);
-                                      registrationViewModel.setHeight(onboardingViewModel.height);
-                                      registrationViewModel.setGender(onboardingViewModel.gender);
-                                      registrationViewModel.setGoal(onboardingViewModel.goal);
-                                      registrationViewModel.setWorkoutDays(onboardingViewModel.workoutDays);
-                                      
-                                      // Trigger registration with user data
-                                      final success = await registrationViewModel.registerUser(
-                                        fullName: _fullNameController.text,
-                                        email: _emailController.text,
-                                        password: _passwordController.text,
-                                      );
-                                      
-                                      if (success && mounted) {
-                                        //trigger the Easter egg
-                                        if (registrationViewModel.shouldShowEasterEgg()) {
-                                          Navigator.of(context).pushAndRemoveUntil(
-                                            MaterialPageRoute(builder: (context) => const EasterEggPage()),
-                                            (Route<dynamic> route) => false,
-                                          );
-                                        } else {
-                                          Navigator.of(context).pushAndRemoveUntil(
-                                            MaterialPageRoute(builder: (context) => HomePage()),
-                                            (Route<dynamic> route) => false,
-                                          );
-                                        }
-                                      }
-                                    }
-                                  },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFD2EB50),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(5.0),
+                              const SizedBox(height: 20),
+                              TextFormField(
+                                controller: _emailController,
+                                keyboardType: TextInputType.emailAddress,
+                                decoration: InputDecoration(
+                                  hintText: 'example@email.com',
+                                  hintStyle: const TextStyle(color: Color(0xFFB0B0B0)),
+                                  filled: true,
+                                  fillColor: const Color(0xFF0D0E11),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10.0),
+                                    borderSide: const BorderSide(color: Color(0xFFB0B0B0)),
+                                  ),
+                                  labelText: 'Email',
+                                  labelStyle: const TextStyle(color: Color(0xFFB0B0B0)),
                                 ),
-                                padding: const EdgeInsets.symmetric(vertical: 15.0),
+                                style: const TextStyle(color: Color(0xFFFFFFFF)),
+                                validator: _validateEmail,
                               ),
-                              child: registrationViewModel.isLoading
-                                ? const SizedBox(
-                                    height: 20,
-                                    width: 20,
-                                    child: CircularProgressIndicator(
-                                      color: Colors.white,
-                                      strokeWidth: 2,
+                              const SizedBox(height: 20),
+                              TextFormField(
+                                controller: _passwordController,
+                                obscureText: !registrationViewModel.isPasswordVisible,
+                                decoration: InputDecoration(
+                                  hintText: 'Password',
+                                  hintStyle: const TextStyle(color: Color(0xFFB0B0B0)),
+                                  filled: true,
+                                  fillColor: const Color(0xFF0D0E11),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10.0),
+                                    borderSide: const BorderSide(color: Color(0xFFB0B0B0)),
+                                  ),
+                                  labelText: 'Password',
+                                  labelStyle: const TextStyle(color: Color(0xFFB0B0B0)),
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      registrationViewModel.isPasswordVisible ? Icons.visibility_off : Icons.visibility,
+                                      color: const Color(0xFFFFFFFF),
                                     ),
-                                  )
-                                : Text(
+                                    onPressed: () {
+                                      registrationViewModel.togglePasswordVisibility();
+                                    },
+                                  ),
+                                ),
+                                style: const TextStyle(color: Color(0xFFFFFFFF)),
+                                validator: _validatePassword,
+                              ),
+                              
+                              // Show error message if any
+                              if (registrationViewModel.hasError)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 16.0),
+                                  child: Text(
+                                    registrationViewModel.errorMessage,
+                                    style: const TextStyle(color: Colors.red),
+                                  ),
+                                ),
+                              
+                              const SizedBox(height: 20),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton(
+                                  onPressed: registrationViewModel.isLoading 
+                                    ? null 
+                                    : () async {
+                                        if (_formKey.currentState!.validate()) {
+                                          // First, set the user data from onboarding viewModel in the registration viewModel
+                                          registrationViewModel.setAge(onboardingViewModel.age);
+                                          registrationViewModel.setWeight(onboardingViewModel.weight);
+                                          registrationViewModel.setHeight(onboardingViewModel.height);
+                                          registrationViewModel.setGender(onboardingViewModel.gender);
+                                          registrationViewModel.setGoal(onboardingViewModel.goal);
+                                          registrationViewModel.setWorkoutDays(onboardingViewModel.workoutDays);
+                                          
+                                          // Trigger registration with user data
+                                          final success = await registrationViewModel.registerUser(
+                                            fullName: _fullNameController.text,
+                                            email: _emailController.text,
+                                            password: _passwordController.text,
+                                          );
+                                          
+                                          if (success && mounted) {
+                                            //trigger the Easter egg
+                                            if (registrationViewModel.shouldShowEasterEgg()) {
+                                              Navigator.of(context).pushAndRemoveUntil(
+                                                MaterialPageRoute(builder: (context) => const EasterEggPage()),
+                                                (Route<dynamic> route) => false,
+                                              );
+                                            } else {
+                                              Navigator.of(context).pushAndRemoveUntil(
+                                                MaterialPageRoute(builder: (context) => HomePage()),
+                                                (Route<dynamic> route) => false,
+                                              );
+                                            }
+                                          }
+                                        }
+                                      },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFFD2EB50),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(5.0),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(vertical: 15.0),
+                                  ),
+                                  child: Text(
                                     'READY!',
                                     style: GoogleFonts.bebasNeue(
                                       color: Colors.black,
                                       fontSize: 22,
                                     ),
                                   ),
-                            ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
-          ),
+            // Show the redesigned loading overlay widget when loading
+            if (registrationViewModel.isLoading)
+              AuthLoadingWidget(
+                message: 'Creating your fitness profile',
+                primaryColor: const Color(0xFFD2EB50),
+              ),
+          ],
         );
       },
     );
