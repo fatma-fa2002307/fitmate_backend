@@ -8,7 +8,7 @@ class WorkoutExercise {
   final String reps;
   final String? instruction;
   final bool isCardio;
-  
+
   //cardio fields
   final String? duration;
   final String? intensity;
@@ -31,10 +31,10 @@ class WorkoutExercise {
   });
 
   factory WorkoutExercise.fromMap(Map<String, dynamic> map) {
-    final bool isCardio = map['is_cardio'] == true || 
-                          map['duration'] != null || 
-                          map['intensity'] != null;
-    
+    final bool isCardio = map['is_cardio'] == true ||
+        map['duration'] != null ||
+        map['intensity'] != null;
+
     if (isCardio) {
       return WorkoutExercise(
         workout: map['workout'] ?? '',
@@ -93,6 +93,8 @@ class CompletedWorkout {
   final double completion;
   final int totalExercises;
   final int completedExercises;
+  final List<Map<String, dynamic>>? performedExercises;
+  final List<Map<String, dynamic>>? notPerformedExercises;
 
   CompletedWorkout({
     required this.category,
@@ -101,28 +103,76 @@ class CompletedWorkout {
     required this.completion,
     required this.totalExercises,
     required this.completedExercises,
+    this.performedExercises,
+    this.notPerformedExercises,
   });
 
   factory CompletedWorkout.fromMap(Map<String, dynamic> map) {
+    // Handle performed exercises
+    List<Map<String, dynamic>>? performedExercises;
+    if (map['performedExercises'] != null) {
+      performedExercises = List<Map<String, dynamic>>.from(
+          (map['performedExercises'] as List).map((e) =>
+          e is Map<String, dynamic> ? e : <String, dynamic>{})
+      );
+    }
+
+    // Handle not performed exercises
+    List<Map<String, dynamic>>? notPerformedExercises;
+    if (map['notPerformedExercises'] != null) {
+      notPerformedExercises = List<Map<String, dynamic>>.from(
+          (map['notPerformedExercises'] as List).map((e) =>
+          e is Map<String, dynamic> ? e : <String, dynamic>{})
+      );
+    }
+
     return CompletedWorkout(
       category: map['category'] ?? '',
-      date: (map['date'] as Timestamp).toDate(),
+      date: map['date'] is Timestamp ? (map['date'] as Timestamp).toDate() : (map['date'] ?? DateTime.now()),
       duration: map['duration'] ?? '00:00',
       completion: (map['completion'] ?? 0.0).toDouble(),
       totalExercises: map['totalExercises'] ?? 0,
       completedExercises: map['completedExercises'] ?? 0,
+      performedExercises: performedExercises,
+      notPerformedExercises: notPerformedExercises,
     );
   }
 
   Map<String, dynamic> toMap() {
-    return {
+    final Map<String, dynamic> data = {
       'category': category,
-      'date': Timestamp.fromDate(date),
+      'date': date is Timestamp ? date : Timestamp.fromDate(date),
       'duration': duration,
       'completion': completion,
       'totalExercises': totalExercises,
       'completedExercises': completedExercises,
     };
+
+    if (performedExercises != null) {
+      data['performedExercises'] = performedExercises;
+    }
+
+    if (notPerformedExercises != null) {
+      data['notPerformedExercises'] = notPerformedExercises;
+    }
+
+    return data;
+  }
+
+  // Helper method to check if this workout has details to display
+  bool hasDetails() {
+    return (performedExercises != null && performedExercises!.isNotEmpty) ||
+        (notPerformedExercises != null && notPerformedExercises!.isNotEmpty);
+  }
+
+  // Helper methods to determine workout type
+  bool isCardioWorkout() {
+    return category.toLowerCase() == 'cardio';
+  }
+
+  // Method to get a value safely from the dynamic performedExercises map
+  dynamic getExerciseValue(Map<String, dynamic> exercise, String key, [dynamic defaultValue]) {
+    return exercise.containsKey(key) ? exercise[key] : defaultValue;
   }
 }
 
@@ -138,7 +188,7 @@ class WorkoutOptions {
 
   factory WorkoutOptions.fromMap(Map<String, dynamic> map, String category) {
     List<List<WorkoutExercise>> optionsList = [];
-    
+
     map.forEach((key, value) {
       if (value is List) {
         List<WorkoutExercise> exercises = [];
@@ -150,7 +200,7 @@ class WorkoutOptions {
         optionsList.add(exercises);
       }
     });
-    
+
     return WorkoutOptions(
       category: category,
       options: optionsList,
