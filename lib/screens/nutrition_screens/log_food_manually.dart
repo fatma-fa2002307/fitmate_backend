@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:async';
+import 'package:fitmate/screens/nutrition_screens/nutrition_screen.dart';
 import 'package:fitmate/widgets/bottom_nav_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -10,8 +11,14 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/services.dart';
 import 'dart:convert';
 
+// Update the LogFoodManuallyScreen constructor
 class LogFoodManuallyScreen extends StatefulWidget {
-  const LogFoodManuallyScreen({super.key});
+  final Map<String, String>? prefillData;
+
+  const LogFoodManuallyScreen({
+    super.key,
+    this.prefillData,
+  });
 
   @override
   State<LogFoodManuallyScreen> createState() => _LogFoodManuallyScreenState();
@@ -50,6 +57,24 @@ class _LogFoodManuallyScreenState extends State<LogFoodManuallyScreen> {
     super.initState();
     _portionController.addListener(_onPortionChanged);
     _loadCachedFoods();
+
+    // If prefill data is provided, use it to populate the fields
+    if (widget.prefillData != null) {
+      _dishNameController.text = widget.prefillData!['dishName'] ?? '';
+      _caloriesController.text = widget.prefillData!['calories'] ?? '';
+      _proteinController.text = widget.prefillData!['protein'] ?? '';
+      _carbsController.text = widget.prefillData!['carbs'] ?? '';
+      _fatController.text = widget.prefillData!['fat'] ?? '';
+
+      // Store base nutritional values for portion calculations
+      _baseCalories = double.tryParse(_caloriesController.text) ?? 0;
+      _baseFat = double.tryParse(_fatController.text) ?? 0;
+      _baseCarbs = double.tryParse(_carbsController.text) ?? 0;
+      _baseProtein = double.tryParse(_proteinController.text) ?? 0;
+
+      // Mark as food selected to prevent overwriting these values
+      _foodSelected = true;
+    }
   }
 
   // Load the most recent or common foods from cache
@@ -385,7 +410,7 @@ class _LogFoodManuallyScreenState extends State<LogFoodManuallyScreen> {
     }
   }
 
-  Future<void> saveFood() async {
+  Future<bool> saveFood() async {
     print("Saving food...");
     User? user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -395,7 +420,7 @@ class _LogFoodManuallyScreenState extends State<LogFoodManuallyScreen> {
           const SnackBar(content: Text("User not logged in.")),
         );
       }
-      return;
+      return false;
     }
 
     if (_caloriesController.text.isEmpty ||
@@ -408,11 +433,10 @@ class _LogFoodManuallyScreenState extends State<LogFoodManuallyScreen> {
           const SnackBar(content: Text("All fields are required.")),
         );
       }
-      return;
+      return false;
     }
 
     try {
-
       if (!_foodSelected) {
         double currentPortionSize = double.tryParse(_portionController.text) ?? 1.0;
         _baseCalories = (double.tryParse(_caloriesController.text) ?? 0) / currentPortionSize;
@@ -421,39 +445,50 @@ class _LogFoodManuallyScreenState extends State<LogFoodManuallyScreen> {
         _baseProtein = (double.tryParse(_proteinController.text) ?? 0) / currentPortionSize;
       }
 
-        // Basic food data
-        Map<String, dynamic> foodData = {
-          'dishName': _dishNameController.text,
-          'calories': double.tryParse(_caloriesController.text) ?? 0,
-          'fat': double.tryParse(_fatController.text) ?? 0,
-          'carbs': double.tryParse(_carbsController.text) ?? 0,
-          'protein': double.tryParse(_proteinController.text) ?? 0,
-          'baseCalories': _baseCalories,
-          'baseFat': _baseFat,
-          'baseCarbs': _baseCarbs,
-          'baseProtein': _baseProtein,
-          'portionSize': _portionSize,
-          'date': DateTime.now(),
-        };
+      Map<String, dynamic> foodData = {
+        'dishName': _dishNameController.text,
+        'calories': double.tryParse(_caloriesController.text) ?? 0,
+        'fat': double.tryParse(_fatController.text) ?? 0,
+        'carbs': double.tryParse(_carbsController.text) ?? 0,
+        'protein': double.tryParse(_proteinController.text) ?? 0,
+        'baseCalories': _baseCalories,
+        'baseFat': _baseFat,
+        'baseCarbs': _baseCarbs,
+        'baseProtein': _baseProtein,
+        'portionSize': _portionSize,
+        'date': DateTime.now(),
+      };
 
-        if (_selectedFoodId != null) {
-          foodData['fdcId'] = _selectedFoodId;
-        }
-
-        // Always add a new entry
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .collection('foodLogs')
-            .add(foodData);
-
-        print("Added new food entry");
-
-        // ... (rest of the success handling code)
-      } catch (e) {
-        // ... (error handling)
+      if (_selectedFoodId != null) {
+        foodData['fdcId'] = _selectedFoodId;
       }
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('foodLogs')
+          .add(foodData);
+
+      print("Added new food entry");
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Food saved successfully!")),
+        );
+      }
+
+      return true;
+    } catch (e) {
+      print("Error saving food: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to save food: $e")),
+        );
+      }
+      return false;
     }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -891,9 +926,17 @@ class _LogFoodManuallyScreenState extends State<LogFoodManuallyScreen> {
                   width: double.infinity,
                   height: 60,
                   child: ElevatedButton(
-                    onPressed: () {
-                      saveFood().then((_) => Navigator.pop(context));
+                    onPressed: () async {
+                      bool success = await saveFood();
+                      if (success && mounted) {
+                        Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(builder: (context) => const NutritionPage()),
+                              (Route<dynamic> route) => false, // remove all previous routes
+                        );
+                      }
                     },
+
+
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFD2EB50),
                       minimumSize: const Size(double.infinity, 60),
