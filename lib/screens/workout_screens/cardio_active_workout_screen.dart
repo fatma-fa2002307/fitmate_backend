@@ -1,4 +1,3 @@
-// Updated CardioActiveWorkoutScreen
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -20,7 +19,7 @@ class CardioActiveWorkoutScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Convert map to WorkoutExercise
+    //conv map to WorkoutExercise
     final workoutExercise = WorkoutExercise(
       workout: workout['workout'] ?? '',
       image: workout['image'] ?? '',
@@ -34,7 +33,7 @@ class CardioActiveWorkoutScreen extends StatelessWidget {
       description: workout['description'] ?? 'Perform at a comfortable pace.',
     );
     
-    // Create the ViewModel with dependency injection
+    //create  ViewModel with dependency inje
     return ChangeNotifierProvider(
       create: (context) => CardioWorkoutViewModel(
         repository: context.read<WorkoutRepository>(),
@@ -61,14 +60,14 @@ class _CardioActiveWorkoutScreenContent extends StatefulWidget {
 }
 
 class _CardioActiveWorkoutScreenContentState extends State<_CardioActiveWorkoutScreenContent> {
-  // Get the image cache instance
+  //get image cache instance
   final _imageCache = WorkoutImageCache();
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     
-    // Preload the image right away
+    //preload image
     final viewModel = Provider.of<CardioWorkoutViewModel>(context, listen: false);
     _imageCache.preloadCardioImage(context, widget.originalWorkout);
   }
@@ -85,7 +84,7 @@ class _CardioActiveWorkoutScreenContentState extends State<_CardioActiveWorkoutS
           body: SafeArea(
             child: Column(
               children: [
-                // Header with back button and cancel
+                //header w back button and cancel
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Row(
@@ -109,7 +108,7 @@ class _CardioActiveWorkoutScreenContentState extends State<_CardioActiveWorkoutS
                   ),
                 ),
                 
-                // Cardio Exercise Image - Using the shared image cache service
+                //using shared image cache
                 Expanded(
                   flex: 3,
                   child: Container(
@@ -130,7 +129,7 @@ class _CardioActiveWorkoutScreenContentState extends State<_CardioActiveWorkoutS
                   ),
                 ),
                 
-                // Exercise Title
+                //title fo exercise
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   child: Text(
@@ -143,7 +142,7 @@ class _CardioActiveWorkoutScreenContentState extends State<_CardioActiveWorkoutS
                   ),
                 ),
                 
-                // Timer Display
+                //timer
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -198,7 +197,7 @@ class _CardioActiveWorkoutScreenContentState extends State<_CardioActiveWorkoutS
                   ],
                 ),
                   
-                // Progress bar
+                //prog bar
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
                   child: Column(
@@ -235,7 +234,7 @@ class _CardioActiveWorkoutScreenContentState extends State<_CardioActiveWorkoutS
                   ),
                 ),
                 
-                // Pause/Resume and Complete buttons
+                //buttons (pause/resume/complete)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -292,7 +291,7 @@ class _CardioActiveWorkoutScreenContentState extends State<_CardioActiveWorkoutS
                 
                 const SizedBox(height: 20),
                 
-                // Workout details in a horizontal scrollable
+                //workout details in horiz
                 Expanded(
                   child: ListView(
                     scrollDirection: Axis.horizontal,

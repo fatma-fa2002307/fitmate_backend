@@ -1,6 +1,5 @@
 import 'package:fitmate/repositories/home_repository.dart';
 import 'package:fitmate/viewmodels/base_viewmodel.dart';
-import 'package:flutter/material.dart';
 
 class HomePageViewModel extends BaseViewModel {
   final HomeRepository _repository;

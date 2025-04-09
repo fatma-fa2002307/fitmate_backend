@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:fitmate/services/tip_service.dart';
+import 'package:fitmate/viewmodels/tip_viewmodel.dart';
+import 'package:provider/provider.dart';
 import 'dart:math' as math;
 
 /// A widget that displays a highly personalized fitness or nutrition tip
@@ -24,11 +25,6 @@ class PersonalizedTipBox extends StatefulWidget {
 
 class _PersonalizedTipBoxState extends State<PersonalizedTipBox>
     with SingleTickerProviderStateMixin {
-  bool _isLoading = true;
-  Map<String, dynamic> _tipData = {};
-  bool _hasError = false;
-  bool _isRefreshing = false;
-
   // Animation controllers
   late AnimationController _animationController;
   late Animation<double> _refreshAnimation;
@@ -100,7 +96,23 @@ class _PersonalizedTipBoxState extends State<PersonalizedTipBox>
       ),
     );
 
-    _loadTip();
+    // Initialize tip data through the ViewModel
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final viewModel = Provider.of<TipViewModel>(context, listen: false);
+      
+      // Only load if there's no existing tip data
+      if (viewModel.tipData.isEmpty) {
+        viewModel.init().then((_) {
+          // Play animation when tip is loaded
+          if (mounted && viewModel.tipData.isNotEmpty && widget.showAnimation) {
+            _animationController.forward();
+          }
+        });
+      } else if (widget.showAnimation) {
+        // If data is already loaded, just play the animation
+        _animationController.forward();
+      }
+    });
   }
 
   @override
@@ -109,47 +121,14 @@ class _PersonalizedTipBoxState extends State<PersonalizedTipBox>
     super.dispose();
   }
 
-  // Load personalized tip from service
-  Future<void> _loadTip() async {
-    setState(() {
-      _isLoading = true;
-      _hasError = false;
-    });
-
-    try {
-      final tipData = await TipService.getPersonalizedTip(useCache: !_isRefreshing);
-      setState(() {
-        _tipData = tipData;
-        _isLoading = false;
-        _isRefreshing = false;
-      });
-
-      // Play fade-in animation when tip loads
-      if (widget.showAnimation) {
-        _animationController.forward(from: 0.0);
-      }
-    } catch (e) {
-      print('Error loading tip: $e');
-      setState(() {
-        _hasError = true;
-        _isLoading = false;
-        _isRefreshing = false;
-      });
-    }
-  }
-
   // Refresh the tip with a nice animation
   Future<void> _refreshTip() async {
-    if (_isLoading || _isRefreshing) return;
+    final viewModel = Provider.of<TipViewModel>(context, listen: false);
+    
+    if (viewModel.isLoading || viewModel.isRefreshing) return;
 
     // Haptic feedback for better user experience
     HapticFeedback.lightImpact();
-
-    // Immediately show loading state and start refresh animation
-    setState(() {
-      _isRefreshing = true;
-      _isLoading = true;
-    });
 
     // Play the refresh animation
     _animationController.reset();
@@ -160,225 +139,186 @@ class _PersonalizedTipBoxState extends State<PersonalizedTipBox>
       widget.onRefresh!();
     }
 
-    // Fetch new tip (this happens in background)
-    _loadTip();
-  }
-
-  // Get the icon for the tip category
-  IconData _getIconForCategory(String category) {
-    switch (category) {
-      case 'nutrition':
-        return Icons.restaurant_outlined;
-      case 'workout':
-        return Icons.fitness_center;
-      case 'motivation':
-        return Icons.emoji_events_outlined;
-      case 'recovery':
-        return Icons.self_improvement_outlined;
-      case 'habit':
-        return Icons.trending_up_rounded;
-      case 'hydration':
-        return Icons.water_drop_outlined;
-      case 'sleep':
-        return Icons.nightlight_outlined;
-      case 'mindfulness':
-        return Icons.spa_outlined;
-      default:
-        return Icons.tips_and_updates_outlined;
-    }
-  }
-
-  // Get the gradient for the tip category
-  List<Color> _getGradientForCategory(String category) {
-    switch (category) {
-      case 'nutrition':
-        return [Color(0xFF86EB96), Color(0xFF55C968)];
-      case 'workout':
-        return [Color(0xFF81C5FF), Color(0xFF3D93EB)];
-      case 'motivation':
-        return [Color(0xFFFFD679), Color(0xFFFFB52E)];
-      case 'recovery':
-        return [Color(0xFFD0A5FF), Color(0xFFAC66FF)];
-      case 'habit':
-        return [Color(0xFF7CECDA), Color(0xFF44C5B2)];
-      case 'hydration':
-        return [Color(0xFF87CDFF), Color(0xFF4EA4FF)];
-      case 'sleep':
-        return [Color(0xFFB195EC), Color(0xFF8A63D2)];
-      case 'mindfulness':
-        return [Color(0xFFFFB5A7), Color(0xFFFF8970)];
-      default:
-        return [Color(0xFFE1F976), Color(0xFFCAE350)]; // Default FitMate color
+    // Refresh tip using the ViewModel
+    await viewModel.refreshTip();
+    
+    // Play content animation when new tip is loaded
+    if (widget.showAnimation && mounted) {
+      _animationController.forward(from: 0.0);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // If initially loading and not refreshing, show the loading skeleton
-    if (_isLoading && !_isRefreshing && _tipData.isEmpty) {
-      return _buildLoadingTip();
-    }
+    return Consumer<TipViewModel>(
+      builder: (context, viewModel, child) {
+        // If initially loading and not refreshing show the loading skeleton
+        if (viewModel.isLoading && !viewModel.isRefreshing && viewModel.tipData.isEmpty) {
+          return _buildLoadingTip();
+        }
 
-    if (_hasError) {
-      return _buildErrorTip();
-    }
+        if (viewModel.hasError) {
+          return _buildErrorTip(viewModel);
+        }
 
-    // Extract necessary data
-    final String tip = _tipData['tip'] ?? 'Stay consistent and enjoy your fitness journey!';
-    final String category = _tipData['category'] ?? 'motivation';
-    final IconData iconData = _getIconForCategory(_tipData['icon'] ?? category);
-    final List<Color> categoryGradient = _getGradientForCategory(category);
-    final String categoryTitle = _tipData['categoryTitle'] ?? _capitalizeFirst(category);
+        // Extract necessary data from the ViewModel
+        final String tip = viewModel.tipText;
+        final String category = viewModel.category;
+        final IconData iconData = viewModel.getIconData(viewModel.iconName);
+        final List<Color> categoryGradient = viewModel.getGradientColors(category);
+        final String categoryTitle = viewModel.categoryTitle;
 
-    return AnimatedBuilder(
-      animation: _animationController,
-      builder: (context, child) {
-        return Container(
-          margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 2),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: categoryGradient[1].withOpacity(0.15),
-                blurRadius: 12,
-                offset: const Offset(0, 6),
-                spreadRadius: 0,
-              ),
-            ],
-          ),
-          child: Material(
-            color: Colors.transparent,
-            child: Card(
-              elevation: widget.elevation,
-              margin: EdgeInsets.zero,
-              shape: RoundedRectangleBorder(
+        return AnimatedBuilder(
+          animation: _animationController,
+          builder: (context, child) {
+            return Container(
+              margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 2),
+              decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
-              ),
-              child: InkWell(
-                onTap: _refreshTip,
-                borderRadius: BorderRadius.circular(16),
-                splashColor: categoryGradient[0].withOpacity(0.1),
-                highlightColor: categoryGradient[0].withOpacity(0.05),
-                child: Container(
-                  padding: const EdgeInsets.all(18.0),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    gradient: LinearGradient(
-                      begin: Alignment.topRight,
-                      end: Alignment.bottomLeft,
-                      stops: const [0.0, 1.0],
-                      colors: [
-                        Colors.white,
-                        categoryGradient[0].withOpacity(0.08),
-                      ],
-                    ),
+                boxShadow: [
+                  BoxShadow(
+                    color: categoryGradient[1].withOpacity(0.15),
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
+                    spreadRadius: 0,
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Top row with icon, category, and refresh indicator
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                ],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: Card(
+                  elevation: widget.elevation,
+                  margin: EdgeInsets.zero,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: InkWell(
+                    onTap: _refreshTip,
+                    borderRadius: BorderRadius.circular(16),
+                    splashColor: categoryGradient[0].withOpacity(0.1),
+                    highlightColor: categoryGradient[0].withOpacity(0.05),
+                    child: Container(
+                      padding: const EdgeInsets.all(18.0),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        gradient: LinearGradient(
+                          begin: Alignment.topRight,
+                          end: Alignment.bottomLeft,
+                          stops: const [0.0, 1.0],
+                          colors: [
+                            Colors.white,
+                            categoryGradient[0].withOpacity(0.08),
+                          ],
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Category icon and title
+                          // Top row with icon, category, and refresh indicator
                           Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              // Category icon with gradient
-                              Transform.scale(
-                                scale: widget.showAnimation ? _iconAnimation.value : 1.0,
-                                child: Container(
-                                  width: 44,
-                                  height: 44,
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                      colors: categoryGradient,
-                                    ),
-                                    borderRadius: BorderRadius.circular(12),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: categoryGradient[1].withOpacity(0.3),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 3),
+                              // Category icon and title
+                              Row(
+                                children: [
+                                  // Category icon with gradient
+                                  Transform.scale(
+                                    scale: widget.showAnimation ? _iconAnimation.value : 1.0,
+                                    child: Container(
+                                      width: 44,
+                                      height: 44,
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                          colors: categoryGradient,
+                                        ),
+                                        borderRadius: BorderRadius.circular(12),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: categoryGradient[1].withOpacity(0.3),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 3),
+                                          ),
+                                        ],
                                       ),
-                                    ],
-                                  ),
-                                  child: Center(
-                                    child: Icon(
-                                      iconData,
-                                      color: Colors.white,
-                                      size: 24,
+                                      child: Center(
+                                        child: Icon(
+                                          iconData,
+                                          color: Colors.white,
+                                          size: 24,
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                ),
+
+                                  // Category title
+                                  const SizedBox(width: 12),
+                                  Opacity(
+                                    opacity: widget.showAnimation ? _fadeAnimation.value : 1.0,
+                                    child: Transform.translate(
+                                      offset: Offset(0, widget.showAnimation ? _slideAnimation.value : 0),
+                                      child: Text(
+                                        categoryTitle,
+                                        style: GoogleFonts.bebasNeue(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                          color: categoryGradient[1],
+                                          letterSpacing: 0.2,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
 
-                              // Category title
-                              SizedBox(width: 12),
-                              Opacity(
-                                opacity: widget.showAnimation ? _fadeAnimation.value : 1.0,
-                                child: Transform.translate(
-                                  offset: Offset(0, widget.showAnimation ? _slideAnimation.value : 0),
-                                  child: Text(
-                                    categoryTitle,
-                                    style: GoogleFonts.bebasNeue(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
-                                      color: categoryGradient[1],
-                                      letterSpacing: 0.2,
-                                    ),
-                                  ),
-                                ),
-                              ),
+                              // Refresh button with rotation animation
+                              _buildRefreshButton(categoryGradient, viewModel.isRefreshing),
                             ],
                           ),
 
-                          // Refresh button with rotation animation
-                          _buildRefreshButton(categoryGradient),
+                          const SizedBox(height: 20),
+
+                          // Decorative gradient line
+                          Container(
+                            height: 3,
+                            width: 48,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: categoryGradient,
+                              ),
+                              borderRadius: BorderRadius.circular(1.5),
+                            ),
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // If refreshing, show animated loading lines, otherwise show content
+                          viewModel.isRefreshing
+                              ? _buildContentSkeleton(categoryGradient)
+                              : _buildTipContent(tip),
+
+                          const SizedBox(height: 12),
+
+                          // Custom "Did you know?" badge at the bottom
+                          _buildInfoBadge(categoryGradient),
                         ],
                       ),
-
-                      const SizedBox(height: 20),
-
-                      // Decorative gradient line
-                      Container(
-                        height: 3,
-                        width: 48,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: categoryGradient,
-                          ),
-                          borderRadius: BorderRadius.circular(1.5),
-                        ),
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      // If refreshing, show animated loading lines, otherwise show content
-                      _isRefreshing
-                          ? _buildContentSkeleton(categoryGradient)
-                          : _buildTipContent(tip),
-
-                      const SizedBox(height: 12),
-
-                      // Custom "Did you know?" badge at the bottom
-                      _buildInfoBadge(categoryGradient),
-                    ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
   }
 
   // Build the refresh button with animation
-  Widget _buildRefreshButton(List<Color> categoryGradient) {
+  Widget _buildRefreshButton(List<Color> categoryGradient, bool isRefreshing) {
     return Transform.rotate(
-      angle: _isRefreshing ? _refreshAnimation.value : 0,
+      angle: isRefreshing ? _refreshAnimation.value : 0,
       child: Container(
         width: 36,
         height: 36,
@@ -402,7 +342,7 @@ class _PersonalizedTipBoxState extends State<PersonalizedTipBox>
             child: Center(
               child: Icon(
                 Icons.refresh_rounded,
-                color: _isRefreshing
+                color: isRefreshing
                     ? categoryGradient[1]
                     : Colors.grey[400],
                 size: 20,
@@ -439,7 +379,7 @@ class _PersonalizedTipBoxState extends State<PersonalizedTipBox>
     return Opacity(
       opacity: widget.showAnimation ? _fadeAnimation.value : 1.0,
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: categoryGradient[0].withOpacity(0.1),
           borderRadius: BorderRadius.circular(20),
@@ -452,7 +392,7 @@ class _PersonalizedTipBoxState extends State<PersonalizedTipBox>
               size: 14,
               color: categoryGradient[1],
             ),
-            SizedBox(width: 6),
+            const SizedBox(width: 6),
             Text(
               'Did you know?',
               style: GoogleFonts.bebasNeue(
@@ -482,7 +422,7 @@ class _PersonalizedTipBoxState extends State<PersonalizedTipBox>
       ],
     );
   }
-
+  
   // Build a shimmer loading line with animation
   Widget _buildLoadingLine({required double width, required Color color}) {
     return Container(
@@ -507,10 +447,10 @@ class _PersonalizedTipBoxState extends State<PersonalizedTipBox>
   double _loadingAnimationValue() {
     return (DateTime.now().millisecondsSinceEpoch % 1500) / 1500;
   }
-
+  
   // Build an enhanced loading state for the tip
   Widget _buildLoadingTip() {
-    final defaultGradient = _getGradientForCategory('default');
+    final defaultGradient = [const Color(0xFFE1F976), const Color(0xFFCAE350)];
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 2),
@@ -573,7 +513,7 @@ class _PersonalizedTipBoxState extends State<PersonalizedTipBox>
                       ),
 
                       // Category title placeholder
-                      SizedBox(width: 12),
+                      const SizedBox(width: 12),
                       Container(
                         width: 90,
                         height: 18,
@@ -671,8 +611,8 @@ class _PersonalizedTipBoxState extends State<PersonalizedTipBox>
   }
 
   // Build a premium error state
-  Widget _buildErrorTip() {
-    final errorGradient = [Color(0xFFFF9B9B), Color(0xFFFF5252)];
+  Widget _buildErrorTip(TipViewModel viewModel) {
+    final errorGradient = [const Color(0xFFFF9B9B), const Color(0xFFFF5252)];
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 2),
@@ -694,7 +634,7 @@ class _PersonalizedTipBoxState extends State<PersonalizedTipBox>
           borderRadius: BorderRadius.circular(16),
         ),
         child: InkWell(
-          onTap: _loadTip,
+          onTap: _refreshTip,
           borderRadius: BorderRadius.circular(16),
           splashColor: errorGradient[0].withOpacity(0.1),
           highlightColor: errorGradient[0].withOpacity(0.05),
@@ -735,7 +675,7 @@ class _PersonalizedTipBoxState extends State<PersonalizedTipBox>
                           ),
                         ],
                       ),
-                      child: Center(
+                      child: const Center(
                         child: Icon(
                           Icons.refresh_rounded,
                           color: Colors.white,
@@ -776,11 +716,5 @@ class _PersonalizedTipBoxState extends State<PersonalizedTipBox>
         ),
       ),
     );
-  }
-
-  // Helper method to capitalize first letter of a string
-  String _capitalizeFirst(String text) {
-    if (text.isEmpty) return text;
-    return text[0].toUpperCase() + text.substring(1);
   }
 }
