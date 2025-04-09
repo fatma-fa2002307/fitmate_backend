@@ -21,7 +21,9 @@ class WorkoutRepository {
           .get();
 
       if (userData.exists) {
-        Map<String, dynamic>? lastWorkout = userData.get('lastWorkout') as Map<String, dynamic>?;
+        Map<String, dynamic>? lastWorkout = userData.get('lastWorkout') as Map<
+            String,
+            dynamic>?;
         return lastWorkout;
       }
       return null;
@@ -56,12 +58,12 @@ class WorkoutRepository {
   Future<Map<String, dynamic>?> getUserWorkoutData() async {
     try {
       if (currentUserId == null) return null;
-      
+
       DocumentSnapshot userData = await _firestore
           .collection('users')
           .doc(currentUserId)
           .get();
-          
+
       if (userData.exists) {
         return userData.data() as Map<String, dynamic>;
       }
@@ -83,19 +85,22 @@ class WorkoutRepository {
           .get();
 
       if (userData.exists) {
-        Map<String, dynamic>? workoutOptionsMap = userData.get('workoutOptions') as Map<String, dynamic>?;
+        Map<String, dynamic>? workoutOptionsMap = userData.get(
+            'workoutOptions') as Map<String, dynamic>?;
         String? nextCategory = userData.get('nextWorkoutCategory') as String?;
-        
-        if (workoutOptionsMap != null && workoutOptionsMap.isNotEmpty && nextCategory != null) {
+
+        if (workoutOptionsMap != null && workoutOptionsMap.isNotEmpty &&
+            nextCategory != null) {
           // Convert Firebase map to our expected format
           Map<String, List<Map<String, dynamic>>> typedWorkoutOptions = {};
-          
+
           workoutOptionsMap.forEach((key, workoutList) {
             if (workoutList is List) {
-              typedWorkoutOptions[key] = List<Map<String, dynamic>>.from(workoutList);
+              typedWorkoutOptions[key] =
+              List<Map<String, dynamic>>.from(workoutList);
             }
           });
-          
+
           return typedWorkoutOptions;
         }
       }
@@ -110,18 +115,20 @@ class WorkoutRepository {
   Future<bool> hasValidWorkoutOptions() async {
     try {
       if (currentUserId == null) return false;
-      
+
       DocumentSnapshot userData = await _firestore
           .collection('users')
           .doc(currentUserId)
           .get();
-          
+
       if (!userData.exists) return false;
-      
-      Map<String, dynamic>? workoutOptions = userData.get('workoutOptions') as Map<String, dynamic>?;
+
+      Map<String, dynamic>? workoutOptions = userData.get(
+          'workoutOptions') as Map<String, dynamic>?;
       String? nextCategory = userData.get('nextWorkoutCategory') as String?;
-      
-      return workoutOptions != null && workoutOptions.isNotEmpty && nextCategory != null;
+
+      return workoutOptions != null && workoutOptions.isNotEmpty &&
+          nextCategory != null;
     } catch (e) {
       print("Error checking workout options: $e");
       return false;
@@ -132,12 +139,12 @@ class WorkoutRepository {
   Future<String?> getNextWorkoutCategory() async {
     try {
       if (currentUserId == null) return null;
-      
+
       DocumentSnapshot userData = await _firestore
           .collection('users')
           .doc(currentUserId)
           .get();
-          
+
       if (userData.exists) {
         return userData.get('nextWorkoutCategory') as String?;
       }
@@ -149,11 +156,14 @@ class WorkoutRepository {
   }
 
   /// Record completed workout
+  /// Record completed workout with detailed exercise tracking
   Future<void> recordCompletedWorkout({
     required String category,
     required int completedExercises,
     required int totalExercises,
     required String duration,
+    List<Map<String, dynamic>>? performedExercises,
+    List<Map<String, dynamic>>? notPerformedExercises,
   }) async {
     try {
       if (currentUserId == null) return;
@@ -169,6 +179,9 @@ class WorkoutRepository {
         'completion': completedExercises / totalExercises,
         'totalExercises': totalExercises,
         'completedExercises': completedExercises,
+        // Add the new fields for detailed exercise tracking
+        'performedExercises': performedExercises ?? [],
+        'notPerformedExercises': notPerformedExercises ?? [],
       };
 
       // Get user data for fitness level calculations
@@ -179,6 +192,7 @@ class WorkoutRepository {
 
       if (!userDoc.exists) return;
 
+      // The rest of your existing code for progress tracking remains the same...
       // Extract current progress values
       final userData = userDoc.data() as Map<String, dynamic>;
       final currentLevel = userData['fitnessLevel'] ?? 'Beginner';
@@ -190,7 +204,7 @@ class WorkoutRepository {
           .doc(currentUserId)
           .collection('userProgress')
           .doc('progress');
-      
+
       final userProgressData = await userProgressDoc.get();
 
       // Extract sub-level data or create defaults
@@ -213,7 +227,8 @@ class WorkoutRepository {
       bool levelUpOccurred = false;
 
       // Check if sub-level should increase
-      if (newWorkoutsCompleted >= workoutsUntilNextLevel / 3 * currentSubLevel) {
+      if (newWorkoutsCompleted >=
+          workoutsUntilNextLevel / 3 * currentSubLevel) {
         if (currentSubLevel < 3) {
           // Move to next sub-level
           newSubLevel = currentSubLevel + 1;

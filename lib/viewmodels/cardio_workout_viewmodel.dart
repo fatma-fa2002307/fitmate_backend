@@ -117,17 +117,37 @@ class CardioWorkoutViewModel extends BaseViewModel {
   Future<bool> completeWorkout() async {
     _timer?.cancel();
     _isCompleted = true;
-    
+
     try {
+      // For cardio, we only have one exercise
+      List<Map<String, dynamic>> performedExercises = [];
+      List<Map<String, dynamic>> notPerformedExercises = [];
+      bool isWorkoutCompleted = _progress >= 0;
+
+      Map<String, dynamic> exerciseData = {
+        'name': workout.workout,
+        'duration': _targetDuration,
+        'actualDuration': formatTime(_elapsedSeconds),
+        'progressPercentage': (_progress * 100).toStringAsFixed(0) + '%',
+      };
+
+      if (isWorkoutCompleted) {
+        performedExercises.add(exerciseData);
+      } else {
+        notPerformedExercises.add(exerciseData);
+      }
+
       await _repository.recordCompletedWorkout(
         category: category,
-        completedExercises: 1, // Cardio is just one exercise
+        completedExercises: isWorkoutCompleted ? 1 : 0,
         totalExercises: 1,
         duration: formatTime(_elapsedSeconds),
+        performedExercises: performedExercises,
+        notPerformedExercises: notPerformedExercises,
       );
       return true;
     } catch (e) {
-      setError("failed to record workout: $e");
+      setError("Failed to record workout: $e");
       return false;
     }
   }

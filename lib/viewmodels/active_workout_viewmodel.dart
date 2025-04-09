@@ -93,13 +93,34 @@ class ActiveWorkoutViewModel extends BaseViewModel {
   ///complete workout and record it
   Future<bool> completeWorkout() async {
     _timer?.cancel();
-    
+
     try {
+      // Create a list of performed and not performed exercises
+      List<Map<String, dynamic>> performedExercises = [];
+      List<Map<String, dynamic>> notPerformedExercises = [];
+
+      // Populate the lists based on completion state
+      for (int i = 0; i < workouts.length; i++) {
+        Map<String, dynamic> exerciseData = {
+          'name': workouts[i].workout,
+          'sets': workouts[i].sets,
+          'reps': workouts[i].reps,
+        };
+
+        if (_completedExercises[i]) {
+          performedExercises.add(exerciseData);
+        } else {
+          notPerformedExercises.add(exerciseData);
+        }
+      }
+
       await _repository.recordCompletedWorkout(
         category: category,
         completedExercises: completedCount,
         totalExercises: workouts.length,
         duration: formatTime(_elapsedSeconds),
+        performedExercises: performedExercises,
+        notPerformedExercises: notPerformedExercises,
       );
       return true;
     } catch (e) {
