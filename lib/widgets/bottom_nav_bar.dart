@@ -12,53 +12,79 @@ class BottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BottomNavigationBar(
-      currentIndex: currentIndex,
-      onTap: (index) {
-        if (index == 0) {
-          Navigator.pushReplacement(
+    return WillPopScope(
+      // Handle back button press
+      onWillPop: () async {
+        // If not on home screen, navigate to home screen
+        if (currentIndex != 0) {
+          // Clear the navigation stack and push the home page
+          Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(builder: (context) => HomePage()),
+                (route) => false,
           );
-        } else if (index == 1) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => WorkoutPage()),
-          );
-        }else if (index == 2) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => NutritionPage()),
-          );
-        }else if (index == 3) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => EditProfilePage()),
-          );
+          onTap(0); // Update the selected index to home
+          return false; // Prevent default back button behavior
         }
-        onTap(index); // Call the onTap function to update the selected index
+        // If already on home screen, allow normal back button behavior
+        return true;
       },
-      items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.home),
-          label: 'Home',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.fitness_center),
-          label: 'Workouts',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.restaurant),
-          label: 'Macros',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.person),
-          label: 'Profile',
-        ),
-      ],
-      selectedItemColor: Color(0xFFD2EB50),
-      unselectedItemColor: Colors.grey,
-      backgroundColor: Color(0xFF0e0f16),
+      child: BottomNavigationBar(
+        currentIndex: currentIndex,
+        onTap: (index) {
+          // Only navigate if selecting a different tab
+          if (index != currentIndex) {
+            Widget targetPage;
+
+            switch (index) {
+              case 0:
+                targetPage = HomePage();
+                break;
+              case 1:
+                targetPage = WorkoutPage();
+                break;
+              case 2:
+                targetPage = NutritionPage();
+                break;
+              case 3:
+                targetPage = EditProfilePage();
+                break;
+              default:
+                targetPage = HomePage();
+            }
+
+            // Clear navigation stack and push the new screen
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (context) => targetPage),
+                  (route) => false,
+            );
+          }
+
+          onTap(index); // Update the selected index
+        },
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.fitness_center),
+            label: 'Workouts',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.restaurant),
+            label: 'Macros',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Profile',
+          ),
+        ],
+        selectedItemColor: Color(0xFFD2EB50),
+        unselectedItemColor: Colors.grey,
+        backgroundColor: Color(0xFF0e0f16),
+      ),
     );
   }
 }

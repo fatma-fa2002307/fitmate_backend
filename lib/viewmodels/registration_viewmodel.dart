@@ -136,9 +136,7 @@ class RegistrationViewModel extends BaseViewModel {
       );
       
       // Initialize remaining subcollections
-      await _firestore.collection('users').doc(userId).collection('foodLogs').doc('initial').set({});
-      await _firestore.collection('users').doc(userId).collection('workoutLogs').doc('initial').set({});
-      await _firestore.collection('users').doc(userId).collection('workoutHistory').doc('initial').set({});
+      await _firestore.collection('users').doc(userId).collection('foodLogs');
       
       // Generate initial workout options in the background
       try {
