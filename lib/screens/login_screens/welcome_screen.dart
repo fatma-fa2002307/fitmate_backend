@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lottie/lottie.dart';
+import 'package:provider/provider.dart';
+import 'package:fitmate/viewmodels/welcome_viewmodel.dart';
 
 class WelcomePage extends StatefulWidget {
   const WelcomePage({Key? key}) : super(key: key);
@@ -15,11 +17,15 @@ class _WelcomePageState extends State<WelcomePage>
   late Animation<Offset> _titleAnimation;
   late Animation<Offset> _buttonsAnimation;
   late AnimationController _catController;
+  late WelcomeViewModel _viewModel;
 
   @override
   void initState() {
     super.initState();
-
+    
+    // Get the ViewModel
+    _viewModel = context.read<WelcomeViewModel>();
+    
     // Main content animation controller
     _contentController = AnimationController(
         vsync: this,
@@ -50,12 +56,23 @@ class _WelcomePageState extends State<WelcomePage>
         curve: Interval(0.3, 1.0, curve: Curves.easeOutCubic)
     ));
 
-    // Sequence the animations
-    Future.delayed(Duration(milliseconds: 200), () {
-      _contentController.forward();
-      Future.delayed(Duration(milliseconds: 600), () {
+    // Initialize the view model's animations, which will trigger our animations
+    _viewModel.initAnimations();
+    
+    // Listen for animation changes from the ViewModel
+    _setupAnimationListeners();
+  }
+  
+  void _setupAnimationListeners() {
+    // Listen for content animation changes
+    _viewModel.addListener(() {
+      if (_viewModel.showContentAnimation && _contentController.status != AnimationStatus.forward) {
+        _contentController.forward();
+      }
+      
+      if (_viewModel.showCatAnimation && _catController.status != AnimationStatus.forward) {
         _catController.forward();
-      });
+      }
     });
   }
 

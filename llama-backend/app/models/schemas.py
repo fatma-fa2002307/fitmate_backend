@@ -7,8 +7,8 @@ from enum import Enum
 class WorkoutRequest(BaseModel):
     age: int
     gender: str
-    height: int
-    weight: int
+    height: float  
+    weight: float  
     goal: str
     workoutDays: int
     fitnessLevel: str
