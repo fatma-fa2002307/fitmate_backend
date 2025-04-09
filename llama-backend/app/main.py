@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, File, UploadFile
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -8,6 +8,7 @@ from app.models.schemas import WorkoutRequest, FoodSuggestionRequest, FoodSugges
 from app.engine.workout import WorkoutEngine
 from app.engine.food import EnhancedFoodEngine
 from app.engine.tip import TipEngine
+from app.engine.food_recognition import FoodRecognitionEngine
 import logging
 
 app = FastAPI()
@@ -28,14 +29,17 @@ workout_images_dir = os.path.join(base_dir, "data", "workout-images")
 icons_dir = os.path.join(workout_images_dir, "icons")
 cardio_images_dir = os.path.join(workout_images_dir, "cardio")
 food_images_dir = os.path.join(base_dir, "data", "food-images")
+models_dir = os.path.join(base_dir, "data", "models")
+uploads_dir = os.path.join(base_dir, "data", "uploads")
 
 # Initialize engines
 workout_engine = WorkoutEngine()
 enhanced_food_engine = EnhancedFoodEngine()
 tip_engine = TipEngine()
+food_recognition_engine = FoodRecognitionEngine(os.path.join(models_dir, "resnet50model.pth"))
 
 # Create directories if they don't exist
-for directory in [workout_images_dir, icons_dir, cardio_images_dir, food_images_dir]:
+for directory in [workout_images_dir, icons_dir, cardio_images_dir, food_images_dir, models_dir, uploads_dir]:
     os.makedirs(directory, exist_ok=True)
 
 @app.post("/generate_workout_options/")
@@ -101,6 +105,42 @@ async def generate_personalized_tip(data: TipRequest):
     except Exception as e:
         logger.error(f"Error generating tip: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Tip generation failed: {str(e)}")
+
+@app.post("/recognize_food/")
+async def recognize_food(image: UploadFile = File(...)):
+    """
+    Recognize food from an uploaded image and provide nutritional information
+    
+    This endpoint uses a ResNet50 model trained on Food101 dataset to identify
+    the food in the image, then retrieves nutritional information from USDA's API.
+    """
+    try:
+        logger.info(f"Received food recognition request for image: {image.filename}")
+        
+        # Check if the file is an image
+        if not image.content_type.startswith("image/"):
+            raise HTTPException(status_code=400, detail="File must be an image")
+        
+        # Process the image with the food recognition engine
+        result = food_recognition_engine.process_food_image(
+            image_file=image.file, 
+            filename=image.filename
+        )
+        
+        # Check for errors in the result
+        if "error" in result:
+            logger.error(f"Food recognition error: {result['error']}")
+            raise HTTPException(status_code=500, detail=result["error"])
+        
+        logger.info(f"Successfully recognized food: {result['food_name']} with confidence: {result['confidence']}")
+        return result
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except Exception as e:
+        logger.error(f"Error in food recognition: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Food recognition failed: {str(e)}")
 
 @app.get("/workout-images/cardio/{image_name}")
 async def get_cardio_image(image_name: str):
