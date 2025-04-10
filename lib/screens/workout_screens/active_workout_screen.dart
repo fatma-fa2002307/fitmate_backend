@@ -200,15 +200,13 @@ class _ActiveWorkoutScreenContentState extends State<_ActiveWorkoutScreenContent
     int index
   ) {
     return ListTile(
-      leading: ClipRRect(
-        borderRadius: BorderRadius.circular(4),
-        child: SizedBox(
-          width: 40,
-          height: 40,
-          child: _imageCache.getWorkoutImageWidget(
-            workout: workout,
-            fit: BoxFit.cover,
-          ),
+        leading: Container(
+        width: 60,
+        height: 60,
+        color: Colors.transparent, // Make container transparent
+        child: _imageCache.getWorkoutImageWidget(
+          workout: workout,
+          fit: BoxFit.contain,
         ),
       ),
       title: Text(

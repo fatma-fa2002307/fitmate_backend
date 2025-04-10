@@ -25,6 +25,12 @@ class FoodRecognitionEngine:
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ])
         
+        # Check if CUDA is available
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu") #GPU
+        #self.device = torch.device("cpu")
+
+        logger.info(f"Using device: {self.device}")
+        
         # Food101 class names
         self.class_names = [
             "apple_pie", "baby_back_ribs", "baklava", "beef_carpaccio", "beef_tartare",
@@ -65,7 +71,10 @@ class FoodRecognitionEngine:
             
             # Load weights
             logger.info(f"Loading model from {self.model_path}")
-            checkpoint = torch.load(self.model_path, map_location=torch.device("cpu"), weights_only=False)
+            
+            # Map to appropriate device when loading
+            map_location = self.device
+            checkpoint = torch.load(self.model_path, map_location=map_location, weights_only=False)
             
             # Handle different checkpoint formats
             if "model_state" in checkpoint:
@@ -75,9 +84,17 @@ class FoodRecognitionEngine:
             else:
                 self.model.load_state_dict(checkpoint)
                 
+            # Move model to GPU if available
+            self.model = self.model.to(self.device)
+                
             # Set to evaluation mode
             self.model.eval()
-            logger.info("Food recognition model loaded successfully!")
+            logger.info(f"Food recognition model loaded successfully on {self.device}!")
+            
+            # Print GPU memory usage if using CUDA
+            if self.device.type == 'cuda':
+                logger.info(f"GPU Memory allocated: {torch.cuda.memory_allocated(self.device)/1024**2:.2f} MB")
+                logger.info(f"GPU Memory reserved: {torch.cuda.memory_reserved(self.device)/1024**2:.2f} MB")
             
         except Exception as e:
             logger.error(f"Error loading food recognition model: {str(e)}", exc_info=True)
@@ -100,6 +117,9 @@ class FoodRecognitionEngine:
             # Open and preprocess image
             img = Image.open(image_path).convert("RGB")
             img_tensor = self.transform(img).unsqueeze(0)
+            
+            # Move tensor to appropriate device
+            img_tensor = img_tensor.to(self.device)
             
             # Make prediction
             with torch.no_grad():
