@@ -13,6 +13,7 @@ import 'sleek_food_loading.dart';
 
 class NutritionPage extends StatefulWidget {
   const NutritionPage({Key? key}) : super(key: key);
+  static final GlobalKey<_NutritionPageState> nutritionPageKey = GlobalKey<_NutritionPageState>();
 
   @override
   State<NutritionPage> createState() => _NutritionPageState();
@@ -94,7 +95,7 @@ class _NutritionPageState extends State<NutritionPage>
               automaticallyImplyLeading: false,
             ),
             body: viewModel.isLoading 
-                ? Center(
+                ? const Center(
                     child: CircularProgressIndicator(
                       valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFD2EB50)),
                     ),
@@ -552,6 +553,9 @@ class _NutritionPageState extends State<NutritionPage>
       MaterialPageRoute(
         builder: (context) => const LogFoodManuallyScreen(),
       ),
-    ).then((_) => _initializeData());
+    ).then((_) => _viewModel.freshOutTheSlammer());
+  }
+  void triggerDataReload() {
+    _initializeData();
   }
 }

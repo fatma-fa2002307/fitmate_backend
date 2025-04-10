@@ -293,7 +293,6 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> with SingleTick
             'protein': suggestion.protein.toString(),
             'carbs': suggestion.carbs.toString(),
             'fat': suggestion.fat.toString(),
-            // Include any additional data you want to pass
           },
         ),
       ),

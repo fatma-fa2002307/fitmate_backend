@@ -14,43 +14,32 @@ class WelcomePage extends StatefulWidget {
 class _WelcomePageState extends State<WelcomePage>
     with TickerProviderStateMixin {
   late AnimationController _contentController;
-  late Animation<Offset> _titleAnimation;
-  late Animation<Offset> _buttonsAnimation;
+  late Animation<double> _fadeAnimation;
   late AnimationController _catController;
   late WelcomeViewModel _viewModel;
 
   @override
   void initState() {
     super.initState();
-    
+
     // Get the ViewModel
     _viewModel = context.read<WelcomeViewModel>();
-    
-    // Main content animation controller
+
+    // Main content animation controller (fade only, no slide)
     _contentController = AnimationController(
         vsync: this,
         duration: Duration(milliseconds: 1200)
     );
 
-    // Cat animation controller (separate to control timing)
     _catController = AnimationController(
         vsync: this,
         duration: Duration(milliseconds: 1500)
     );
 
-    // Title slides in from top
-    _titleAnimation = Tween<Offset>(
-        begin: Offset(0, -0.5),
-        end: Offset.zero
-    ).animate(CurvedAnimation(
-        parent: _contentController,
-        curve: Interval(0.0, 0.7, curve: Curves.easeOutCubic)
-    ));
-
-    // Buttons slide in from bottom
-    _buttonsAnimation = Tween<Offset>(
-        begin: Offset(0, 1),
-        end: Offset.zero
+    // Fade animation for buttons only
+    _fadeAnimation = Tween<double>(
+        begin: 0.0,
+        end: 1.0
     ).animate(CurvedAnimation(
         parent: _contentController,
         curve: Interval(0.3, 1.0, curve: Curves.easeOutCubic)
@@ -58,18 +47,18 @@ class _WelcomePageState extends State<WelcomePage>
 
     // Initialize the view model's animations, which will trigger our animations
     _viewModel.initAnimations();
-    
+
     // Listen for animation changes from the ViewModel
     _setupAnimationListeners();
   }
-  
+
   void _setupAnimationListeners() {
     // Listen for content animation changes
     _viewModel.addListener(() {
       if (_viewModel.showContentAnimation && _contentController.status != AnimationStatus.forward) {
         _contentController.forward();
       }
-      
+
       if (_viewModel.showCatAnimation && _catController.status != AnimationStatus.forward) {
         _catController.forward();
       }
@@ -94,44 +83,52 @@ class _WelcomePageState extends State<WelcomePage>
       backgroundColor: backgroundColor,
       body: SafeArea(
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            Spacer(flex: 1),
+
+            // Main content area - exact same structure as splash screen
             Expanded(
+              flex: 5,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24.0),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    SlideTransition(
-                      position: _titleAnimation,
-                      child: Column(
-                        children: [
-                          Text(
-                            "FitMate",
-                            style: GoogleFonts.montserrat(
-                              color: secondaryColor,
-                              fontSize: 42,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.2,
-                            ),
+                    // Title - static position, no animation
+                    Column(
+                      children: [
+                        Text(
+                          "FitMate",
+                          style: GoogleFonts.montserrat(
+                            color: secondaryColor,
+                            fontSize: 42,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.2,
                           ),
-                          SizedBox(height: 12),
-                          Text(
-                            "Your personal fitness companion",
-                            style: GoogleFonts.poppins(
-                              color: secondaryColor.withOpacity(0.7),
-                              fontSize: 16,
-                            ),
-                            textAlign: TextAlign.center,
+                          textAlign: TextAlign.center,
+                        ),
+                        SizedBox(height: 12),
+                        Text(
+                          "Your personal fitness companion",
+                          style: GoogleFonts.poppins(
+                            color: secondaryColor.withOpacity(0.7),
+                            fontSize: 16,
                           ),
-                        ],
-                      ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
                     ),
 
                     SizedBox(height: 60),
 
-                    SlideTransition(
-                      position: _buttonsAnimation,
+                    // Buttons fade in but no sliding
+                    FadeTransition(
+                      opacity: _fadeAnimation,
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           SizedBox(
                             width: double.infinity,
@@ -197,23 +194,13 @@ class _WelcomePageState extends State<WelcomePage>
               ),
             ),
 
-            // Cat animation at the bottom
-            FadeTransition(
-              opacity: _catController,
-              child: SlideTransition(
-                position: Tween<Offset>(
-                  begin: Offset(0, 1),
-                  end: Offset(0, 0),
-                ).animate(_catController),
-                child: Container(
-                  height: 160,
-                  width: double.infinity,
-                  alignment: Alignment.bottomCenter,
-                  child: Lottie.asset(
-                    'assets/data/lottie/4.json',
-                    height: 150,
-                    fit: BoxFit.contain,
-                  ),
+            Expanded(
+              flex: 3,
+              child: Transform.scale(
+                scale: 1.6,
+                child: Lottie.asset(
+                  'assets/data/lottie/6.json',
+                  fit: BoxFit.contain,
                 ),
               ),
             ),

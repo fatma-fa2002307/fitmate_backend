@@ -1,14 +1,16 @@
-import 'dart:io';
 import 'dart:async';
 import 'package:fitmate/widgets/bottom_nav_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:fitmate/viewmodels/nutrition_viewmodel.dart';
+import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/services.dart';
 import 'dart:convert';
+
+import 'nutrition_screen.dart';
 
 // Update the LogFoodManuallyScreen constructor
 class LogFoodManuallyScreen extends StatefulWidget {
@@ -40,7 +42,6 @@ class _LogFoodManuallyScreenState extends State<LogFoodManuallyScreen> {
   final FocusNode _carbsFocus = FocusNode();
   final FocusNode _proteinFocus = FocusNode();
 
-  File? _image;
   List<Map<String, dynamic>> _searchResults = [];
   bool _isSearching = false;
   Timer? _debounce;
@@ -49,7 +50,6 @@ class _LogFoodManuallyScreenState extends State<LogFoodManuallyScreen> {
 
   // Flag to track if we're loading results from the cache
   bool _isLoadingCachedResults = false;
-  // Local SQLite caching could be implemented here
 
   @override
   void initState() {
@@ -83,10 +83,6 @@ class _LogFoodManuallyScreenState extends State<LogFoodManuallyScreen> {
     });
 
     try {
-      // This would be a good place to load recently used foods
-      // from a local SQLite database to show as suggestions
-
-      // For now, we'll just fetch from Firebase history
       final recentFoods = await _fetchRecentFoods();
 
       setState(() {
@@ -154,7 +150,6 @@ class _LogFoodManuallyScreenState extends State<LogFoodManuallyScreen> {
   }
 
   // No longer needed - moved logic to the TextField onChanged
-  void _onSearchTextChanged() {}
 
   void _onPortionChanged() {
     try {
@@ -164,7 +159,6 @@ class _LogFoodManuallyScreenState extends State<LogFoodManuallyScreen> {
           _portionSize = newPortion;
         });
 
-        // If we have base values (either from selected food or previously calculated),
         // update the nutrition values based on the new portion size
         if (_baseCalories > 0 || _baseCarbs > 0 || _baseProtein > 0 || _baseFat > 0) {
           _updateNutritionValues();
@@ -194,7 +188,6 @@ class _LogFoodManuallyScreenState extends State<LogFoodManuallyScreen> {
   double _baseFat = 0;
   double _baseCarbs = 0;
   double _baseProtein = 0;
-  String? _selectedFoodSource;
   String? _selectedFoodId;
 
   void _updateNutritionValues() {
@@ -261,7 +254,7 @@ class _LogFoodManuallyScreenState extends State<LogFoodManuallyScreen> {
   Future<List<Map<String, dynamic>>> _searchFoodDatabase(String query) async {
     // Implementation for USDA FoodData Central API
     try {
-      final apiKey = 'Rmow9U6Hr52D2t8TbroUazjKTDpASuLMkLGngFhL'; // Replace with your actual API key
+      final apiKey = 'Rmow9U6Hr52D2t8TbroUazjKTDpASuLMkLGngFhL';
 
       final sanitizedQuery = query.trim();
 
@@ -361,8 +354,6 @@ class _LogFoodManuallyScreenState extends State<LogFoodManuallyScreen> {
   }
   return 0.0;
 }
-
-// Replace your _selectFood method with this improved version
   void _selectFood(Map<String, dynamic> food) {
     // Use our helper method to safely convert all values to double
     _baseCalories = safeToDouble(food['baseCalories'] ?? food['calories']);
@@ -371,7 +362,6 @@ class _LogFoodManuallyScreenState extends State<LogFoodManuallyScreen> {
     _baseProtein = safeToDouble(food['baseProtein'] ?? food['protein']);
 
     // Store source for later use when saving
-    _selectedFoodSource = food['source']?.toString();
     _selectedFoodId = food['fdcId']?.toString();
 
     // Set the dish name
@@ -393,21 +383,6 @@ class _LogFoodManuallyScreenState extends State<LogFoodManuallyScreen> {
     });
   }
 
-  Future<void> _pickImage(ImageSource source) async {
-    try {
-      final pickedFile = await ImagePicker().pickImage(source: source);
-      if (pickedFile != null) {
-        print("Image picked: ${pickedFile.path}");
-        setState(() {
-          _image = File(pickedFile.path);
-        });
-      } else {
-        print("No image selected.");
-      }
-    } catch (e) {
-      print("Error picking image: $e");
-    }
-  }
 
   Future<bool> saveFood() async {
     print("Saving food...");
@@ -462,19 +437,31 @@ class _LogFoodManuallyScreenState extends State<LogFoodManuallyScreen> {
         foodData['fdcId'] = _selectedFoodId;
       }
 
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('foodLogs')
-          .add(foodData);
+      // Get the NutritionViewModel using Provider
+      final nutritionViewModel = Provider.of<NutritionViewModel>(context, listen: false);
 
-      print("Added new food entry");
+      // Use the view model's addFood method instead of directly adding to Firestore
+      await nutritionViewModel.addFood(foodData);
+
+      print("Added new food entry via NutritionViewModel");
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Food saved successfully!")),
         );
       }
+
+      // Trigger the data reload in the NutritionPage
+      if (NutritionPage.nutritionPageKey.currentState != null) {
+        NutritionPage.nutritionPageKey.currentState!.triggerDataReload();
+      }
+
+      // Navigate back to the NutritionPage
+      Navigator.popUntil(context, (route) => route.isFirst); // Pop all routes until the first one
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const NutritionPage()),
+      );
 
       return true;
     } catch (e) {
@@ -896,7 +883,6 @@ class _LogFoodManuallyScreenState extends State<LogFoodManuallyScreen> {
                               focusNode: _proteinFocus,
                               textInputAction: TextInputAction.done,
                               onSubmitted: (_) {
-                                // close keyboard after the last field
                                 FocusScope.of(context).unfocus();
                               },
                               decoration: InputDecoration(
@@ -926,7 +912,7 @@ class _LogFoodManuallyScreenState extends State<LogFoodManuallyScreen> {
                   height: 60,
                   child: ElevatedButton(
                     onPressed: () {
-                      saveFood().then((_) => Navigator.pop(context));
+                      saveFood();
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFD2EB50),
