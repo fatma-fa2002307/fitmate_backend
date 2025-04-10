@@ -4,6 +4,8 @@ import 'package:fitmate/models/food_suggestion.dart';
 import 'package:fitmate/services/food_suggestion_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../screens/nutrition_screens/log_food_manually.dart';
+
 class FoodSuggestionCard extends StatefulWidget {
   final List<FoodSuggestion> suggestions;
   final Function? onLike;
@@ -32,13 +34,16 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> with SingleTick
 
   // Service to handle food suggestion interactions
   final EnhancedFoodSuggestionService _foodSuggestionService =
-      EnhancedFoodSuggestionService();
+  EnhancedFoodSuggestionService();
 
   // Local state for liked/disliked status
   bool _isLiked = false;
   bool _isDisliked = false;
   bool _isExpanded = false;
   bool _showExtraContent = false; // Flag to control when to show extra content
+
+  // State to track loading operations
+  bool _isLoading = false;
 
   // Animation controller
   late AnimationController _animationController;
@@ -48,15 +53,15 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> with SingleTick
     super.initState();
     _currentIndex = widget.initialIndex;
     _pageController = PageController(initialPage: _currentIndex);
-    
+
     // Initialize the animation controller
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
-    
+
     // Add a listener to show content after animation completes
-    _animationController.addStatusListener((status) {
+    _animationController.addStatusListener((status) async {
       if (status == AnimationStatus.completed && _isExpanded) {
         setState(() {
           _showExtraContent = true;
@@ -70,75 +75,139 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> with SingleTick
   }
 
   @override
-  void dispose() {
+  Future<void> dispose() async {
     _animationController.dispose();
     _pageController.dispose();
     super.dispose();
   }
 
-  /// Handle liking a food suggestion
-  void _handleLike() async {
-    if (_isLiked) return;
+  /// Handle liking a food suggestion asynchronously
+  Future<void> _handleLike() async {
+    // Prevent duplicate requests
+    if (_isLiked || _isLoading) return;
 
     setState(() {
+      _isLoading = true;
       _isLiked = true;
       _isDisliked = false;
     });
 
-    // Call service to update preference
-    if (widget.suggestions.isNotEmpty) {
-      await _foodSuggestionService.rateSuggestion(
-          widget.suggestions[_currentIndex].id, true);
-    }
+    try {
+      // Call service to update preference
+      if (widget.suggestions.isNotEmpty) {
+        await _foodSuggestionService.rateSuggestion(
+            widget.suggestions[_currentIndex].id, true);
+      }
 
-    // Call callback if provided
-    if (widget.onLike != null) {
-      widget.onLike!();
+      // Call callback if provided
+      if (widget.onLike != null) {
+        await Future.microtask(() => widget.onLike!());
+      }
+    } catch (e) {
+      // Handle error
+      setState(() {
+        _isLiked = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to like suggestion: ${e.toString()}'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
-  /// Handle disliking a food suggestion
-  void _handleDislike() async {
-    if (_isDisliked) return;
+  /// Handle disliking a food suggestion asynchronously
+  Future<void> _handleDislike() async {
+    // Prevent duplicate requests
+    if (_isDisliked || _isLoading) return;
 
     setState(() {
+      _isLoading = true;
       _isDisliked = true;
       _isLiked = false;
     });
 
-    // Call service to update preference
-    if (widget.suggestions.isNotEmpty) {
-      await _foodSuggestionService.rateSuggestion(
-          widget.suggestions[_currentIndex].id, false);
-    }
+    try {
+      // Call service to update preference
+      if (widget.suggestions.isNotEmpty) {
+        await _foodSuggestionService.rateSuggestion(
+            widget.suggestions[_currentIndex].id, false);
+      }
 
-    // Call callback if provided
-    if (widget.onDislike != null) {
-      widget.onDislike!();
+      // Call callback if provided
+      if (widget.onDislike != null) {
+        await Future.microtask(() => widget.onDislike!());
+      }
+    } catch (e) {
+      // Handle error
+      setState(() {
+        _isDisliked = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to dislike suggestion: ${e.toString()}'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
   /// Open recipe URL in browser with improved error handling
-  void _openRecipeUrl() async {
-    final suggestion = widget.suggestions[_currentIndex];
-    launchRecipeUrl(context, suggestion.sourceUrl);
+  Future<void> _openRecipeUrl() async {
+    if (_isLoading) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final suggestion = widget.suggestions[_currentIndex];
+      await launchRecipeUrl(context, suggestion.sourceUrl);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   /// Helper method to launch URLs with proper error handling
   Future<void> launchRecipeUrl(BuildContext context, String? urlString) async {
     if (urlString == null || urlString.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Recipe URL not available'),
-          duration: Duration(seconds: 2),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Recipe URL not available'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
       return;
     }
-    
+
     try {
       final Uri url = Uri.parse(urlString);
-      
+
       if (await canLaunchUrl(url)) {
         await launchUrl(
           url,
@@ -146,66 +215,94 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> with SingleTick
         );
       } else {
         print('Could not launch $url');
-        
+
         try {
           await launchUrl(
-            url, 
+            url,
             mode: LaunchMode.platformDefault,
           );
         } catch (innerError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Could not open recipe URL'),
-                  const SizedBox(height: 4),
-                  Text(
-                    urlString,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.white70,
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Could not open recipe URL'),
+                    const SizedBox(height: 4),
+                    Text(
+                      urlString,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.white70,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
+                action: SnackBarAction(
+                  label: 'Dismiss',
+                  onPressed: () {},
+                ),
+                duration: const Duration(seconds: 4),
               ),
-              action: SnackBarAction(
-                label: 'Dismiss',
-                onPressed: () {},
-              ),
-              duration: const Duration(seconds: 4),
-            ),
-          );
+            );
+          }
         }
       }
     } catch (e) {
       print('Error launching URL: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error opening URL: $e'),
-          duration: const Duration(seconds: 2),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error opening URL: $e'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
     }
   }
 
-  // Handle the expand/collapse toggle
-  void _toggleExpand() {
+  // Handle the expand/collapse toggle with animation
+  Future<void> _toggleExpand() async {
     setState(() {
       _isExpanded = !_isExpanded;
-      
+
       // Important: Hide content immediately when collapsing
       if (!_isExpanded) {
         _showExtraContent = false;
       }
     });
-    
+
     // Run the animation
     if (_isExpanded) {
-      _animationController.forward();
+      await _animationController.forward();
     } else {
-      _animationController.reverse();
+      await _animationController.reverse();
+    }
+  }
+
+  // Log food item asynchronously
+  Future<void> _logFoodItem(FoodSuggestion suggestion) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => LogFoodManuallyScreen(
+          prefillData: {
+            'dishName': suggestion.title,
+            'calories': suggestion.calories.toString(),
+            'protein': suggestion.protein.toString(),
+            'carbs': suggestion.carbs.toString(),
+            'fat': suggestion.fat.toString(),
+          },
+        ),
+      ),
+    );
+
+    // Refresh the state after returning from the food logging screen
+    if (mounted) {
+      setState(() {
+        // Reset any necessary state here
+      });
     }
   }
 
@@ -221,44 +318,44 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> with SingleTick
 
     // To improve visual consistency, use a common border radius
     const double cardRadius = 16;
-    
+
     return Column(
       children: [
         // Food suggestion card with swipe functionality
         AnimatedBuilder(
-          animation: _animationController,
-          builder: (context, child) {
-            // Calculate height based on animation value (improved dimensions)
-            final double height = 180 + (55 * _animationController.value);
-            
-            return SizedBox(
-              height: height,
-              child: PageView.builder(
-                controller: _pageController,
-                itemCount: widget.suggestions.length,
-                onPageChanged: (index) {
-                  setState(() {
-                    _currentIndex = index;
-                    _isLiked = false;
-                    _isDisliked = false;
-                    _isExpanded = false;
-                    _showExtraContent = false;
-                  });
-                  
-                  // Reset animation when changing page
-                  _animationController.reset();
-                  
-                  if (widget.onPageChanged != null) {
-                    widget.onPageChanged!(index);
-                  }
-                },
-                itemBuilder: (context, index) {
-                  final suggestion = widget.suggestions[index];
-                  return _buildSuggestionCard(suggestion, isCompletedMilestone, cardRadius);
-                },
-              ),
-            );
-          }
+            animation: _animationController,
+            builder: (context, child) {
+              // Calculate height based on animation value (improved dimensions)
+              final double height = 180 + (55 * _animationController.value);
+
+              return SizedBox(
+                height: height,
+                child: PageView.builder(
+                  controller: _pageController,
+                  itemCount: widget.suggestions.length,
+                  onPageChanged: (index) async {
+                    setState(() {
+                      _currentIndex = index;
+                      _isLiked = false;
+                      _isDisliked = false;
+                      _isExpanded = false;
+                      _showExtraContent = false;
+                    });
+
+                    // Reset animation when changing page
+                    _animationController.reset();
+
+                    if (widget.onPageChanged != null) {
+                      await Future.microtask(() => widget.onPageChanged!(index));
+                    }
+                  },
+                  itemBuilder: (context, index) {
+                    final suggestion = widget.suggestions[index];
+                    return _buildSuggestionCard(suggestion, isCompletedMilestone, cardRadius);
+                  },
+                ),
+              );
+            }
         ),
 
         // Indicator dots - made more visually appealing
@@ -269,7 +366,7 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> with SingleTick
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(
                 widget.suggestions.length,
-                (index) => AnimatedContainer(
+                    (index) => AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   width: index == _currentIndex ? 10 : 8,
                   height: index == _currentIndex ? 10 : 8,
@@ -292,7 +389,7 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> with SingleTick
       FoodSuggestion suggestion, bool isCompletedMilestone, double borderRadius) {
     // Determine if this is an ultra-low calorie option
     final bool isUltraLowCalorie = suggestion.calories <= 50;
-    
+
     // Get appropriate food type icon
     IconData foodTypeIcon = Icons.restaurant;
     if (suggestion.isDrink) {
@@ -344,6 +441,24 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> with SingleTick
                           width: 75,
                           height: 75,
                           fit: BoxFit.cover,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Container(
+                              width: 75,
+                              height: 75,
+                              color: Colors.grey[200],
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  value: loadingProgress.expectedTotalBytes != null
+                                      ? loadingProgress.cumulativeBytesLoaded /
+                                      loadingProgress.expectedTotalBytes!
+                                      : null,
+                                  strokeWidth: 2.0,
+                                  color: const Color(0xFFD2EB50),
+                                ),
+                              ),
+                            );
+                          },
                           errorBuilder: (context, error, stackTrace) {
                             return Container(
                               width: 75,
@@ -359,7 +474,7 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> with SingleTick
                         ),
                       ),
                     ),
-                    
+
                     // Food type badge
                     Positioned(
                       top: 0,
@@ -371,8 +486,8 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> with SingleTick
                           color: suggestion.isDrink
                               ? Colors.blue[700]
                               : suggestion.isIngredient
-                                  ? Colors.green[700]
-                                  : Colors.orange[700],
+                              ? Colors.green[700]
+                              : Colors.orange[700],
                           borderRadius: const BorderRadius.only(
                             topLeft: Radius.circular(10),
                             bottomRight: Radius.circular(10),
@@ -503,19 +618,34 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> with SingleTick
                   ),
                 ),
 
-                // Button row
+                // Button row with loading indicators
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     // Toggle details button
                     InkWell(
-                      onTap: _toggleExpand,
+                      onTap: _isLoading ? null : _toggleExpand,
                       borderRadius: BorderRadius.circular(20),
                       child: Padding(
                         padding: const EdgeInsets.all(4.0),
                         child: Icon(
                           _isExpanded ? Icons.expand_less : Icons.expand_more,
-                          color: Colors.grey[500],
+                          color: _isLoading ? Colors.grey[300] : Colors.grey[500],
+                          size: 22,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(width: 4),
+
+                    InkWell(
+                      onTap: _isLoading ? null : () => _logFoodItem(suggestion),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Padding(
+                        padding: const EdgeInsets.all(4.0),
+                        child: Icon(
+                          Icons.add_circle_outline,
+                          color: _isLoading ? Colors.grey[300] : const Color(0xFFD2EB50),
                           size: 22,
                         ),
                       ),
@@ -525,15 +655,24 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> with SingleTick
 
                     // Like button
                     InkWell(
-                      onTap: _handleLike,
+                      onTap: _isLoading ? null : _handleLike,
                       borderRadius: BorderRadius.circular(20),
                       child: Padding(
                         padding: const EdgeInsets.all(4.0),
-                        child: Icon(
+                        child: _isLoading && _isLiked
+                            ? SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: const Color(0xFFD2EB50),
+                          ),
+                        )
+                            : Icon(
                           _isLiked ? Icons.thumb_up : Icons.thumb_up_outlined,
                           color: _isLiked
                               ? const Color(0xFFD2EB50)
-                              : Colors.grey[500],
+                              : _isLoading ? Colors.grey[300] : Colors.grey[500],
                           size: 22,
                         ),
                       ),
@@ -543,16 +682,26 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> with SingleTick
 
                     // Dislike button
                     InkWell(
-                      onTap: _handleDislike,
+                      onTap: _isLoading ? null : _handleDislike,
                       borderRadius: BorderRadius.circular(20),
                       child: Padding(
                         padding: const EdgeInsets.all(4.0),
-                        child: Icon(
+                        child: _isLoading && _isDisliked
+                            ? SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.red[400],
+                          ),
+                        )
+                            : Icon(
                           _isDisliked
                               ? Icons.thumb_down
                               : Icons.thumb_down_outlined,
-                          color:
-                              _isDisliked ? Colors.red[400] : Colors.grey[500],
+                          color: _isDisliked
+                              ? Colors.red[400]
+                              : _isLoading ? Colors.grey[300] : Colors.grey[500],
                           size: 22,
                         ),
                       ),
@@ -577,41 +726,53 @@ class _FoodSuggestionCardState extends State<FoodSuggestionCard> with SingleTick
                   children: [
                     // Ready in
                     _buildDetailItemEnhanced(
-                      Icons.timer_outlined,
-                      '${suggestion.readyInMinutes ?? "--"} min',
-                      'Ready in'
+                        Icons.timer_outlined,
+                        '${suggestion.readyInMinutes ?? "--"} min',
+                        'Ready in'
                     ),
-                    
+
                     // Vertical divider
                     Container(
                       height: 30,
                       width: 1,
                       color: Colors.grey[200],
                     ),
-                    
+
                     // Servings
                     _buildDetailItemEnhanced(
-                      Icons.room_service_outlined,
-                      '${suggestion.servings ?? "--"}',
-                      'Servings'
+                        Icons.room_service_outlined,
+                        '${suggestion.servings ?? "--"}',
+                        'Servings'
                     ),
-                    
+
                     // Vertical divider
                     Container(
                       height: 30,
                       width: 1,
                       color: Colors.grey[200],
                     ),
-                    
+
                     // View Recipe button if URL is available
                     if (suggestion.sourceUrl != null &&
                         suggestion.sourceUrl!.isNotEmpty)
                       TextButton.icon(
-                        onPressed: _openRecipeUrl,
-                        icon: const Icon(Icons.open_in_new, size: 14),
+                        onPressed: _isLoading ? null : _openRecipeUrl,
+                        icon: _isLoading
+                            ? SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: const Color(0xFFD2EB50),
+                          ),
+                        )
+                            : const Icon(Icons.open_in_new, size: 14),
                         label: Text(
                           'View Recipe',
-                          style: GoogleFonts.inter(fontSize: 13),
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            color: _isLoading ? Colors.grey[400] : null,
+                          ),
                         ),
                         style: TextButton.styleFrom(
                           foregroundColor: const Color(0xFFD2EB50),

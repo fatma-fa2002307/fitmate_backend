@@ -1,3 +1,4 @@
+import 'package:fitmate/screens/login_screens/splash_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -21,7 +22,6 @@ void main() async {
   );
 
   enableOfflinePersistence();
-
   // Run the app with MultiProvider
   runApp(const MyApp());
 }
@@ -40,17 +40,18 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'FitMate',
-        home: const AuthCheck(), // Check if user is logged in
+        home: const SplashScreen(),
         routes: {
           '/login': (context) => const LoginPage(),
           '/forgot-password': (context) => const ForgotPasswordPage(),
           '/register': (context) => const AgeQuestionPage(),
-          '/home': (context) => HomePage(),
+          '/home': (context) => const HomePage(),
         },
       ),
     );
   }
 }
+
 class AuthCheck extends StatelessWidget {
   const AuthCheck({super.key});
 

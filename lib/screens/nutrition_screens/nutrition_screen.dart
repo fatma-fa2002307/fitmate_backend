@@ -13,6 +13,7 @@ import 'sleek_food_loading.dart';
 
 class NutritionPage extends StatefulWidget {
   const NutritionPage({Key? key}) : super(key: key);
+  static final GlobalKey<_NutritionPageState> nutritionPageKey = GlobalKey<_NutritionPageState>();
 
   @override
   State<NutritionPage> createState() => _NutritionPageState();
@@ -60,10 +61,10 @@ class _NutritionPageState extends State<NutritionPage>
 
   Future<void> _initializeData() async {
     setState(() => _isAnimating = false);
-    
+
     // First load all essential data (macros, logs)
     await _viewModel.init();
-    
+
     // Reset and start animation after data is loaded
     _animationController.reset();
     setState(() => _isAnimating = true);
@@ -94,7 +95,7 @@ class _NutritionPageState extends State<NutritionPage>
               automaticallyImplyLeading: false,
             ),
             body: viewModel.isLoading 
-                ? Center(
+                ? const Center(
                     child: CircularProgressIndicator(
                       valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFD2EB50)),
                     ),
@@ -256,7 +257,7 @@ class _NutritionPageState extends State<NutritionPage>
                           target:
                           viewModel.dailyMacros['protein']?.toInt() ?? 150,
                           percentage: viewModel.proteinPercentage,
-                          color: Colors.red[400]!,
+                          color: const Color(0xFFFC66B8)!,
                           animate: _isAnimating,
                         ),
                         AnimatedMacroWheel(
@@ -265,7 +266,7 @@ class _NutritionPageState extends State<NutritionPage>
                           target:
                           viewModel.dailyMacros['carbs']?.toInt() ?? 225,
                           percentage: viewModel.carbsPercentage,
-                          color: Colors.blue[400]!,
+                          color: const Color(0xFF55DCCC)!,
                           animate: _isAnimating,
                         ),
                         AnimatedMacroWheel(
@@ -273,7 +274,7 @@ class _NutritionPageState extends State<NutritionPage>
                           current: viewModel.totalFat.toInt(),
                           target: viewModel.dailyMacros['fat']?.toInt() ?? 65,
                           percentage: viewModel.fatPercentage,
-                          color: Colors.amber[700]!,
+                          color: const Color(0xFFFF9D33)!,
                           animate: _isAnimating,
                         ),
                       ],
@@ -552,6 +553,9 @@ class _NutritionPageState extends State<NutritionPage>
       MaterialPageRoute(
         builder: (context) => const LogFoodManuallyScreen(),
       ),
-    ).then((_) => _initializeData());
+    ).then((_) => _viewModel.freshOutTheSlammer());
+  }
+  void triggerDataReload() {
+    _initializeData();
   }
 }

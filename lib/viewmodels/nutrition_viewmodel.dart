@@ -652,6 +652,46 @@ class NutritionViewModel with ChangeNotifier {
     }
   }
 
+  // Add a new food log entry
+  Future<void> addFood(Map<String, dynamic> foodData) async {
+    try {
+      User? user = _auth.currentUser;
+      if (user != null) {
+        // Add the food to Firestore
+        await _firestore
+            .collection('users')
+            .doc(user.uid)
+            .collection('foodLogs')
+            .add(foodData);
+
+        // Reload food logs to update the UI
+        await _loadFoodLogs();
+
+        // Reload suggestions if we're on today and milestone might have changed
+        if (isToday) {
+          // Calculate the new milestone after food addition
+          SuggestionMilestone newMilestone =
+          SuggestionMilestoneExtension.fromPercentage(caloriePercentage);
+
+          // If milestone changed, reload suggestions
+          if (newMilestone != _currentMilestone) {
+            await _loadFoodSuggestions();
+          } else {
+            // Otherwise just notify UI update
+            notifyListeners();
+          }
+        }
+      }
+    } catch (e) {
+      print('Error adding food: $e');
+    }
+  }
+Future<void> freshOutTheSlammer()async{
+  await _loadFoodSuggestions();
+  await _loadFoodLogs();
+  notifyListeners();
+}
+
   // Delete a food log entry
   Future<void> deleteFood(String foodId) async {
     try {

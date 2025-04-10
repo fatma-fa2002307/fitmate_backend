@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:lottie/lottie.dart';
 import 'package:fitmate/repositories/workout_repository.dart';
 import 'package:fitmate/services/workout_service.dart';
 import 'package:fitmate/viewmodels/workout_completion_viewmodel.dart';
@@ -40,7 +41,8 @@ class _WorkoutCompletionScreenContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final viewModel = Provider.of<WorkoutCompletionViewModel>(context);
-    
+    final screenSize = MediaQuery.of(context).size;
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
@@ -141,9 +143,21 @@ class _WorkoutCompletionScreenContent extends StatelessWidget {
                   ],
                 ),
               ),
+              Expanded(
+                child: Center(
+                  child: Transform.scale(
+                    scale: 1.95,
+                    child: Lottie.asset(
+                      'assets/data/lottie/8.json',
+                      width: screenSize.width * 0.95,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+              ),
               if (viewModel.hasError)
                 Padding(
-                  padding: const EdgeInsets.only(top: 16.0),
+                  padding: const EdgeInsets.only(top: 16.0, bottom: 16.0),
                   child: Text(
                     'Note: ${viewModel.errorMessage}',
                     style: GoogleFonts.dmSans(
@@ -152,7 +166,6 @@ class _WorkoutCompletionScreenContent extends StatelessWidget {
                     ),
                   ),
                 ),
-              const Spacer(),
               if (viewModel.isLoading)
                 Center(
                   child: CircularProgressIndicator(
@@ -165,7 +178,7 @@ class _WorkoutCompletionScreenContent extends StatelessWidget {
                     // Use pushAndRemoveUntil to ensure complete navigation stack reset
                     Navigator.of(context).pushAndRemoveUntil(
                       MaterialPageRoute(builder: (context) => HomePage()),
-                      (route) => false,
+                          (route) => false,
                     );
                   },
                   style: ElevatedButton.styleFrom(
