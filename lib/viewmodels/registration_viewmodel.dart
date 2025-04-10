@@ -110,9 +110,7 @@ class RegistrationViewModel extends BaseViewModel {
         'gender': _gender,
         'goal': _goal,
         'workoutDays': _workoutDays,
-        'fitnessLevel': 'Beginner',
         'totalWorkouts': 0,
-        'workoutsUntilNextLevel': 20,
         'unitPreference': _isKg ? 'metric' : 'imperial',
       });
       

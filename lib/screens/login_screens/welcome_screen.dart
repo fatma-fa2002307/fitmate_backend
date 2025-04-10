@@ -206,13 +206,12 @@ class _WelcomePageState extends State<WelcomePage>
                   end: Offset(0, 0),
                 ).animate(_catController),
                 child: Container(
-                  height: 300,
+                  height: 160,
                   width: double.infinity,
                   alignment: Alignment.bottomCenter,
-                  //color: Colors.transparent,
                   child: Lottie.asset(
-                    'assets/data/lottie/8.json',
-                    height: 300,
+                    'assets/data/lottie/4.json',
+                    height: 150,
                     fit: BoxFit.contain,
                   ),
                 ),
